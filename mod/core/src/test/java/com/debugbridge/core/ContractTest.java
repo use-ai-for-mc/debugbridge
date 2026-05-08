@@ -1,10 +1,18 @@
 package com.debugbridge.core;
 
+import com.debugbridge.core.chat.ChatHistoryProvider;
 import com.debugbridge.core.entity.LookedAtEntityProvider;
 import com.debugbridge.core.lua.DirectDispatcher;
+import com.debugbridge.core.mapping.MappingResolver;
 import com.debugbridge.core.mapping.PassthroughResolver;
+import com.debugbridge.core.protocol.dto.ChatMessageDto;
+import com.debugbridge.core.protocol.dto.ItemStackDto;
+import com.debugbridge.core.protocol.dto.ScreenInspectDto;
+import com.debugbridge.core.protocol.dto.SlotDto;
+import com.debugbridge.core.screen.ScreenInspectProvider;
 import com.debugbridge.core.server.BridgeServer;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -15,6 +23,7 @@ import org.junit.jupiter.api.*;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -41,18 +50,41 @@ class ContractTest {
     private static volatile Path tempGameDir;
     /** Looked-at entity id served by the stub; volatile because tests mutate it. */
     private static volatile Integer stubLookedAtId = null;
+    /** Chat messages the stub will return; tests mutate per case. */
+    private static volatile List<ChatMessageDto> stubChatMessages = List.of();
+    /** ScreenInspect DTO the stub will return; tests mutate per case. */
+    private static volatile ScreenInspectDto stubScreenInspect = closedScreenDto();
 
     private TestClient client;
 
     @BeforeAll
     static void startServer() throws Exception {
-        server = new BridgeServer(PORT,
-            new PassthroughResolver("test"),
-            new DirectDispatcher());
-        // Stub provider that returns whatever the test set in stubLookedAtId.
+        // Resolver that maps `net.minecraft.class_1277` (a real intermediary
+        // name from the audit fixtures) to its Mojang counterpart so the
+        // contract test can verify the handler applies `unresolveClass` to
+        // {@code slots[].container}. Other names pass through unchanged.
+        MappingResolver resolver = new PassthroughResolver("test") {
+            @Override public String unresolveClass(String name) {
+                if ("net.minecraft.class_1277".equals(name)) {
+                    return "net.minecraft.world.SimpleContainer";
+                }
+                return name;
+            }
+        };
+        server = new BridgeServer(PORT, resolver, new DirectDispatcher());
+        // Stub providers — return whatever the test fixtured.
         server.setLookedAtEntityProvider((LookedAtEntityProvider) range -> stubLookedAtId);
+        server.setChatHistoryProvider((ChatHistoryProvider)
+            (limit, r, includeJson) -> stubChatMessages);
+        server.setScreenInspectProvider((ScreenInspectProvider) () -> stubScreenInspect);
         server.start();
         Thread.sleep(500);
+    }
+
+    private static ScreenInspectDto closedScreenDto() {
+        ScreenInspectDto d = new ScreenInspectDto();
+        d.open = false;
+        return d;
     }
 
     @AfterAll
@@ -68,6 +100,8 @@ class ContractTest {
         server.setGameDir(null);
         tempGameDir = null;
         stubLookedAtId = null;
+        stubChatMessages = List.of();
+        stubScreenInspect = closedScreenDto();
     }
 
     @AfterEach
@@ -139,6 +173,158 @@ class ContractTest {
         JsonObject result = call("lookedAtEntity").getAsJsonObject("result");
         assertEquals(12345, result.get("entityId").getAsInt());
         assertEquals(1, result.size());
+    }
+
+    // ==================== chatHistory ====================
+
+    @Test
+    void testChatHistoryEmitsEmptyShapeWhenNoMessages() throws Exception {
+        stubChatMessages = List.of();
+        JsonObject result = call("chatHistory").getAsJsonObject("result");
+        assertEquals(Set.of("messages", "count"), result.keySet());
+        assertEquals(0, result.get("count").getAsInt());
+        assertEquals(0, result.getAsJsonArray("messages").size());
+    }
+
+    @Test
+    void testChatHistoryEmitsPlainAndAddedTimeOmittingNulls() throws Exception {
+        ChatMessageDto m1 = new ChatMessageDto();
+        m1.plain = "hello";
+        m1.addedTime = 1000;
+        ChatMessageDto m2 = new ChatMessageDto();
+        m2.plain = "world";  // no addedTime — must be omitted on the wire
+        stubChatMessages = List.of(m1, m2);
+
+        JsonObject result = call("chatHistory").getAsJsonObject("result");
+        JsonArray messages = result.getAsJsonArray("messages");
+        assertEquals(2, result.get("count").getAsInt());
+        assertEquals(2, messages.size());
+
+        JsonObject first = messages.get(0).getAsJsonObject();
+        assertEquals(Set.of("plain", "addedTime"), first.keySet(),
+            "First message: plain + addedTime, no json. Got: " + first);
+        assertEquals("hello", first.get("plain").getAsString());
+        assertEquals(1000, first.get("addedTime").getAsInt());
+
+        JsonObject second = messages.get(1).getAsJsonObject();
+        assertEquals(Set.of("plain"), second.keySet(),
+            "Second message: addedTime is null, must be omitted (not emitted as null). Got: " + second);
+    }
+
+    @Test
+    void testChatHistoryIncludesJsonFieldWhenStubProvidesIt() throws Exception {
+        ChatMessageDto m = new ChatMessageDto();
+        m.plain = "styled";
+        m.addedTime = 500;
+        // Arbitrary JSON shape — stand-in for ComponentSerialization output.
+        JsonObject styled = new JsonObject();
+        styled.addProperty("text", "styled");
+        styled.addProperty("color", "red");
+        m.json = styled;
+        stubChatMessages = List.of(m);
+
+        JsonObject result = call("chatHistory").getAsJsonObject("result");
+        JsonObject only = result.getAsJsonArray("messages").get(0).getAsJsonObject();
+        assertEquals(Set.of("plain", "addedTime", "json"), only.keySet());
+        // The pass-through JSON round-trips byte-for-byte.
+        assertEquals(styled, only.getAsJsonObject("json"));
+    }
+
+    // ==================== screenInspect ====================
+
+    @Test
+    void testScreenInspectClosedEmitsOnlyOpenFalse() throws Exception {
+        // Default stub is a closed-screen DTO; reset by @BeforeEach.
+        JsonObject result = call("screenInspect").getAsJsonObject("result");
+        assertEquals(Set.of("open"), result.keySet(),
+            "Closed screen must emit only `open: false`. Got: " + result);
+        assertFalse(result.get("open").getAsBoolean());
+    }
+
+    @Test
+    void testScreenInspectOpenContainerEmitsTypeMenuAndSlots() throws Exception {
+        ScreenInspectDto dto = new ScreenInspectDto();
+        dto.open = true;
+        dto.type = "net.minecraft.client.gui.screens.inventory.ContainerScreen";
+        dto.title = "Test Chest";
+        dto.menuClass = "net.minecraft.world.inventory.ChestMenu";
+
+        SlotDto empty = new SlotDto();
+        empty.idx = 0;
+        // Use the intermediary that the test resolver knows how to map. The
+        // assertion below pins that the handler applies the resolver — the
+        // wire must NOT contain `class_1277`.
+        empty.container = "net.minecraft.class_1277";
+
+        SlotDto withItem = new SlotDto();
+        withItem.idx = 1;
+        withItem.container = "net.minecraft.class_1277";
+        withItem.item = new ItemStackDto();
+        withItem.item.itemId = "minecraft:diamond";
+        withItem.item.count = 3;
+
+        dto.slots = List.of(empty, withItem);
+        stubScreenInspect = dto;
+
+        JsonObject result = call("screenInspect").getAsJsonObject("result");
+        assertTrue(result.get("open").getAsBoolean());
+        assertEquals("Test Chest", result.get("title").getAsString());
+        assertEquals(2, result.getAsJsonArray("slots").size());
+
+        JsonObject slot0 = result.getAsJsonArray("slots").get(0).getAsJsonObject();
+        assertEquals(Set.of("idx", "container"), slot0.keySet(),
+            "Empty slot has only idx + container, no item. Got: " + slot0);
+
+        JsonObject slot1 = result.getAsJsonArray("slots").get(1).getAsJsonObject();
+        assertEquals(Set.of("idx", "container", "item"), slot1.keySet());
+        assertEquals(3, slot1.getAsJsonObject("item").get("count").getAsInt());
+    }
+
+    @Test
+    void testScreenInspectAppliesResolverToSlotContainerThemeOneFix() throws Exception {
+        // Pins the Theme 1 fix from the dream review queue: provider emits
+        // raw runtime class name in slots[].container; handler must apply
+        // unresolveClass before the value reaches the wire.
+        ScreenInspectDto dto = new ScreenInspectDto();
+        dto.open = true;
+        dto.type = "net.minecraft.class_1277";  // resolver maps this
+        dto.menuClass = "net.minecraft.class_1277";  // resolver maps this
+        SlotDto slot = new SlotDto();
+        slot.idx = 0;
+        slot.container = "net.minecraft.class_1277";  // <-- the bug location
+        dto.slots = List.of(slot);
+        stubScreenInspect = dto;
+
+        JsonObject result = call("screenInspect").getAsJsonObject("result");
+        // All three runtime class-name fields must be remapped to the Mojang name.
+        assertEquals("net.minecraft.world.SimpleContainer", result.get("type").getAsString());
+        assertEquals("net.minecraft.world.SimpleContainer", result.get("menuClass").getAsString());
+        assertEquals("net.minecraft.world.SimpleContainer",
+            result.getAsJsonArray("slots").get(0).getAsJsonObject().get("container").getAsString(),
+            "Theme 1 regression: slots[].container must be Mojang-mapped on the wire");
+    }
+
+    @Test
+    void testScreenInspectOmitsItemFieldsWhenAbsent() throws Exception {
+        // ItemStack with no damage and no custom name should produce a wire
+        // shape with only itemId + count — damage/maxDamage/name omitted.
+        ScreenInspectDto dto = new ScreenInspectDto();
+        dto.open = true;
+        dto.type = "x";
+        SlotDto slot = new SlotDto();
+        slot.idx = 0;
+        slot.container = "y";
+        slot.item = new ItemStackDto();
+        slot.item.itemId = "minecraft:stone";
+        slot.item.count = 64;
+        dto.slots = List.of(slot);
+        stubScreenInspect = dto;
+
+        JsonObject result = call("screenInspect").getAsJsonObject("result");
+        JsonObject item = result.getAsJsonArray("slots").get(0).getAsJsonObject()
+            .getAsJsonObject("item");
+        assertEquals(Set.of("itemId", "count"), item.keySet(),
+            "Optional damage/name fields must be omitted when null. Got: " + item);
     }
 
     // ==================== Helpers ====================

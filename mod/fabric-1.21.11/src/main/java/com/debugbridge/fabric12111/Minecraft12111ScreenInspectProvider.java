@@ -1,8 +1,9 @@
 package com.debugbridge.fabric12111;
 
+import com.debugbridge.core.protocol.dto.ItemStackDto;
+import com.debugbridge.core.protocol.dto.ScreenInspectDto;
+import com.debugbridge.core.protocol.dto.SlotDto;
 import com.debugbridge.core.screen.ScreenInspectProvider;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -12,48 +13,51 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Minecraft12111ScreenInspectProvider implements ScreenInspectProvider {
 
     @Override
-    public JsonObject inspectCurrentScreen() throws Exception {
-        JsonObject out = new JsonObject();
+    public ScreenInspectDto inspectCurrentScreen() throws Exception {
+        ScreenInspectDto dto = new ScreenInspectDto();
         Minecraft mc = Minecraft.getInstance();
         Screen screen = mc.screen;
         if (screen == null) {
-            out.addProperty("open", false);
-            return out;
+            dto.open = false;
+            return dto;
         }
-        out.addProperty("open", true);
-        out.addProperty("type", screen.getClass().getName());
-        out.addProperty("title", screen.getTitle().getString());
+        dto.open = true;
+        dto.type = screen.getClass().getName();
+        dto.title = screen.getTitle().getString();
 
         if (screen instanceof AbstractContainerScreen<?> cs) {
             AbstractContainerMenu menu = cs.getMenu();
-            out.addProperty("menuClass", menu.getClass().getName());
-            JsonArray slots = new JsonArray();
+            dto.menuClass = menu.getClass().getName();
+            List<SlotDto> slots = new ArrayList<>(menu.slots.size());
             for (int i = 0; i < menu.slots.size(); i++) {
                 Slot slot = menu.slots.get(i);
-                JsonObject s = new JsonObject();
-                s.addProperty("idx", i);
-                s.addProperty("container", slot.container.getClass().getName());
+                SlotDto s = new SlotDto();
+                s.idx = i;
+                s.container = slot.container.getClass().getName();
                 ItemStack stack = slot.getItem();
                 if (!stack.isEmpty()) {
-                    JsonObject item = new JsonObject();
-                    item.addProperty("itemId", BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
-                    item.addProperty("count", stack.getCount());
+                    ItemStackDto item = new ItemStackDto();
+                    item.itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+                    item.count = stack.getCount();
                     if (stack.isDamageableItem()) {
-                        item.addProperty("damage", stack.getDamageValue());
-                        item.addProperty("maxDamage", stack.getMaxDamage());
+                        item.damage = stack.getDamageValue();
+                        item.maxDamage = stack.getMaxDamage();
                     }
                     if (stack.has(DataComponents.CUSTOM_NAME)) {
-                        item.addProperty("name", stack.getHoverName().getString());
+                        item.name = stack.getHoverName().getString();
                     }
-                    s.add("item", item);
+                    s.item = item;
                 }
                 slots.add(s);
             }
-            out.add("slots", slots);
+            dto.slots = slots;
         }
-        return out;
+        return dto;
     }
 }

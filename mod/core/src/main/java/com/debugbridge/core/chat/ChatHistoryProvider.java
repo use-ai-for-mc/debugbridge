@@ -1,7 +1,9 @@
 package com.debugbridge.core.chat;
 
 import com.debugbridge.core.mapping.MappingResolver;
-import com.google.gson.JsonArray;
+import com.debugbridge.core.protocol.dto.ChatMessageDto;
+
+import java.util.List;
 
 /**
  * Provides recent client-side chat messages — what the user has seen in the
@@ -25,9 +27,10 @@ public interface ChatHistoryProvider {
      *                    colors, styles, click events, hover events). Off by
      *                    default — adds bytes for callers that only need
      *                    {@code plain}.
-     * @return JSON array of {plain, addedTime, json?} where addedTime is the
-     *         tick at which the message was added (GuiMessage.addedTime).
+     * @return list of {@link ChatMessageDto}, newest first. Wrapped into the
+     *         final {@code chatHistory} response in {@link
+     *         com.debugbridge.core.server.BridgeServer}.
      * @throws Exception on query failure
      */
-    JsonArray getRecentMessages(int limit, MappingResolver resolver, boolean includeJson) throws Exception;
+    List<ChatMessageDto> getRecentMessages(int limit, MappingResolver resolver, boolean includeJson) throws Exception;
 }

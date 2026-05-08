@@ -2,8 +2,7 @@ package com.debugbridge.fabric119;
 
 import com.debugbridge.core.chat.ChatHistoryProvider;
 import com.debugbridge.core.mapping.MappingResolver;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import com.debugbridge.core.protocol.dto.ChatMessageDto;
 import com.google.gson.JsonParser;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.ChatComponent;
@@ -11,6 +10,8 @@ import net.minecraft.network.chat.Component;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class Minecraft119ChatHistoryProvider implements ChatHistoryProvider {
@@ -20,37 +21,36 @@ public class Minecraft119ChatHistoryProvider implements ChatHistoryProvider {
     private static volatile Field addedTimeField;
 
     @Override
-    public JsonArray getRecentMessages(int limit, MappingResolver resolver, boolean includeJson) throws Exception {
-        JsonArray out = new JsonArray();
+    public List<ChatMessageDto> getRecentMessages(int limit, MappingResolver resolver, boolean includeJson) throws Exception {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.gui == null) return out;
+        if (mc.gui == null) return Collections.emptyList();
         ChatComponent chat = mc.gui.getChat();
-        if (chat == null) return out;
+        if (chat == null) return Collections.emptyList();
 
         @SuppressWarnings("unchecked")
         List<Object> messages = (List<Object>) allMessagesField(resolver).get(chat);
-        if (messages == null) return out;
+        if (messages == null) return Collections.emptyList();
 
         int n = Math.min(limit, messages.size());
+        List<ChatMessageDto> out = new ArrayList<>(n);
         for (int i = 0; i < n; i++) {
             Object msg = messages.get(i);
-            JsonObject obj = new JsonObject();
+            ChatMessageDto dto = new ChatMessageDto();
             Object content = messageGetter(msg.getClass(), resolver).invoke(msg);
-            obj.addProperty("plain",
-                content instanceof Component c ? c.getString() : String.valueOf(content));
+            dto.plain = content instanceof Component c ? c.getString() : String.valueOf(content);
             Field timeF = addedTimeField(msg.getClass(), resolver);
             if (timeF != null) {
-                obj.addProperty("addedTime", timeF.getInt(msg));
+                dto.addedTime = timeF.getInt(msg);
             }
             if (includeJson && content instanceof Component c) {
                 try {
                     String jsonStr = Component.Serializer.toJson(c);
-                    obj.add("json", JsonParser.parseString(jsonStr));
+                    dto.json = JsonParser.parseString(jsonStr);
                 } catch (Exception ignore) {
-                    // Skip json field on serialization failure.
+                    // Skip json field on serialization failure; plain is still there.
                 }
             }
-            out.add(obj);
+            out.add(dto);
         }
         return out;
     }

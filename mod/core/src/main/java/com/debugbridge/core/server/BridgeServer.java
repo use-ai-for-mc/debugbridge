@@ -5,7 +5,11 @@ import com.debugbridge.core.lua.ThreadDispatcher;
 import com.debugbridge.core.mapping.MappingResolver;
 import com.debugbridge.core.protocol.BridgeRequest;
 import com.debugbridge.core.protocol.BridgeResponse;
+import com.debugbridge.core.protocol.dto.ChatHistoryDto;
+import com.debugbridge.core.protocol.dto.ChatMessageDto;
 import com.debugbridge.core.protocol.dto.LookedAtEntityDto;
+import com.debugbridge.core.protocol.dto.ScreenInspectDto;
+import com.debugbridge.core.protocol.dto.SlotDto;
 import com.debugbridge.core.protocol.dto.StatusDto;
 import com.debugbridge.core.refs.ObjectRefStore;
 import com.debugbridge.core.entity.ClientEntityGlowManager;
@@ -28,6 +32,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -484,6 +489,15 @@ public class BridgeServer extends WebSocketServer {
         if (mapped != null) obj.addProperty(field, mapped);
     }
 
+    /** Apply {@link MappingResolver#unresolveClass} to a raw runtime class
+     * name. Returns the original value when the resolver doesn't know the
+     * mapping (preserves prior behavior where unmapped names pass through). */
+    private String unresolveOrNull(String runtimeName) {
+        if (runtimeName == null) return null;
+        String mapped = resolver.unresolveClass(runtimeName);
+        return mapped != null ? mapped : runtimeName;
+    }
+
     /**
      * Render the texture for each unique {@code itemId} in {@code uniqueIds}
      * and return a JSON map {itemId: {base64Png, width, height, spriteName}}.
@@ -816,11 +830,12 @@ public class BridgeServer extends WebSocketServer {
         boolean includeJson = req.payload != null && req.payload.has("includeJson")
             && req.payload.get("includeJson").getAsBoolean();
         try {
-            JsonArray messages = chatHistoryProvider.getRecentMessages(limit, resolver, includeJson);
-            JsonObject result = new JsonObject();
-            result.add("messages", messages);
-            result.addProperty("count", messages.size());
-            return BridgeResponse.success(req.id, result, null);
+            List<ChatMessageDto> messages =
+                chatHistoryProvider.getRecentMessages(limit, resolver, includeJson);
+            ChatHistoryDto dto = new ChatHistoryDto(messages);
+            // Omit-nulls so per-message optional fields (addedTime, json) drop
+            // out when not populated, preserving the historical wire shape.
+            return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(dto), null);
         } catch (Exception e) {
             return BridgeResponse.error(req.id,
                 "Chat history query failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
@@ -835,26 +850,30 @@ public class BridgeServer extends WebSocketServer {
         boolean includeIcons = req.payload != null && req.payload.has("includeIcons")
             && req.payload.get("includeIcons").getAsBoolean();
         try {
-            JsonObject result = screenInspectProvider.inspectCurrentScreen();
-            // Map any class-name fields through the resolver so callers see Mojang names.
-            unresolveClassField(result, "type");
-            unresolveClassField(result, "menuClass");
+            ScreenInspectDto dto = screenInspectProvider.inspectCurrentScreen();
+            // Map runtime class names → Mojang names. Provider populates the
+            // raw `getClass().getName()` strings; the kernel applies the
+            // resolver here so each version impl stays free of mapping logic.
+            // Closes review.md Theme 1 (`slots[].container` was previously not
+            // mapped — both versions emitted `class_1277` / `class_1661`).
+            dto.type = unresolveOrNull(dto.type);
+            dto.menuClass = unresolveOrNull(dto.menuClass);
+            if (dto.slots != null) {
+                for (SlotDto slot : dto.slots) {
+                    slot.container = unresolveOrNull(slot.container);
+                }
+            }
 
-            if (includeIcons && result.has("slots")) {
+            if (includeIcons && dto.slots != null) {
                 java.util.Set<String> uniqueIds = new java.util.LinkedHashSet<>();
-                JsonArray slots = result.getAsJsonArray("slots");
-                for (int i = 0; i < slots.size(); i++) {
-                    JsonObject slot = slots.get(i).getAsJsonObject();
-                    if (slot.has("item")) {
-                        JsonObject item = slot.getAsJsonObject("item");
-                        if (item.has("itemId")) {
-                            uniqueIds.add(item.get("itemId").getAsString());
-                        }
+                for (SlotDto slot : dto.slots) {
+                    if (slot.item != null && slot.item.itemId != null) {
+                        uniqueIds.add(slot.item.itemId);
                     }
                 }
-                result.add("icons", renderIconsMap(uniqueIds));
+                dto.icons = renderIconsMap(uniqueIds);
             }
-            return BridgeResponse.success(req.id, result, null);
+            return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(dto), null);
         } catch (Exception e) {
             return BridgeResponse.error(req.id,
                 "Screen inspect failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
