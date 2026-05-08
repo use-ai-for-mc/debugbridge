@@ -53,16 +53,15 @@ npm run preview
 src/
 ├── components/
 │   ├── layout/          # Header, Sidebar
-│   ├── console/         # Lua console
-│   ├── inspector/       # Object tree inspector
-│   ├── dashboard/       # Game state dashboard
-│   └── visualizer/      # (planned) Object graphs
+│   ├── console/         # Lua console + editor
+│   ├── inspector/       # Entities, blocks, inventory, browser, JSON/SNBT trees
+│   └── dashboard/       # Player snapshot
 ├── services/
-│   └── bridge.ts        # WebSocket client
-├── stores/
-│   ├── connection.ts    # Connection state
-│   ├── console.ts       # Console history
-│   └── inspector.ts     # Object inspection
+│   ├── bridge.ts        # WebSocket client
+│   ├── lua-helpers.ts   # Lua code generation helpers
+│   └── snbt.ts          # SNBT parsing
+├── stores/              # Pinia: connection, console, inspector, entities,
+│                        # blocks, inventory, browser
 └── types/
     └── index.ts         # TypeScript types
 ```

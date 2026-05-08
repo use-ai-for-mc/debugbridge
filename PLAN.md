@@ -2,7 +2,7 @@
 
 Pre-publication hardening + API improvements, derived from analyzing ~2,000 `mc_*` agent tool calls captured in Claude Code session transcripts (`~/.claude/projects/*/*.jsonl`) across 40 sessions.
 
-**We will not tag a public release until the *Pre-publication hygiene* and *Tier 1* items are done.**
+All *Pre-publication hygiene* and *Tier 1* items are done as of 2026-04-28; this doc is now history + the post-tier follow-up queue.
 
 ## Top-line evidence
 

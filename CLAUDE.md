@@ -4,7 +4,7 @@
 A Fabric client mod (Minecraft 1.19 and 1.21.11) that exposes a local WebSocket server for a Vue web UI and for MCP clients to introspect/control the running client. Used for dev-time debugging, not gameplay.
 
 ## Repo layout
-- `mod/core/` — shared Java: WebSocket server (`BridgeServer`), Lua runtime, mapping resolver, provider interfaces (`NearbyEntitiesProvider`, `ScreenshotProvider`, `ItemTextureProvider`, `GameStateProvider`).
+- `mod/core/` — shared Java: WebSocket server (`BridgeServer`), Lua runtime, mapping resolver, provider interfaces (`NearbyEntitiesProvider`, `NearbyBlocksProvider`, `LookedAtEntityProvider`, `ScreenshotProvider`, `ItemTextureProvider`, `ScreenInspectProvider`, `ChatHistoryProvider`, `GameStateProvider`).
 - `mod/fabric-1.19/` and `mod/fabric-1.21.11/` — version-specific Fabric mods. Each has its own provider impls + mixins.
 - `web-ui/` — Vue 3 + Pinia + Tailwind app.
 - `build-and-deploy.sh` (1.19) and `build-and-deploy-1.21.11.sh` — build the jar and copy into `~/Library/Application Support/ModrinthApp/profiles/ImagineFun/mods/`.
@@ -15,8 +15,8 @@ A Fabric client mod (Minecraft 1.19 and 1.21.11) that exposes a local WebSocket 
 
 ## Build requirements
 - Gradle needs **JDK 21**. System JDK (25) fails. Build scripts already set `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`.
-- Node for `web-ui` needs **≥20.19** (Vite requirement). The default `node` on PATH is 18; use `/Users/cusgadmin/.nvm/versions/node/v20.19.4/bin/npm` or `nvm use 20`.
-- Start web UI: `cd web-ui && /Users/cusgadmin/.nvm/versions/node/v20.19.4/bin/npm run dev` → http://localhost:5173.
+- Node for `web-ui` needs **≥20.19** (Vite requirement). If your default `node` is older, run `nvm use 20` first.
+- Start web UI: `cd web-ui && npm run dev` → http://localhost:5173.
 
 ## Request dispatch pattern
 `BridgeServer.handleRequest()` is a switch on `req.type`. To add a new endpoint:
@@ -26,7 +26,7 @@ A Fabric client mod (Minecraft 1.19 and 1.21.11) that exposes a local WebSocket 
 4. Add a typed wrapper in `web-ui/src/services/bridge.ts`.
 
 ## Mapping Fabric intermediary names to Mojang names
-`MappingResolver.unresolveClass(runtimeClassName)` converts intermediary names (`class_XXXX`) to Mojang names. Do this in `BridgeServer` handlers before sending over the wire — keeps version-specific providers simple (they just emit `entity.getClass().getName()`). Already done for `nearbyEntities.type`, `entityDetails.type`/`vehicle`/`passengers[]`.
+`MappingResolver.unresolveClass(runtimeClassName)` converts intermediary names (`class_XXXX`) to Mojang names. Do this in `BridgeServer` handlers before sending over the wire — keeps version-specific providers simple (they just emit `entity.getClass().getName()`). Already applied to `nearbyEntities.type`, `entityDetails.type`/`vehicle`/`passengers[]`, `nearbyBlocks.type`, `blockDetails.type`, and `snapshot.{vehicle.type, target.entityType}`. **Not yet applied** to `screenInspect.{type, menuClass, slots[].container}` — see review queue.
 
 ## Refs / Object Browser
 `java.ref(obj)` in Lua returns a stable ref ID backed by `ObjectRefStore` (WeakReferences). MCP clients learn to use refs through tool descriptions — no runtime registration needed.
@@ -37,9 +37,12 @@ Each version module has a mixin package + `debugbridge.mixins.json` listing the 
 - `EntityGlowMixin` — forces `Entity.isCurrentlyGlowing()` to return `true` for IDs in `ClientEntityGlowManager`, so the web UI can outline selected entities without server authority.
 
 ## Native entity/texture endpoints
-Do NOT iterate entities or resolve textures via Lua — the per-call Java↔Lua bridge overhead causes 10s timeouts with ~100+ entities. Native Java endpoints:
-- `nearbyEntities` / `entityDetails` via `NearbyEntitiesProvider` (both versions).
-- `getItemTexture` / `getEntityItemTexture` via `ItemTextureProvider`:
+Do NOT iterate entities/blocks, resolve textures, scan inventories, or read chat via Lua — the per-call Java↔Lua bridge overhead causes 10s timeouts with ~100+ items. Use the native Java endpoints instead:
+- `nearbyEntities` / `entityDetails` / `lookedAtEntity` via `NearbyEntitiesProvider` + `LookedAtEntityProvider` (both versions).
+- `nearbyBlocks` / `blockDetails` via `NearbyBlocksProvider` (signs, chests, banners, beacons, furnaces, etc. — block-entity scan).
+- `screenInspect` via `ScreenInspectProvider` — current open GUI: type, title, container slots with item stacks. Supports `includeIcons` for one-shot container visibility.
+- `chatHistory` via `ChatHistoryProvider` — recent client-side chat messages. Supports `includeJson` for styled-component access.
+- `getItemTexture` / `getItemTextureById` / `getEntityItemTexture` via `ItemTextureProvider`:
   - **1.21.11**: renders offscreen through `ItemModelResolver` + `GuiRenderer` → GPU texture → PNG. Honors damage/CMD resource-pack overrides.
   - **1.19**: extracts pixels from the baked model's sprite via reflection (no GPU render pipeline in that version).
 

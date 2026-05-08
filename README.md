@@ -83,7 +83,7 @@ The web UI connects directly to the WebSocket server — no MCP layer required.
 |  DebugBridge Mod [THIS REPO]      |
 |  +-----------------------------+  |
 |  | BridgeServer (WebSocket)    |  |
-|  | Native endpoints (18 total) |  |
+|  | Native endpoints + execute  |  |
 |  | Lua runtime + Java bridge   |  |
 |  | Mojang mapping resolver     |  |
 |  +-----------------------------+  |
@@ -144,7 +144,7 @@ npm run build        # production build → web-ui/dist/
 
 Install [mcdev-mcp](https://github.com/weikengchen/mcdev-mcp) and configure it in your MCP client. The MCP server auto-connects to DebugBridge (scans ports 9876–9885). Tools include:
 
-- **Runtime** (requires this mod): `mc_execute`, `mc_snapshot`, `mc_nearby_entities`, `mc_entity_details`, `mc_nearby_blocks`, `mc_block_details`, `mc_screen_inspect`, `mc_chat_history`, `mc_screenshot`, `mc_get_item_texture`, `mc_set_entity_glow`, `mc_set_block_glow`
+- **Runtime** (requires this mod): `mc_execute`, `mc_snapshot`, `mc_nearby_entities`, `mc_entity_details`, `mc_looked_at_entity`, `mc_nearby_blocks`, `mc_block_details`, `mc_screen_inspect`, `mc_chat_history`, `mc_screenshot`, `mc_get_item_texture`, `mc_set_entity_glow`, `mc_set_block_glow`, `mc_clear_block_glow`
 - **Static** (works offline): `mc_get_class`, `mc_get_method`, `mc_search`, `mc_find_refs`, `mc_find_hierarchy`
 
 ### Direct WebSocket
