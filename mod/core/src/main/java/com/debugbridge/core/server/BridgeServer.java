@@ -55,10 +55,6 @@ public class BridgeServer extends WebSocketServer {
     private volatile Path gameDir;
 
     /**
-     * Runtime logger injection service. Defaults to UNAVAILABLE until the
-     * agent module registers itself.
-     */
-    /**
      * Item texture resolver. Set by the version-specific module.
      */
     private volatile ItemTextureProvider textureProvider;

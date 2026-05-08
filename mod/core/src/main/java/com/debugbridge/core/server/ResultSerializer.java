@@ -132,7 +132,6 @@ public class ResultSerializer {
             try {
                 f.setAccessible(true);
                 Object val = f.get(obj);
-                String fieldName = resolver.unresolveClass(obj.getClass().getName());
                 // Use the runtime name since we don't have reverse field lookup here
                 String name = f.getName();
 

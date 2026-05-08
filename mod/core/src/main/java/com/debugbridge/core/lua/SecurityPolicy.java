@@ -25,7 +25,7 @@ public class SecurityPolicy {
      */
     public static boolean isAllowed(String className) {
         for (String prefix : BLOCKED_PREFIXES) {
-            if (className.startsWith(prefix) || className.equals(prefix)) {
+            if (className.startsWith(prefix)) {
                 return false;
             }
         }
