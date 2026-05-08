@@ -1,6 +1,9 @@
 package com.debugbridge.core.entity;
 
-import com.google.gson.JsonArray;
+import com.debugbridge.core.protocol.dto.EntityDetailsDto;
+import com.debugbridge.core.protocol.dto.EntitySummaryDto;
+
+import java.util.List;
 
 /**
  * Provides a fast, native query of nearby entities.
@@ -9,24 +12,32 @@ import com.google.gson.JsonArray;
 public interface NearbyEntitiesProvider {
 
     /**
-     * Get entities within the given range of the local player.
+     * Get entities within the given range of the local player, sorted
+     * nearest-first.
      *
-     * @param range  maximum distance in blocks
-     * @param limit  maximum number of entities to return
-     * @return JSON array of entity objects, each with id, type, distance, x, y, z, optionally customName,
-     *         and optionally {@code primaryEquipment: {slot, itemId}} for living entities — the first
-     *         non-empty slot in priority HEAD → MAINHAND → OFFHAND → CHEST → LEGS → FEET. {@code itemId}
-     *         is a registry key (e.g. {@code minecraft:iron_helmet}) suitable for {@code getItemTextureById}.
+     * <p>Implementations populate {@code dto.type} with the runtime class name
+     * (e.g. {@code net.minecraft.class_1531}); {@link
+     * com.debugbridge.core.server.BridgeServer} runs it through the mapping
+     * resolver before serialization.
+     *
+     * @param range maximum distance in blocks
+     * @param limit maximum number of entities to return
+     * @return list of summaries
      * @throws Exception if the query fails (e.g. player not in world)
      */
-    JsonArray getNearbyEntities(double range, int limit) throws Exception;
+    List<EntitySummaryDto> getNearbyEntities(double range, int limit) throws Exception;
 
     /**
      * Get detailed information about a specific entity by its runtime ID.
      *
-     * @param entityId the entity's runtime ID (from Entity.getId())
-     * @return JSON object with health, equipment, tags, state flags, etc., or null if not found
+     * <p>{@code dto.type}, {@code dto.vehicle}, and each entry of
+     * {@code dto.passengers} carry runtime class names from the provider; the
+     * handler maps them.
+     *
+     * @param entityId the entity's runtime ID (from {@code Entity.getId()})
+     * @return populated DTO, or {@code null} if the entity is not found. The
+     *         handler converts {@code null} to {@link EntityDetailsDto#gone()}.
      * @throws Exception if the query fails
      */
-    com.google.gson.JsonObject getEntityDetails(int entityId) throws Exception;
+    EntityDetailsDto getEntityDetails(int entityId) throws Exception;
 }

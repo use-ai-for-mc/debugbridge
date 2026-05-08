@@ -5,9 +5,15 @@ import com.debugbridge.core.lua.ThreadDispatcher;
 import com.debugbridge.core.mapping.MappingResolver;
 import com.debugbridge.core.protocol.BridgeRequest;
 import com.debugbridge.core.protocol.BridgeResponse;
+import com.debugbridge.core.protocol.dto.BlockDetailsDto;
+import com.debugbridge.core.protocol.dto.BlockSummaryDto;
 import com.debugbridge.core.protocol.dto.ChatHistoryDto;
 import com.debugbridge.core.protocol.dto.ChatMessageDto;
+import com.debugbridge.core.protocol.dto.EntityDetailsDto;
+import com.debugbridge.core.protocol.dto.EntitySummaryDto;
 import com.debugbridge.core.protocol.dto.LookedAtEntityDto;
+import com.debugbridge.core.protocol.dto.NearbyBlocksDto;
+import com.debugbridge.core.protocol.dto.NearbyEntitiesDto;
 import com.debugbridge.core.protocol.dto.ScreenInspectDto;
 import com.debugbridge.core.protocol.dto.SlotDto;
 import com.debugbridge.core.protocol.dto.StatusDto;
@@ -673,31 +679,22 @@ public class BridgeServer extends WebSocketServer {
         boolean includeIcons = req.payload.has("includeIcons")
             && req.payload.get("includeIcons").getAsBoolean();
         try {
-            JsonArray entities = entitiesProvider.getNearbyEntities(range, limit);
-            // Map intermediary class names to Mojang names
-            for (int i = 0; i < entities.size(); i++) {
-                JsonObject obj = entities.get(i).getAsJsonObject();
-                if (obj.has("type")) {
-                    String mapped = resolver.unresolveClass(obj.get("type").getAsString());
-                    if (mapped != null) obj.addProperty("type", mapped);
-                }
+            List<EntitySummaryDto> entities = entitiesProvider.getNearbyEntities(range, limit);
+            // Map runtime entity class names to Mojang names.
+            for (EntitySummaryDto e : entities) {
+                e.type = unresolveOrNull(e.type);
             }
-            JsonObject result = new JsonObject();
-            result.add("entities", entities);
-            result.addProperty("count", entities.size());
-
+            NearbyEntitiesDto dto = new NearbyEntitiesDto(entities);
             if (includeIcons) {
                 java.util.Set<String> uniqueIds = new java.util.LinkedHashSet<>();
-                for (int i = 0; i < entities.size(); i++) {
-                    JsonObject obj = entities.get(i).getAsJsonObject();
-                    if (obj.has("primaryEquipment")) {
-                        JsonObject eq = obj.getAsJsonObject("primaryEquipment");
-                        if (eq.has("itemId")) uniqueIds.add(eq.get("itemId").getAsString());
+                for (EntitySummaryDto e : entities) {
+                    if (e.primaryEquipment != null && e.primaryEquipment.itemId != null) {
+                        uniqueIds.add(e.primaryEquipment.itemId);
                     }
                 }
-                result.add("icons", renderIconsMap(uniqueIds));
+                dto.icons = renderIconsMap(uniqueIds);
             }
-            return BridgeResponse.success(req.id, result, null);
+            return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(dto), null);
         } catch (Exception e) {
             return BridgeResponse.error(req.id,
                 "Nearby entities query failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
@@ -712,32 +709,20 @@ public class BridgeServer extends WebSocketServer {
 
         int entityId = req.payload.get("entityId").getAsInt();
         try {
-            JsonObject details = entitiesProvider.getEntityDetails(entityId);
+            EntityDetailsDto details = entitiesProvider.getEntityDetails(entityId);
             if (details == null) {
-                JsonObject gone = new JsonObject();
-                gone.addProperty("gone", true);
-                return BridgeResponse.success(req.id, gone, null);
+                return BridgeResponse.success(req.id,
+                    GSON_OMIT_NULLS.toJsonTree(EntityDetailsDto.gone()), null);
             }
-            // Map intermediary class names to Mojang names
-            if (details.has("type")) {
-                String mapped = resolver.unresolveClass(details.get("type").getAsString());
-                if (mapped != null) details.addProperty("type", mapped);
+            // Apply class-name mapping uniformly: type, vehicle, and each passenger.
+            details.type = unresolveOrNull(details.type);
+            details.vehicle = unresolveOrNull(details.vehicle);
+            if (details.passengers != null) {
+                List<String> mapped = new java.util.ArrayList<>(details.passengers.size());
+                for (String p : details.passengers) mapped.add(unresolveOrNull(p));
+                details.passengers = mapped;
             }
-            if (details.has("vehicle")) {
-                String mapped = resolver.unresolveClass(details.get("vehicle").getAsString());
-                if (mapped != null) details.addProperty("vehicle", mapped);
-            }
-            if (details.has("passengers")) {
-                JsonArray passengers = details.getAsJsonArray("passengers");
-                JsonArray mapped = new JsonArray();
-                for (int i = 0; i < passengers.size(); i++) {
-                    String original = passengers.get(i).getAsString();
-                    String m = resolver.unresolveClass(original);
-                    mapped.add(m != null ? m : original);
-                }
-                details.add("passengers", mapped);
-            }
-            return BridgeResponse.success(req.id, details, null);
+            return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(details), null);
         } catch (Exception e) {
             return BridgeResponse.error(req.id,
                 "Entity details query failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
@@ -755,18 +740,13 @@ public class BridgeServer extends WebSocketServer {
         double range = req.payload.has("range") ? req.payload.get("range").getAsDouble() : 16.0;
         int limit = req.payload.has("limit") ? req.payload.get("limit").getAsInt() : 100;
         try {
-            JsonArray blocks = blocksProvider.getNearbyBlocks(range, limit);
-            for (int i = 0; i < blocks.size(); i++) {
-                JsonObject obj = blocks.get(i).getAsJsonObject();
-                if (obj.has("type")) {
-                    String mapped = resolver.unresolveClass(obj.get("type").getAsString());
-                    if (mapped != null) obj.addProperty("type", mapped);
-                }
+            List<BlockSummaryDto> blocks = blocksProvider.getNearbyBlocks(range, limit);
+            // Map each runtime BlockEntity class name to the Mojang name.
+            for (BlockSummaryDto b : blocks) {
+                b.type = unresolveOrNull(b.type);
             }
-            JsonObject result = new JsonObject();
-            result.add("blocks", blocks);
-            result.addProperty("count", blocks.size());
-            return BridgeResponse.success(req.id, result, null);
+            return BridgeResponse.success(req.id,
+                GSON_OMIT_NULLS.toJsonTree(new NearbyBlocksDto(blocks)), null);
         } catch (Exception e) {
             return BridgeResponse.error(req.id,
                 "Nearby blocks query failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
@@ -783,17 +763,15 @@ public class BridgeServer extends WebSocketServer {
         int y = req.payload.get("y").getAsInt();
         int z = req.payload.get("z").getAsInt();
         try {
-            JsonObject details = blocksProvider.getBlockDetails(x, y, z);
+            BlockDetailsDto details = blocksProvider.getBlockDetails(x, y, z);
             if (details == null) {
-                JsonObject gone = new JsonObject();
-                gone.addProperty("gone", true);
-                return BridgeResponse.success(req.id, gone, null);
+                // Provider signals "no block entity" via null; the wire shape
+                // for that case is `{gone: true}`.
+                return BridgeResponse.success(req.id,
+                    GSON_OMIT_NULLS.toJsonTree(BlockDetailsDto.gone()), null);
             }
-            if (details.has("type")) {
-                String mapped = resolver.unresolveClass(details.get("type").getAsString());
-                if (mapped != null) details.addProperty("type", mapped);
-            }
-            return BridgeResponse.success(req.id, details, null);
+            details.type = unresolveOrNull(details.type);
+            return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(details), null);
         } catch (Exception e) {
             return BridgeResponse.error(req.id,
                 "Block details query failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());

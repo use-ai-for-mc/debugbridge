@@ -1,39 +1,42 @@
 package com.debugbridge.core.block;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import com.debugbridge.core.protocol.dto.BlockDetailsDto;
+import com.debugbridge.core.protocol.dto.BlockSummaryDto;
+
+import java.util.List;
 
 /**
  * Provides a fast, native query of nearby block entities (signs, chests,
  * banners, beacons, etc.) — the blocks worth browsing for debugging.
  *
- * Plain-terrain blocks (dirt, stone, etc.) are intentionally excluded; this
+ * <p>Plain-terrain blocks (dirt, stone, etc.) are intentionally excluded; this
  * provider only surfaces blocks that carry per-instance state via a
  * BlockEntity.
+ *
+ * <p>Implementations populate {@code dto.type} with the raw runtime class
+ * name; {@link com.debugbridge.core.server.BridgeServer} runs it through the
+ * mapping resolver before serialization.
  */
 public interface NearbyBlocksProvider {
 
     /**
-     * Get block entities within the given range of the local player.
+     * Get block entities within the given range of the local player, sorted
+     * nearest-first.
      *
      * @param range maximum distance in blocks
      * @param limit maximum number of entries to return
-     * @return JSON array of block-entity summaries, each with at least
-     *         {@code x, y, z, blockId, type, distance}. {@code blockId} is
-     *         the block registry key (e.g. {@code minecraft:oak_sign}) and
-     *         {@code type} is the runtime BlockEntity class name.
+     * @return list of block-entity summaries
      * @throws Exception on query failure
      */
-    JsonArray getNearbyBlocks(double range, int limit) throws Exception;
+    List<BlockSummaryDto> getNearbyBlocks(double range, int limit) throws Exception;
 
     /**
-     * Get detailed information about a specific block at (x, y, z).
+     * Get detailed information about a specific block entity at (x, y, z).
      *
-     * @return JSON object with type, blockId, position, plus type-specific
-     *         fields where available (sign lines, container contents, banner
-     *         patterns, skull owner, etc.). Returns null if there is no
-     *         block entity at that position.
+     * @return populated DTO, or {@code null} when there is no block entity at
+     *         that position. The handler converts {@code null} to the on-wire
+     *         {@code {"gone": true}} shape.
      * @throws Exception on query failure
      */
-    JsonObject getBlockDetails(int x, int y, int z) throws Exception;
+    BlockDetailsDto getBlockDetails(int x, int y, int z) throws Exception;
 }

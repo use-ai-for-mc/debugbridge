@@ -1,8 +1,9 @@
 package com.debugbridge.fabric12111;
 
 import com.debugbridge.core.block.NearbyBlocksProvider;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
+import com.debugbridge.core.protocol.dto.BlockDetailsDto;
+import com.debugbridge.core.protocol.dto.BlockItemDto;
+import com.debugbridge.core.protocol.dto.BlockSummaryDto;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
@@ -15,6 +16,8 @@ import net.minecraft.world.level.block.entity.SignText;
 import net.minecraft.world.level.chunk.LevelChunk;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -28,14 +31,14 @@ import java.util.concurrent.TimeUnit;
 public class Minecraft12111NearbyBlocksProvider implements NearbyBlocksProvider {
 
     @Override
-    public JsonArray getNearbyBlocks(double range, int limit) throws Exception {
+    public List<BlockSummaryDto> getNearbyBlocks(double range, int limit) throws Exception {
         Minecraft mc = Minecraft.getInstance();
-        CompletableFuture<JsonArray> future = new CompletableFuture<>();
+        CompletableFuture<List<BlockSummaryDto>> future = new CompletableFuture<>();
 
         mc.execute(() -> {
             try {
                 if (mc.player == null || mc.level == null) {
-                    future.complete(new JsonArray());
+                    future.complete(Collections.emptyList());
                     return;
                 }
 
@@ -76,27 +79,23 @@ public class Minecraft12111NearbyBlocksProvider implements NearbyBlocksProvider 
 
                 entries.sort(Comparator.comparingDouble(en -> en.distance));
 
-                JsonArray arr = new JsonArray();
+                List<BlockSummaryDto> out = new ArrayList<>(Math.min(limit, entries.size()));
                 int count = 0;
                 for (Entry en : entries) {
                     if (count >= limit) break;
-                    JsonObject obj = new JsonObject();
-                    obj.addProperty("x", en.pos.getX());
-                    obj.addProperty("y", en.pos.getY());
-                    obj.addProperty("z", en.pos.getZ());
-                    obj.addProperty("distance", Math.round(en.distance * 10.0) / 10.0);
-                    obj.addProperty("type", en.blockEntity.getClass().getName());
-
-                    var blockKey = BuiltInRegistries.BLOCK.getKey(en.blockEntity.getBlockState().getBlock());
-                    obj.addProperty("blockId", blockKey.toString());
-
-                    String preview = previewFor(en.blockEntity);
-                    if (preview != null) obj.addProperty("preview", preview);
-
-                    arr.add(obj);
+                    BlockSummaryDto dto = new BlockSummaryDto();
+                    dto.x = en.pos.getX();
+                    dto.y = en.pos.getY();
+                    dto.z = en.pos.getZ();
+                    dto.distance = Math.round(en.distance * 10.0) / 10.0;
+                    dto.type = en.blockEntity.getClass().getName();
+                    dto.blockId = BuiltInRegistries.BLOCK
+                        .getKey(en.blockEntity.getBlockState().getBlock()).toString();
+                    dto.preview = previewFor(en.blockEntity);
+                    out.add(dto);
                     count++;
                 }
-                future.complete(arr);
+                future.complete(out);
             } catch (Exception e) {
                 future.completeExceptionally(e);
             }
@@ -106,9 +105,9 @@ public class Minecraft12111NearbyBlocksProvider implements NearbyBlocksProvider 
     }
 
     @Override
-    public JsonObject getBlockDetails(int x, int y, int z) throws Exception {
+    public BlockDetailsDto getBlockDetails(int x, int y, int z) throws Exception {
         Minecraft mc = Minecraft.getInstance();
-        CompletableFuture<JsonObject> future = new CompletableFuture<>();
+        CompletableFuture<BlockDetailsDto> future = new CompletableFuture<>();
 
         mc.execute(() -> {
             try {
@@ -123,47 +122,46 @@ public class Minecraft12111NearbyBlocksProvider implements NearbyBlocksProvider 
                     return;
                 }
 
-                JsonObject obj = new JsonObject();
-                obj.addProperty("x", x);
-                obj.addProperty("y", y);
-                obj.addProperty("z", z);
-                obj.addProperty("type", be.getClass().getName());
-                var blockKey = BuiltInRegistries.BLOCK.getKey(be.getBlockState().getBlock());
-                obj.addProperty("blockId", blockKey.toString());
+                BlockDetailsDto dto = new BlockDetailsDto();
+                dto.x = x;
+                dto.y = y;
+                dto.z = z;
+                dto.type = be.getClass().getName();
+                dto.blockId = BuiltInRegistries.BLOCK.getKey(be.getBlockState().getBlock()).toString();
 
                 if (be instanceof SignBlockEntity sign) {
-                    obj.add("signLines", signLines(sign.getFrontText()));
-                    JsonArray back = signLines(sign.getBackText());
+                    dto.signLines = signLines(sign.getFrontText());
+                    List<String> back = signLines(sign.getBackText());
                     if (anyNonEmpty(back)) {
-                        obj.add("signLinesBack", back);
+                        dto.signLinesBack = back;
                     }
-                    obj.addProperty("isWaxed", sign.isWaxed());
+                    dto.isWaxed = sign.isWaxed();
                 }
 
                 if (be instanceof Container container) {
-                    JsonArray items = new JsonArray();
                     int size = container.getContainerSize();
+                    List<BlockItemDto> items = new ArrayList<>();
                     for (int i = 0; i < size; i++) {
                         ItemStack stack = container.getItem(i);
                         if (stack == null || stack.isEmpty()) continue;
-                        JsonObject item = new JsonObject();
-                        item.addProperty("slot", i);
-                        item.addProperty("itemId", stack.getItem().getDescriptionId());
-                        item.addProperty("count", stack.getCount());
+                        BlockItemDto item = new BlockItemDto();
+                        item.slot = i;
+                        item.itemId = stack.getItem().getDescriptionId();
+                        item.count = stack.getCount();
                         if (stack.has(DataComponents.CUSTOM_NAME)) {
-                            item.addProperty("name", stack.getHoverName().getString());
+                            item.name = stack.getHoverName().getString();
                         }
                         if (stack.getMaxDamage() > 0) {
-                            item.addProperty("damage", stack.getDamageValue());
-                            item.addProperty("maxDamage", stack.getMaxDamage());
+                            item.damage = stack.getDamageValue();
+                            item.maxDamage = stack.getMaxDamage();
                         }
                         items.add(item);
                     }
-                    obj.add("items", items);
-                    obj.addProperty("containerSize", size);
+                    dto.items = items;
+                    dto.containerSize = size;
                 }
 
-                future.complete(obj);
+                future.complete(dto);
             } catch (Exception e) {
                 future.completeExceptionally(e);
             }
@@ -172,18 +170,18 @@ public class Minecraft12111NearbyBlocksProvider implements NearbyBlocksProvider 
         return future.get(5, TimeUnit.SECONDS);
     }
 
-    private static JsonArray signLines(SignText text) {
-        JsonArray lines = new JsonArray();
+    private static List<String> signLines(SignText text) {
+        String[] lines = new String[4];
         for (int i = 0; i < 4; i++) {
             var msg = text.getMessage(i, false);
-            lines.add(msg == null ? "" : msg.getString());
+            lines[i] = msg == null ? "" : msg.getString();
         }
-        return lines;
+        return Arrays.asList(lines);
     }
 
-    private static boolean anyNonEmpty(JsonArray arr) {
-        for (int i = 0; i < arr.size(); i++) {
-            if (!arr.get(i).getAsString().isEmpty()) return true;
+    private static boolean anyNonEmpty(List<String> lines) {
+        for (String s : lines) {
+            if (!s.isEmpty()) return true;
         }
         return false;
     }

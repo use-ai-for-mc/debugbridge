@@ -1,11 +1,19 @@
 package com.debugbridge.core;
 
+import com.debugbridge.core.block.NearbyBlocksProvider;
 import com.debugbridge.core.chat.ChatHistoryProvider;
 import com.debugbridge.core.entity.LookedAtEntityProvider;
+import com.debugbridge.core.entity.NearbyEntitiesProvider;
 import com.debugbridge.core.lua.DirectDispatcher;
 import com.debugbridge.core.mapping.MappingResolver;
 import com.debugbridge.core.mapping.PassthroughResolver;
+import com.debugbridge.core.protocol.dto.BlockDetailsDto;
+import com.debugbridge.core.protocol.dto.BlockItemDto;
+import com.debugbridge.core.protocol.dto.BlockSummaryDto;
 import com.debugbridge.core.protocol.dto.ChatMessageDto;
+import com.debugbridge.core.protocol.dto.EntityDetailsDto;
+import com.debugbridge.core.protocol.dto.EntityPrimaryEquipmentDto;
+import com.debugbridge.core.protocol.dto.EntitySummaryDto;
 import com.debugbridge.core.protocol.dto.ItemStackDto;
 import com.debugbridge.core.protocol.dto.ScreenInspectDto;
 import com.debugbridge.core.protocol.dto.SlotDto;
@@ -54,6 +62,14 @@ class ContractTest {
     private static volatile List<ChatMessageDto> stubChatMessages = List.of();
     /** ScreenInspect DTO the stub will return; tests mutate per case. */
     private static volatile ScreenInspectDto stubScreenInspect = closedScreenDto();
+    /** NearbyBlocks list the stub will return; tests mutate per case. */
+    private static volatile List<BlockSummaryDto> stubNearbyBlocks = List.of();
+    /** BlockDetails DTO the stub will return; null = "gone". */
+    private static volatile BlockDetailsDto stubBlockDetails = null;
+    /** NearbyEntities list the stub will return; tests mutate per case. */
+    private static volatile List<EntitySummaryDto> stubNearbyEntities = List.of();
+    /** EntityDetails DTO the stub will return; null = "gone". */
+    private static volatile EntityDetailsDto stubEntityDetails = null;
 
     private TestClient client;
 
@@ -77,6 +93,22 @@ class ContractTest {
         server.setChatHistoryProvider((ChatHistoryProvider)
             (limit, r, includeJson) -> stubChatMessages);
         server.setScreenInspectProvider((ScreenInspectProvider) () -> stubScreenInspect);
+        server.setBlocksProvider(new NearbyBlocksProvider() {
+            @Override public List<BlockSummaryDto> getNearbyBlocks(double range, int limit) {
+                return stubNearbyBlocks;
+            }
+            @Override public BlockDetailsDto getBlockDetails(int x, int y, int z) {
+                return stubBlockDetails;
+            }
+        });
+        server.setEntitiesProvider(new NearbyEntitiesProvider() {
+            @Override public List<EntitySummaryDto> getNearbyEntities(double range, int limit) {
+                return stubNearbyEntities;
+            }
+            @Override public EntityDetailsDto getEntityDetails(int entityId) {
+                return stubEntityDetails;
+            }
+        });
         server.start();
         Thread.sleep(500);
     }
@@ -102,6 +134,10 @@ class ContractTest {
         stubLookedAtId = null;
         stubChatMessages = List.of();
         stubScreenInspect = closedScreenDto();
+        stubNearbyBlocks = List.of();
+        stubBlockDetails = null;
+        stubNearbyEntities = List.of();
+        stubEntityDetails = null;
     }
 
     @AfterEach
@@ -327,13 +363,210 @@ class ContractTest {
             "Optional damage/name fields must be omitted when null. Got: " + item);
     }
 
+    // ==================== nearbyBlocks ====================
+
+    @Test
+    void testNearbyBlocksEmitsEmptyShape() throws Exception {
+        stubNearbyBlocks = List.of();
+        JsonObject result = call("nearbyBlocks").getAsJsonObject("result");
+        assertEquals(Set.of("blocks", "count"), result.keySet());
+        assertEquals(0, result.get("count").getAsInt());
+        assertEquals(0, result.getAsJsonArray("blocks").size());
+    }
+
+    @Test
+    void testNearbyBlocksAppliesResolverToType() throws Exception {
+        BlockSummaryDto b = new BlockSummaryDto();
+        b.x = 10; b.y = 64; b.z = -5;
+        b.distance = 4.2;
+        b.type = "net.minecraft.class_1277";  // resolver maps this
+        b.blockId = "minecraft:chest";
+        // preview omitted → must be absent on the wire
+        stubNearbyBlocks = List.of(b);
+
+        JsonObject result = call("nearbyBlocks").getAsJsonObject("result");
+        JsonObject only = result.getAsJsonArray("blocks").get(0).getAsJsonObject();
+        assertEquals(Set.of("x", "y", "z", "distance", "type", "blockId"), only.keySet(),
+            "preview must drop when null. Got: " + only);
+        assertEquals("net.minecraft.world.SimpleContainer", only.get("type").getAsString(),
+            "Resolver must map block-entity type names");
+        assertEquals(4.2, only.get("distance").getAsDouble(), 0.0001);
+        assertEquals(1, result.get("count").getAsInt());
+    }
+
+    // ==================== blockDetails ====================
+
+    @Test
+    void testBlockDetailsGoneWhenNoBlock() throws Exception {
+        stubBlockDetails = null;
+        JsonObject result = sendBlockDetails(0, 0, 0).getAsJsonObject("result");
+        assertEquals(Set.of("gone"), result.keySet(),
+            "When provider returns null, wire emits exactly {gone: true}. Got: " + result);
+        assertTrue(result.get("gone").getAsBoolean());
+    }
+
+    @Test
+    void testBlockDetailsSignShape() throws Exception {
+        BlockDetailsDto d = new BlockDetailsDto();
+        d.x = 1; d.y = 2; d.z = 3;
+        d.type = "net.minecraft.class_1277";
+        d.blockId = "minecraft:oak_sign";
+        d.signLines = List.of("hello", "world", "", "");
+        // signLinesBack/isWaxed null → must drop
+        stubBlockDetails = d;
+
+        JsonObject result = sendBlockDetails(1, 2, 3).getAsJsonObject("result");
+        assertEquals(Set.of("x", "y", "z", "type", "blockId", "signLines"), result.keySet(),
+            "Optional fields must drop when null. Got: " + result);
+        assertEquals("net.minecraft.world.SimpleContainer", result.get("type").getAsString());
+        assertEquals(4, result.getAsJsonArray("signLines").size());
+        assertEquals("hello", result.getAsJsonArray("signLines").get(0).getAsString());
+    }
+
+    @Test
+    void testBlockDetailsContainerShape() throws Exception {
+        BlockDetailsDto d = new BlockDetailsDto();
+        d.x = 1; d.y = 2; d.z = 3;
+        d.type = "x";
+        d.blockId = "minecraft:chest";
+        d.containerSize = 27;
+        BlockItemDto item = new BlockItemDto();
+        item.slot = 5;
+        item.itemId = "item.minecraft.diamond";
+        item.count = 12;
+        // damage/maxDamage/name null → must drop
+        d.items = List.of(item);
+        stubBlockDetails = d;
+
+        JsonObject result = sendBlockDetails(1, 2, 3).getAsJsonObject("result");
+        assertEquals(27, result.get("containerSize").getAsInt());
+        JsonObject only = result.getAsJsonArray("items").get(0).getAsJsonObject();
+        assertEquals(Set.of("slot", "itemId", "count"), only.keySet(),
+            "Optional damage/name fields must drop. Got: " + only);
+        assertEquals("item.minecraft.diamond", only.get("itemId").getAsString());
+        assertEquals(12, only.get("count").getAsInt());
+    }
+
+    // ==================== nearbyEntities ====================
+
+    @Test
+    void testNearbyEntitiesEmptyShape() throws Exception {
+        stubNearbyEntities = List.of();
+        JsonObject result = call("nearbyEntities").getAsJsonObject("result");
+        assertEquals(Set.of("entities", "count"), result.keySet(),
+            "Empty list emits exactly entities + count, no icons. Got: " + result);
+        assertEquals(0, result.get("count").getAsInt());
+    }
+
+    @Test
+    void testNearbyEntitiesAppliesResolverToTypeAndOmitsNulls() throws Exception {
+        EntitySummaryDto e = new EntitySummaryDto();
+        e.id = 42;
+        e.type = "net.minecraft.class_1277";  // resolver maps this
+        e.distance = 3.5;
+        e.x = 10.0; e.y = 64.0; e.z = -7.5;
+        // customName, typeId, primaryEquipment all null → must drop on the wire.
+        stubNearbyEntities = List.of(e);
+
+        JsonObject result = call("nearbyEntities").getAsJsonObject("result");
+        JsonObject only = result.getAsJsonArray("entities").get(0).getAsJsonObject();
+        assertEquals(Set.of("id", "type", "distance", "x", "y", "z"), only.keySet(),
+            "Optional fields must drop when null. Got: " + only);
+        assertEquals("net.minecraft.world.SimpleContainer", only.get("type").getAsString(),
+            "Resolver must map runtime entity class names");
+    }
+
+    @Test
+    void testNearbyEntitiesPrimaryEquipmentShape() throws Exception {
+        EntitySummaryDto e = new EntitySummaryDto();
+        e.id = 1; e.type = "x"; e.distance = 0; e.x = 0; e.y = 0; e.z = 0;
+        EntityPrimaryEquipmentDto eq = new EntityPrimaryEquipmentDto();
+        eq.slot = "HEAD";
+        eq.itemId = "minecraft:diamond_helmet";
+        e.primaryEquipment = eq;
+        stubNearbyEntities = List.of(e);
+
+        JsonObject result = call("nearbyEntities").getAsJsonObject("result");
+        JsonObject prim = result.getAsJsonArray("entities").get(0).getAsJsonObject()
+            .getAsJsonObject("primaryEquipment");
+        assertEquals(Set.of("slot", "itemId"), prim.keySet());
+        assertEquals("HEAD", prim.get("slot").getAsString());
+    }
+
+    // ==================== entityDetails ====================
+
+    @Test
+    void testEntityDetailsGoneWhenNull() throws Exception {
+        stubEntityDetails = null;
+        JsonObject p = new JsonObject();
+        p.addProperty("entityId", 999);
+        JsonObject result = call("entityDetails", p).getAsJsonObject("result");
+        assertEquals(Set.of("gone"), result.keySet());
+        assertTrue(result.get("gone").getAsBoolean());
+    }
+
+    @Test
+    void testEntityDetailsAppliesResolverToTypeVehiclePassengers() throws Exception {
+        // Pins the multi-field mapping behavior: type, vehicle, AND each
+        // passenger entry should all go through unresolveClass.
+        EntityDetailsDto d = new EntityDetailsDto();
+        d.entityId = 7;
+        d.type = "net.minecraft.class_1277";
+        d.x = 1.0; d.y = 2.0; d.z = 3.0;
+        d.distance = 0.0;
+        d.isOnFire = false;
+        d.isSprinting = false;
+        d.vehicle = "net.minecraft.class_1277";
+        d.passengers = List.of("net.minecraft.class_1277", "net.minecraft.class_1277");
+        stubEntityDetails = d;
+
+        JsonObject p = new JsonObject();
+        p.addProperty("entityId", 7);
+        JsonObject result = call("entityDetails", p).getAsJsonObject("result");
+
+        assertEquals("net.minecraft.world.SimpleContainer", result.get("type").getAsString());
+        assertEquals("net.minecraft.world.SimpleContainer", result.get("vehicle").getAsString());
+        var passengers = result.getAsJsonArray("passengers");
+        assertEquals(2, passengers.size());
+        assertEquals("net.minecraft.world.SimpleContainer", passengers.get(0).getAsString());
+        assertEquals("net.minecraft.world.SimpleContainer", passengers.get(1).getAsString());
+    }
+
+    @Test
+    void testEntityDetailsOmitsLivingFieldsForNonLiving() throws Exception {
+        // Minimal "present" entity — no vehicle/passengers/equipment/etc.
+        // Only required fields should appear on the wire.
+        EntityDetailsDto d = new EntityDetailsDto();
+        d.entityId = 1;
+        d.type = "x";
+        d.x = 0.0; d.y = 0.0; d.z = 0.0;
+        d.distance = 0.0;
+        d.isOnFire = false;
+        d.isSprinting = false;
+        stubEntityDetails = d;
+
+        JsonObject p = new JsonObject();
+        p.addProperty("entityId", 1);
+        JsonObject result = call("entityDetails", p).getAsJsonObject("result");
+
+        assertEquals(Set.of("entityId", "type", "x", "y", "z", "distance",
+                            "isOnFire", "isSprinting"),
+            result.keySet(),
+            "Only the always-emitted fields should appear when no living/vehicle/tags/etc. set. Got: "
+                + result);
+    }
+
     // ==================== Helpers ====================
 
     private JsonObject call(String type) throws Exception {
+        return call(type, new JsonObject());
+    }
+
+    private JsonObject call(String type, JsonObject payload) throws Exception {
         JsonObject req = new JsonObject();
         req.addProperty("id", "ct_" + System.nanoTime());
         req.addProperty("type", type);
-        req.add("payload", new JsonObject());
+        req.add("payload", payload);
         client.send(new Gson().toJson(req));
         String response = client.responses.poll(5, TimeUnit.SECONDS);
         assertNotNull(response, "No response within 5s");
@@ -341,6 +574,14 @@ class ContractTest {
         JsonObject resp = el.getAsJsonObject();
         assertTrue(resp.get("success").getAsBoolean(), "Request failed: " + resp);
         return resp;
+    }
+
+    private JsonObject sendBlockDetails(int x, int y, int z) throws Exception {
+        JsonObject p = new JsonObject();
+        p.addProperty("x", x);
+        p.addProperty("y", y);
+        p.addProperty("z", z);
+        return call("blockDetails", p);
     }
 
     private static class TestClient extends WebSocketClient {
