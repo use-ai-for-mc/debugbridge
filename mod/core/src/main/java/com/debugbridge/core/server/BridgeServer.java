@@ -23,12 +23,14 @@ import org.java_websocket.server.WebSocketServer;
 
 import java.net.BindException;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /**
  * WebSocket server that accepts Lua script execution requests and other commands.
@@ -299,17 +301,30 @@ public class BridgeServer extends WebSocketServer {
     }
 
     private BridgeResponse handleSearch(BridgeRequest req) {
+        if (req.payload == null || !req.payload.has("pattern")
+                || !req.payload.get("pattern").isJsonPrimitive()) {
+            return BridgeResponse.error(req.id, "search: 'pattern' must be a string");
+        }
         String pattern = req.payload.get("pattern").getAsString();
+        if (pattern.length() > MAX_PATTERN_LEN) {
+            return BridgeResponse.error(req.id,
+                "search: pattern too long (max " + MAX_PATTERN_LEN + " chars)");
+        }
         String scope = req.payload.has("scope")
             ? req.payload.get("scope").getAsString() : "all";
-        Pattern regex = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
+        Pattern regex;
+        try {
+            regex = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
+        } catch (PatternSyntaxException e) {
+            return BridgeResponse.error(req.id, "search: invalid regex — " + e.getDescription());
+        }
 
         JsonArray results = new JsonArray();
         int limit = 100;
 
         if (scope.equals("class") || scope.equals("all")) {
             for (String mojangClass : resolver.getAllClassNames()) {
-                if (regex.matcher(mojangClass).find()) {
+                if (timedFind(regex, mojangClass)) {
                     JsonObject entry = new JsonObject();
                     entry.addProperty("type", "class");
                     entry.addProperty("name", mojangClass);
@@ -322,7 +337,7 @@ public class BridgeServer extends WebSocketServer {
         if (results.size() < limit && (scope.equals("method") || scope.equals("all"))) {
             for (String className : resolver.getAllClassNames()) {
                 for (String methodSig : resolver.getMethodSignatures(className)) {
-                    if (regex.matcher(methodSig).find()) {
+                    if (timedFind(regex, methodSig)) {
                         JsonObject entry = new JsonObject();
                         entry.addProperty("type", "method");
                         entry.addProperty("owner", className);
@@ -338,7 +353,7 @@ public class BridgeServer extends WebSocketServer {
         if (results.size() < limit && (scope.equals("field") || scope.equals("all"))) {
             for (String className : resolver.getAllClassNames()) {
                 for (String fieldName : resolver.getFieldNames(className)) {
-                    if (regex.matcher(fieldName).find()) {
+                    if (timedFind(regex, fieldName)) {
                         JsonObject entry = new JsonObject();
                         entry.addProperty("type", "field");
                         entry.addProperty("owner", className);
@@ -352,6 +367,57 @@ public class BridgeServer extends WebSocketServer {
         }
 
         return BridgeResponse.success(req.id, results, null);
+    }
+
+    /** Hard cap on `search` pattern length. Class/method names are tiny; very
+     * long patterns are either pathological compilation work or an error. */
+    private static final int MAX_PATTERN_LEN = 256;
+
+    /** Per-string match deadline for `search`. Catastrophic backtracking on a
+     * single string still has to read its way through the input via
+     * {@link CharSequence#charAt}, so a deadline checked there bounds the
+     * worst case at ~{@value} ms regardless of pattern shape. */
+    private static final long REGEX_MATCH_TIMEOUT_MS = 100L;
+
+    /** Run {@code regex.matcher(target).find()} with a per-call deadline that
+     * defuses catastrophic-backtracking ReDoS. Returns {@code false} on timeout
+     * (treats a timing-out pattern as no-match for that string and moves on
+     * — better than hanging the websocket handler thread). */
+    private static boolean timedFind(Pattern regex, String target) {
+        try {
+            long deadline = System.nanoTime() + REGEX_MATCH_TIMEOUT_MS * 1_000_000L;
+            return regex.matcher(new TimeoutCharSequence(target, deadline)).find();
+        } catch (RegexTimeoutException e) {
+            return false;
+        }
+    }
+
+    /** Throws a {@link RegexTimeoutException} from {@link #charAt(int)} once
+     * the deadline passes. Java's regex engine reads input via {@code charAt},
+     * so this gives the matcher a back-pressure signal even when it's looping
+     * inside a backtracking blowup. */
+    private static final class TimeoutCharSequence implements CharSequence {
+        private final CharSequence inner;
+        private final long deadlineNanos;
+        TimeoutCharSequence(CharSequence inner, long deadlineNanos) {
+            this.inner = inner;
+            this.deadlineNanos = deadlineNanos;
+        }
+        @Override public int length() { return inner.length(); }
+        @Override public char charAt(int index) {
+            if (System.nanoTime() > deadlineNanos) {
+                throw new RegexTimeoutException();
+            }
+            return inner.charAt(index);
+        }
+        @Override public CharSequence subSequence(int start, int end) {
+            return new TimeoutCharSequence(inner.subSequence(start, end), deadlineNanos);
+        }
+        @Override public String toString() { return inner.toString(); }
+    }
+
+    private static final class RegexTimeoutException extends RuntimeException {
+        RegexTimeoutException() { super(null, null, false, false); }
     }
 
     private BridgeResponse handleScreenshot(BridgeRequest req) {
@@ -439,19 +505,40 @@ public class BridgeServer extends WebSocketServer {
     }
 
     private BridgeResponse handleRunCommand(BridgeRequest req) {
+        if (req.payload == null || !req.payload.has("command")
+                || !req.payload.get("command").isJsonPrimitive()) {
+            return BridgeResponse.error(req.id, "runCommand: 'command' must be a string");
+        }
         String command = req.payload.get("command").getAsString();
-        // This needs to be implemented via the version-specific module
-        // For now, execute via Lua
-        String luaCode = String.format(
+        if (command.length() > MAX_COMMAND_LEN) {
+            return BridgeResponse.error(req.id,
+                "runCommand: command too long (max " + MAX_COMMAND_LEN + " chars)");
+        }
+        // SECURITY: encode the command as `string.char(b1, b2, ...)` so the
+        // generated Lua source contains no user-controlled bytes. Earlier
+        // single-quote escaping ('"' -> "\\'") was bypassable via backslash +
+        // quote, newlines, and null bytes. This formulation is unconditionally
+        // injection-proof: every byte of the user's command lands as a numeric
+        // literal, and Lua reassembles the string at runtime.
+        // This is a temporary measure — the long-term fix is a native
+        // CommandProvider that bypasses Lua entirely (see review queue).
+        byte[] cmdBytes = command.getBytes(StandardCharsets.UTF_8);
+        StringBuilder bytes = new StringBuilder(cmdBytes.length * 4);
+        for (int i = 0; i < cmdBytes.length; i++) {
+            if (i > 0) bytes.append(',');
+            bytes.append(cmdBytes[i] & 0xFF);
+        }
+        String luaCode =
+            "local cmd = string.char(" + bytes + ")\n" +
             "local mc = java.import('net.minecraft.client.Minecraft'):getInstance()\n" +
-            "mc.player:connection():sendCommand('%s')\n" +
-            "return 'Command sent: %s'",
-            command.replace("'", "\\'"),
-            command.replace("'", "\\'")
-        );
+            "mc.player:connection():sendCommand(cmd)\n" +
+            "return 'Command sent: ' .. cmd";
         return handleExecute(new BridgeRequest(req.id, "execute",
             createPayload("code", luaCode)));
     }
+
+    /** Hard cap on `runCommand` input length. */
+    private static final int MAX_COMMAND_LEN = 1024;
 
     private BridgeResponse handleStatus(BridgeRequest req) {
         JsonObject status = new JsonObject();
