@@ -1,0 +1,15 @@
+{
+  "success": true,
+  "result": {
+    "version": "1.21.11",
+    "mappingStatus": "mojang",
+    "obfuscated": true,
+    "refs": 0,
+    "gameDir": "/Users/cusgadmin/Library/Application Support/ModrinthApp/profiles/ImagineFun",
+    "logsDir": "/Users/cusgadmin/Library/Application Support/ModrinthApp/profiles/ImagineFun/logs",
+    "latestLog": "/Users/cusgadmin/Library/Application Support/ModrinthApp/profiles/ImagineFun/logs/latest.log",
+    "latestLogExists": true,
+    "debugLog": "/Users/cusgadmin/Library/Application Support/ModrinthApp/profiles/ImagineFun/logs/debug.log",
+    "debugLogExists": false
+  }
+}

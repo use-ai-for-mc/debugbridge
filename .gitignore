@@ -72,6 +72,13 @@ Desktop.ini
 # Claude Code local config (launch profiles, settings)
 .claude/
 
+# Dream-skill audit workspace (per-run scratch state, not source).
+.dream/
+
+# Smoke-test exploratory captures (only the named-version baselines under
+# tools/fixtures/<version>/ are checked in; _explore is throwaway).
+tools/fixtures/_explore/
+
 # --- Logs ------------------------------------------------------------------
 *.log
 logs/

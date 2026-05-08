@@ -1,0 +1,405 @@
+{
+  "success": true,
+  "result": [
+    {
+      "type": "class",
+      "name": "net.minecraft.BlockUtil"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.BlockUtil$FoundRectangle"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.BlockUtil$IntBounds"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.CharPredicate"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.ChatFormatting"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.CrashReport"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.CrashReportCategory"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.CrashReportCategory$Entry"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.CrashReportDetail"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.DefaultUncaughtExceptionHandler"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.DefaultUncaughtExceptionHandlerWithName"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.DetectedVersion"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.FieldsAreNonnullByDefault"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.FileUtil"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.MethodsReturnNonnullByDefault"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.ReportedException"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.ResourceLocationException"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.SharedConstants"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.SharedConstants$1"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.SystemReport"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.Util"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.Util$1"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.Util$10"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.Util$11"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.Util$2"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.Util$5"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.Util$6"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.Util$7"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.Util$8"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.Util$9"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.Util$IdentityStrategy"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.Util$OS"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.Util$OS$1"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.Util$OS$2"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.WorldVersion"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.Advancement"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.Advancement$Builder"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.AdvancementList"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.AdvancementList$Listener"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.AdvancementProgress"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.AdvancementProgress$Serializer"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.AdvancementRewards"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.AdvancementRewards$Builder"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.CriteriaTriggers"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.Criterion"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.CriterionProgress"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.CriterionTrigger"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.CriterionTrigger$Listener"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.CriterionTriggerInstance"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.DisplayInfo"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.FrameType"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.RequirementsStrategy"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.TreeNodePosition"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.AbstractCriterionTriggerInstance"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.BeeNestDestroyedTrigger"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.BeeNestDestroyedTrigger$TriggerInstance"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.BlockPredicate"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.BlockPredicate$Builder"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.BredAnimalsTrigger"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.BredAnimalsTrigger$TriggerInstance"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.BrewedPotionTrigger"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.BrewedPotionTrigger$TriggerInstance"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.ChangeDimensionTrigger"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.ChangeDimensionTrigger$TriggerInstance"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.ChanneledLightningTrigger"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.ChanneledLightningTrigger$TriggerInstance"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.ConstructBeaconTrigger"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.ConstructBeaconTrigger$TriggerInstance"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.ConsumeItemTrigger"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.ConsumeItemTrigger$TriggerInstance"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.CuredZombieVillagerTrigger"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.CuredZombieVillagerTrigger$TriggerInstance"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.DamagePredicate"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.DamagePredicate$Builder"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.DamageSourcePredicate"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.DamageSourcePredicate$Builder"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.DeserializationContext"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.DistancePredicate"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.DistanceTrigger"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.DistanceTrigger$TriggerInstance"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EffectsChangedTrigger"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EffectsChangedTrigger$TriggerInstance"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EnchantedItemTrigger"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EnchantedItemTrigger$TriggerInstance"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EnchantmentPredicate"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EnterBlockTrigger"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EnterBlockTrigger$TriggerInstance"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EntityEquipmentPredicate"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EntityEquipmentPredicate$Builder"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EntityFlagsPredicate"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EntityFlagsPredicate$Builder"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EntityHurtPlayerTrigger"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EntityHurtPlayerTrigger$TriggerInstance"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EntityPredicate"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EntityPredicate$Builder"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EntityPredicate$Composite"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EntitySubPredicate"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EntitySubPredicate$1"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EntitySubPredicate$Type"
+    },
+    {
+      "type": "class",
+      "name": "net.minecraft.advancements.critereon.EntitySubPredicate$Types"
+    }
+  ]
+}

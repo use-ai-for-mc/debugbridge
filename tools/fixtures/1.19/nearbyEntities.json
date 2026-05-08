@@ -1,0 +1,676 @@
+{
+  "success": true,
+  "result": {
+    "entities": [
+      {
+        "id": 1421965,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 3.2,
+        "x": 3135.7,
+        "y": 56.5,
+        "z": 6093.4,
+        "customName": "Presented by H0ops",
+        "typeId": "entity.minecraft.armor_stand"
+      },
+      {
+        "id": 1422000,
+        "type": "net.minecraft.world.entity.decoration.ItemFrame",
+        "distance": 3.3,
+        "x": 3137,
+        "y": 54.5,
+        "z": 6093.5,
+        "typeId": "entity.minecraft.item_frame",
+        "primaryEquipment": {
+          "slot": "FRAME",
+          "itemId": "minecraft:filled_map"
+        }
+      },
+      {
+        "id": 1422001,
+        "type": "net.minecraft.world.entity.decoration.ItemFrame",
+        "distance": 3.6,
+        "x": 3137,
+        "y": 55.5,
+        "z": 6093.5,
+        "typeId": "entity.minecraft.item_frame",
+        "primaryEquipment": {
+          "slot": "FRAME",
+          "itemId": "minecraft:filled_map"
+        }
+      },
+      {
+        "id": 1421996,
+        "type": "net.minecraft.world.entity.decoration.ItemFrame",
+        "distance": 3.7,
+        "x": 3137,
+        "y": 55.5,
+        "z": 6091.5,
+        "typeId": "entity.minecraft.item_frame",
+        "primaryEquipment": {
+          "slot": "FRAME",
+          "itemId": "minecraft:filled_map"
+        }
+      },
+      {
+        "id": 152882,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 3.7,
+        "x": 3137,
+        "y": 55.7,
+        "z": 6093.5,
+        "customName": "This Month",
+        "typeId": "entity.minecraft.armor_stand"
+      },
+      {
+        "id": 1421953,
+        "type": "net.minecraft.world.entity.decoration.ItemFrame",
+        "distance": 4.1,
+        "x": 3136,
+        "y": 57.5,
+        "z": 6092.5,
+        "typeId": "entity.minecraft.item_frame",
+        "primaryEquipment": {
+          "slot": "FRAME",
+          "itemId": "minecraft:filled_map"
+        }
+      },
+      {
+        "id": 1421997,
+        "type": "net.minecraft.world.entity.decoration.ItemFrame",
+        "distance": 4.2,
+        "x": 3137,
+        "y": 56.5,
+        "z": 6091.5,
+        "typeId": "entity.minecraft.item_frame",
+        "primaryEquipment": {
+          "slot": "FRAME",
+          "itemId": "minecraft:filled_map"
+        }
+      },
+      {
+        "id": 1421952,
+        "type": "net.minecraft.world.entity.decoration.ItemFrame",
+        "distance": 4.5,
+        "x": 3136,
+        "y": 57.5,
+        "z": 6094.5,
+        "typeId": "entity.minecraft.item_frame",
+        "primaryEquipment": {
+          "slot": "FRAME",
+          "itemId": "minecraft:filled_map"
+        }
+      },
+      {
+        "id": 29821,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 4.6,
+        "x": 3137,
+        "y": 57,
+        "z": 6091.2,
+        "customName": "nftfeab1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:white_banner"
+        }
+      },
+      {
+        "id": 19865,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 4.6,
+        "x": 3137.3,
+        "y": 56.3,
+        "z": 6090.6,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 1421,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 4.6,
+        "x": 3137.2,
+        "y": 56.3,
+        "z": 6090.4,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 8101,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 4.7,
+        "x": 3137.1,
+        "y": 56.3,
+        "z": 6090.2,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 16789,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 4.8,
+        "x": 3137,
+        "y": 56.3,
+        "z": 6089.9,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 4787,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 4.8,
+        "x": 3136.9,
+        "y": 56.3,
+        "z": 6089.7,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 28421,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 4.9,
+        "x": 3136.8,
+        "y": 56.3,
+        "z": 6089.5,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 1421946,
+        "type": "net.minecraft.world.entity.decoration.ItemFrame",
+        "distance": 5,
+        "x": 3136,
+        "y": 58.5,
+        "z": 6092.5,
+        "typeId": "entity.minecraft.item_frame",
+        "primaryEquipment": {
+          "slot": "FRAME",
+          "itemId": "minecraft:filled_map"
+        }
+      },
+      {
+        "id": 24781,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 5,
+        "x": 3136.8,
+        "y": 56.3,
+        "z": 6089.2,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 1421947,
+        "type": "net.minecraft.world.entity.decoration.ItemFrame",
+        "distance": 5.1,
+        "x": 3136,
+        "y": 58.5,
+        "z": 6093.5,
+        "typeId": "entity.minecraft.item_frame",
+        "primaryEquipment": {
+          "slot": "FRAME",
+          "itemId": "minecraft:filled_map"
+        }
+      },
+      {
+        "id": 1229,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 5.1,
+        "x": 3137,
+        "y": 57,
+        "z": 6095.2,
+        "customName": "nftfeab1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:white_banner"
+        }
+      },
+      {
+        "id": 28819,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 5.1,
+        "x": 3136.9,
+        "y": 58,
+        "z": 6091.5,
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "HEAD",
+          "itemId": "minecraft:white_banner"
+        }
+      },
+      {
+        "id": 26987,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 5.2,
+        "x": 3136.7,
+        "y": 56.3,
+        "z": 6089,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 20857,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 5.2,
+        "x": 3136.6,
+        "y": 58.3,
+        "z": 6092.3,
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:stick"
+        }
+      },
+      {
+        "id": 16057,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 5.2,
+        "x": 3136.9,
+        "y": 58.1,
+        "z": 6091.9,
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:stick"
+        }
+      },
+      {
+        "id": 16425,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 5.3,
+        "x": 3137,
+        "y": 58.1,
+        "z": 6091.4,
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:stick"
+        }
+      },
+      {
+        "id": 18437,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 5.3,
+        "x": 3136.6,
+        "y": 56.3,
+        "z": 6088.8,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 1421948,
+        "type": "net.minecraft.world.entity.decoration.ItemFrame",
+        "distance": 5.3,
+        "x": 3136,
+        "y": 58.5,
+        "z": 6094.5,
+        "typeId": "entity.minecraft.item_frame",
+        "primaryEquipment": {
+          "slot": "FRAME",
+          "itemId": "minecraft:filled_map"
+        }
+      },
+      {
+        "id": 4193,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 5.4,
+        "x": 3136.5,
+        "y": 56.3,
+        "z": 6088.5,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 9999,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 5.6,
+        "x": 3136.4,
+        "y": 56.3,
+        "z": 6088.3,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 12935,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 5.7,
+        "x": 3136.3,
+        "y": 56.3,
+        "z": 6088.1,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 25423,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 5.7,
+        "x": 3136.9,
+        "y": 58,
+        "z": 6095.5,
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "HEAD",
+          "itemId": "minecraft:white_banner"
+        }
+      },
+      {
+        "id": 1422002,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 5.7,
+        "x": 3139.5,
+        "y": 54,
+        "z": 6093.5,
+        "customName": "AdvancedCM_WDW/EPCOT/WorldShowcase/Norway/FrozenEverAfter4",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "HEAD",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 33967,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 5.8,
+        "x": 3137,
+        "y": 58.1,
+        "z": 6095.4,
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:stick"
+        }
+      },
+      {
+        "id": 7267,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 5.9,
+        "x": 3136.2,
+        "y": 56.3,
+        "z": 6087.8,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 1421949,
+        "type": "net.minecraft.world.entity.decoration.ItemFrame",
+        "distance": 5.9,
+        "x": 3136,
+        "y": 59.5,
+        "z": 6092.5,
+        "typeId": "entity.minecraft.item_frame",
+        "primaryEquipment": {
+          "slot": "FRAME",
+          "itemId": "minecraft:filled_map"
+        }
+      },
+      {
+        "id": 1421950,
+        "type": "net.minecraft.world.entity.decoration.ItemFrame",
+        "distance": 6,
+        "x": 3136,
+        "y": 59.5,
+        "z": 6093.5,
+        "typeId": "entity.minecraft.item_frame",
+        "primaryEquipment": {
+          "slot": "FRAME",
+          "itemId": "minecraft:filled_map"
+        }
+      },
+      {
+        "id": 28873,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 6,
+        "x": 3136.2,
+        "y": 56.3,
+        "z": 6087.6,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 6599,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 6.1,
+        "x": 3136.9,
+        "y": 58.1,
+        "z": 6095.9,
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:stick"
+        }
+      },
+      {
+        "id": 1421951,
+        "type": "net.minecraft.world.entity.decoration.ItemFrame",
+        "distance": 6.2,
+        "x": 3136,
+        "y": 59.5,
+        "z": 6094.5,
+        "typeId": "entity.minecraft.item_frame",
+        "primaryEquipment": {
+          "slot": "FRAME",
+          "itemId": "minecraft:filled_map"
+        }
+      },
+      {
+        "id": 23993,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 6.2,
+        "x": 3136.1,
+        "y": 56.3,
+        "z": 6087.3,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 8663,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 6.3,
+        "x": 3136.6,
+        "y": 58.3,
+        "z": 6096.3,
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:stick"
+        }
+      },
+      {
+        "id": 21461,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 6.4,
+        "x": 3136,
+        "y": 56.3,
+        "z": 6087.1,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 16711,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 6.5,
+        "x": 3135.9,
+        "y": 56.3,
+        "z": 6086.9,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 1421979,
+        "type": "net.minecraft.world.entity.decoration.ItemFrame",
+        "distance": 6.6,
+        "x": 3140,
+        "y": 56.5,
+        "z": 6092.5,
+        "typeId": "entity.minecraft.item_frame",
+        "primaryEquipment": {
+          "slot": "FRAME",
+          "itemId": "minecraft:filled_map"
+        }
+      },
+      {
+        "id": 27569,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 6.7,
+        "x": 3135.8,
+        "y": 56.3,
+        "z": 6086.6,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 19115,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 6.9,
+        "x": 3135.7,
+        "y": 56.3,
+        "z": 6086.4,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 12291,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 7.1,
+        "x": 3136.4,
+        "y": 59,
+        "z": 6088.3,
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "HEAD",
+          "itemId": "minecraft:iron_sword"
+        }
+      },
+      {
+        "id": 6649,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 7.1,
+        "x": 3135.6,
+        "y": 56.3,
+        "z": 6086.2,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 1421983,
+        "type": "net.minecraft.world.entity.decoration.ItemFrame",
+        "distance": 7.2,
+        "x": 3138,
+        "y": 59.5,
+        "z": 6090.5,
+        "typeId": "entity.minecraft.item_frame",
+        "primaryEquipment": {
+          "slot": "FRAME",
+          "itemId": "minecraft:light_gray_stained_glass_pane"
+        }
+      },
+      {
+        "id": 18891,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 7.2,
+        "x": 3139.5,
+        "y": 52.5,
+        "z": 6088.3,
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "HEAD",
+          "itemId": "minecraft:player_head"
+        }
+      },
+      {
+        "id": 13177,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand",
+        "distance": 7.3,
+        "x": 3135.6,
+        "y": 56.3,
+        "z": 6085.9,
+        "customName": "nft1",
+        "typeId": "entity.minecraft.armor_stand",
+        "primaryEquipment": {
+          "slot": "MAINHAND",
+          "itemId": "minecraft:player_head"
+        }
+      }
+    ],
+    "count": 50
+  }
+}

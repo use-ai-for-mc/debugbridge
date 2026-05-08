@@ -1,0 +1,15 @@
+{
+  "success": true,
+  "result": {
+    "version": "1.19",
+    "mappingStatus": "mojang",
+    "obfuscated": true,
+    "refs": 0,
+    "gameDir": "/Users/cusgadmin/Library/Application Support/ModrinthApp/profiles/Fabric 1.19",
+    "logsDir": "/Users/cusgadmin/Library/Application Support/ModrinthApp/profiles/Fabric 1.19/logs",
+    "latestLog": "/Users/cusgadmin/Library/Application Support/ModrinthApp/profiles/Fabric 1.19/logs/latest.log",
+    "latestLogExists": true,
+    "debugLog": "/Users/cusgadmin/Library/Application Support/ModrinthApp/profiles/Fabric 1.19/logs/debug.log",
+    "debugLogExists": false
+  }
+}

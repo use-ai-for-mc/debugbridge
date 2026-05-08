@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "result": {
+    "open": true,
+    "type": "net.minecraft.client.gui.screens.ChatScreen",
+    "title": "Chat screen"
+  }
+}

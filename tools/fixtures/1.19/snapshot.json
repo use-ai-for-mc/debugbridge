@@ -1,0 +1,37 @@
+{
+  "success": true,
+  "result": {
+    "player": {
+      "name": "weikeng",
+      "x": 3133.8373418783663,
+      "y": 54,
+      "z": 6092.644760124893,
+      "yaw": -93.616646,
+      "pitch": -4.951792,
+      "hotbarSlot": 0,
+      "health": 20,
+      "maxHealth": 20,
+      "food": 20,
+      "saturation": 0,
+      "dimension": "minecraft:overworld",
+      "biome": "",
+      "velocity": {
+        "x": 0,
+        "y": -0.0784000015258789,
+        "z": 0
+      },
+      "look": {
+        "x": 0.9942813515663147,
+        "y": 0.08627490699291229,
+        "z": -0.06280753761529922
+      }
+    },
+    "world": {
+      "dayTime": 7104667769,
+      "isRaining": false,
+      "isThundering": false
+    },
+    "fps": "83 fps T: 120 vsyncfast fancy-clouds B: 2",
+    "version": "1.19"
+  }
+}

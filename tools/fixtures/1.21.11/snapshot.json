@@ -1,0 +1,41 @@
+{
+  "success": true,
+  "result": {
+    "player": {
+      "name": "weikeng",
+      "x": 1143.8173144802,
+      "y": 64.51471081849566,
+      "z": 766.1122182614821,
+      "yaw": 2848.0745,
+      "pitch": 17.737513,
+      "hotbarSlot": 3,
+      "health": 20,
+      "maxHealth": 20,
+      "food": 20,
+      "saturation": 0,
+      "dimension": "minecraft:dlnew",
+      "biome": "",
+      "velocity": {
+        "x": 0,
+        "y": -0.0784000015258789,
+        "z": 0
+      },
+      "look": {
+        "x": 0.5036885142326355,
+        "y": -0.3046552836894989,
+        "z": 0.8083829879760742
+      },
+      "vehicle": {
+        "entityId": 18997767,
+        "type": "net.minecraft.world.entity.decoration.ArmorStand"
+      }
+    },
+    "world": {
+      "dayTime": 3734954938,
+      "isRaining": false,
+      "isThundering": false
+    },
+    "fps": 58,
+    "version": "1.21.11"
+  }
+}
