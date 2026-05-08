@@ -5,6 +5,8 @@ import com.debugbridge.core.lua.ThreadDispatcher;
 import com.debugbridge.core.mapping.MappingResolver;
 import com.debugbridge.core.protocol.BridgeRequest;
 import com.debugbridge.core.protocol.BridgeResponse;
+import com.debugbridge.core.protocol.dto.LookedAtEntityDto;
+import com.debugbridge.core.protocol.dto.StatusDto;
 import com.debugbridge.core.refs.ObjectRefStore;
 import com.debugbridge.core.entity.ClientEntityGlowManager;
 import com.debugbridge.core.entity.LookedAtEntityProvider;
@@ -38,7 +40,15 @@ import java.util.regex.PatternSyntaxException;
  */
 public class BridgeServer extends WebSocketServer {
     private static final Logger LOG = Logger.getLogger("DebugBridge");
+    /** Default serializer: nulls become {@code "field": null} on the wire.
+     * Used for endpoints whose schema treats null as a meaningful value
+     * (e.g. {@code lookedAtEntity.entityId}). */
     private static final Gson GSON = new GsonBuilder().serializeNulls().create();
+    /** Omit-nulls serializer: null fields disappear from the JSON entirely.
+     * Used for endpoints with conditional fields (e.g. {@code status} only
+     * emits {@code gameDir}/{@code logsDir}/etc. when the host mod has set a
+     * game directory). */
+    private static final Gson GSON_OMIT_NULLS = new Gson();
 
     private final LuaRuntime lua;
     private final MappingResolver resolver;
@@ -537,11 +547,11 @@ public class BridgeServer extends WebSocketServer {
     private static final int MAX_COMMAND_LEN = 1024;
 
     private BridgeResponse handleStatus(BridgeRequest req) {
-        JsonObject status = new JsonObject();
-        status.addProperty("version", resolver.getVersion());
-        status.addProperty("mappingStatus", resolver.isObfuscated() ? "mojang" : "passthrough");
-        status.addProperty("obfuscated", resolver.isObfuscated());
-        status.addProperty("refs", refs.size());
+        StatusDto dto = new StatusDto();
+        dto.version = resolver.getVersion();
+        dto.mappingStatus = resolver.isObfuscated() ? "mojang" : "passthrough";
+        dto.obfuscated = resolver.isObfuscated();
+        dto.refs = refs.size();
 
         // Expose the game dir and log paths so a connecting client can read the
         // log via its own file-read tools. We always expose the path we *would*
@@ -553,15 +563,15 @@ public class BridgeServer extends WebSocketServer {
             Path logsDir = dir.resolve("logs");
             Path latest = logsDir.resolve("latest.log");
             Path debug = logsDir.resolve("debug.log");
-            status.addProperty("gameDir", dir.toAbsolutePath().toString());
-            status.addProperty("logsDir", logsDir.toAbsolutePath().toString());
-            status.addProperty("latestLog", latest.toAbsolutePath().toString());
-            status.addProperty("latestLogExists", Files.exists(latest));
-            status.addProperty("debugLog", debug.toAbsolutePath().toString());
-            status.addProperty("debugLogExists", Files.exists(debug));
+            dto.gameDir = dir.toAbsolutePath().toString();
+            dto.logsDir = logsDir.toAbsolutePath().toString();
+            dto.latestLog = latest.toAbsolutePath().toString();
+            dto.latestLogExists = Files.exists(latest);
+            dto.debugLog = debug.toAbsolutePath().toString();
+            dto.debugLogExists = Files.exists(debug);
         }
 
-        return BridgeResponse.success(req.id, status, null);
+        return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(dto), null);
     }
 
     private JsonObject createPayload(String key, String value) {
@@ -784,14 +794,12 @@ public class BridgeServer extends WebSocketServer {
         double range = (req.payload != null && req.payload.has("range"))
             ? req.payload.get("range").getAsDouble() : 64.0;
         try {
-            Integer id = lookedAtEntityProvider.getLookedAtEntity(range);
-            JsonObject result = new JsonObject();
-            if (id != null) {
-                result.addProperty("entityId", id);
-            } else {
-                result.add("entityId", JsonNull.INSTANCE);
-            }
-            return BridgeResponse.success(req.id, result, null);
+            LookedAtEntityDto dto =
+                new LookedAtEntityDto(lookedAtEntityProvider.getLookedAtEntity(range));
+            // GSON (serializeNulls=true) so absent-target emits `entityId: null`
+            // explicitly — clients distinguish "no target" from a malformed
+            // response by the key being present.
+            return BridgeResponse.success(req.id, GSON.toJsonTree(dto), null);
         } catch (Exception e) {
             return BridgeResponse.error(req.id,
                 "Looked-at entity query failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
