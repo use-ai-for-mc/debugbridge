@@ -1,6 +1,7 @@
 package com.debugbridge.core;
 
-import com.debugbridge.core.lua.*;
+import com.debugbridge.core.lua.DirectDispatcher;
+import com.debugbridge.core.lua.LuaRuntime;
 import com.debugbridge.core.mapping.PassthroughResolver;
 import com.debugbridge.core.refs.ObjectRefStore;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,9 +50,9 @@ class LuaBridgeTest {
     @Test
     void testImportJavaClass() {
         var result = runtime.execute("""
-            local ArrayList = java.import("java.util.ArrayList")
-            return java.typeof(ArrayList)
-            """);
+                local ArrayList = java.import("java.util.ArrayList")
+                return java.typeof(ArrayList)
+                """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals("java.util.ArrayList", result.returnValue.tojstring());
     }
@@ -59,10 +60,10 @@ class LuaBridgeTest {
     @Test
     void testCreateInstance() {
         var result = runtime.execute("""
-            local ArrayList = java.import("java.util.ArrayList")
-            local list = java.new(ArrayList)
-            return java.typeof(list)
-            """);
+                local ArrayList = java.import("java.util.ArrayList")
+                local list = java.new(ArrayList)
+                return java.typeof(list)
+                """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals("java.util.ArrayList", result.returnValue.tojstring());
     }
@@ -70,12 +71,12 @@ class LuaBridgeTest {
     @Test
     void testMethodCall() {
         var result = runtime.execute("""
-            local ArrayList = java.import("java.util.ArrayList")
-            local list = java.new(ArrayList)
-            list:add("hello")
-            list:add("world")
-            return list:size()
-            """);
+                local ArrayList = java.import("java.util.ArrayList")
+                local list = java.new(ArrayList)
+                list:add("hello")
+                list:add("world")
+                return list:size()
+                """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals(2, result.returnValue.toint());
     }
@@ -83,11 +84,11 @@ class LuaBridgeTest {
     @Test
     void testMethodCallReturnValue() {
         var result = runtime.execute("""
-            local ArrayList = java.import("java.util.ArrayList")
-            local list = java.new(ArrayList)
-            list:add("hello")
-            return list:get(0)
-            """);
+                local ArrayList = java.import("java.util.ArrayList")
+                local list = java.new(ArrayList)
+                list:add("hello")
+                return list:get(0)
+                """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals("hello", result.returnValue.tojstring());
     }
@@ -95,9 +96,9 @@ class LuaBridgeTest {
     @Test
     void testFieldAccess() {
         var result = runtime.execute("""
-            local Integer = java.import("java.lang.Integer")
-            return Integer.MAX_VALUE
-            """);
+                local Integer = java.import("java.lang.Integer")
+                return Integer.MAX_VALUE
+                """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals(Integer.MAX_VALUE, result.returnValue.toint());
     }
@@ -105,8 +106,8 @@ class LuaBridgeTest {
     @Test
     void testIsNull() {
         var result = runtime.execute("""
-            return java.isNull(nil)
-            """);
+                return java.isNull(nil)
+                """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertTrue(result.returnValue.toboolean());
     }
@@ -114,17 +115,17 @@ class LuaBridgeTest {
     @Test
     void testIterator() {
         var result = runtime.execute("""
-            local ArrayList = java.import("java.util.ArrayList")
-            local list = java.new(ArrayList)
-            list:add("a")
-            list:add("b")
-            list:add("c")
-            local items = {}
-            for item in java.iter(list) do
-                table.insert(items, item)
-            end
-            return table.concat(items, ",")
-            """);
+                local ArrayList = java.import("java.util.ArrayList")
+                local list = java.new(ArrayList)
+                list:add("a")
+                list:add("b")
+                list:add("c")
+                local items = {}
+                for item in java.iter(list) do
+                    table.insert(items, item)
+                end
+                return table.concat(items, ",")
+                """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals("a,b,c", result.returnValue.tojstring());
     }
@@ -132,13 +133,13 @@ class LuaBridgeTest {
     @Test
     void testArray() {
         var result = runtime.execute("""
-            local ArrayList = java.import("java.util.ArrayList")
-            local list = java.new(ArrayList)
-            list:add("x")
-            list:add("y")
-            local arr = java.array(list)
-            return #arr
-            """);
+                local ArrayList = java.import("java.util.ArrayList")
+                local list = java.new(ArrayList)
+                list:add("x")
+                list:add("y")
+                local arr = java.array(list)
+                return #arr
+                """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals(2, result.returnValue.toint());
     }
@@ -146,11 +147,11 @@ class LuaBridgeTest {
     @Test
     void testCast() {
         var result = runtime.execute("""
-            local HashMap = java.import("java.util.HashMap")
-            local map = java.new(HashMap)
-            local asMap = java.cast(map, "java.util.Map")
-            return java.typeof(asMap)
-            """);
+                local HashMap = java.import("java.util.HashMap")
+                local map = java.new(HashMap)
+                local asMap = java.cast(map, "java.util.Map")
+                return java.typeof(asMap)
+                """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals("java.util.Map", result.returnValue.tojstring());
     }
@@ -158,11 +159,11 @@ class LuaBridgeTest {
     @Test
     void testConstructorWithArgs() {
         var result = runtime.execute("""
-            local StringBuilder = java.import("java.lang.StringBuilder")
-            local sb = java.new(StringBuilder, "hello")
-            sb:append(" world")
-            return sb:toString()
-            """);
+                local StringBuilder = java.import("java.lang.StringBuilder")
+                local sb = java.new(StringBuilder, "hello")
+                sb:append(" world")
+                return sb:toString()
+                """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals("hello world", result.returnValue.tojstring());
     }
@@ -170,13 +171,13 @@ class LuaBridgeTest {
     @Test
     void testMethodChaining() {
         var result = runtime.execute("""
-            local StringBuilder = java.import("java.lang.StringBuilder")
-            local sb = java.new(StringBuilder)
-            sb:append("a")
-            sb:append("b")
-            sb:append("c")
-            return sb:toString()
-            """);
+                local StringBuilder = java.import("java.lang.StringBuilder")
+                local sb = java.new(StringBuilder)
+                sb:append("a")
+                sb:append("b")
+                sb:append("c")
+                return sb:toString()
+                """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals("abc", result.returnValue.tojstring());
     }
@@ -184,11 +185,11 @@ class LuaBridgeTest {
     @Test
     void testDescribe() {
         var result = runtime.execute("""
-            local ArrayList = java.import("java.util.ArrayList")
-            local list = java.new(ArrayList)
-            local info = java.describe(list)
-            return info.class
-            """);
+                local ArrayList = java.import("java.util.ArrayList")
+                local list = java.new(ArrayList)
+                local info = java.describe(list)
+                return info.class
+                """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals("java.util.ArrayList", result.returnValue.tojstring());
     }
@@ -196,11 +197,11 @@ class LuaBridgeTest {
     @Test
     void testMethodsReflection() {
         var result = runtime.execute("""
-            local ArrayList = java.import("java.util.ArrayList")
-            local list = java.new(ArrayList)
-            local methods = java.methods(list, "add")
-            return #methods > 0
-            """);
+                local ArrayList = java.import("java.util.ArrayList")
+                local list = java.new(ArrayList)
+                local methods = java.methods(list, "add")
+                return #methods > 0
+                """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertTrue(result.returnValue.toboolean());
     }
@@ -208,52 +209,52 @@ class LuaBridgeTest {
     @Test
     void testFieldsReflection() {
         var result = runtime.execute("""
-            local ArrayList = java.import("java.util.ArrayList")
-            local list = java.new(ArrayList)
-            local fields = java.fields(list)
-            return type(fields) == "userdata" or type(fields) == "table"
-            """);
+                local ArrayList = java.import("java.util.ArrayList")
+                local list = java.new(ArrayList)
+                local fields = java.fields(list)
+                return type(fields) == "userdata" or type(fields) == "table"
+                """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
     }
 
     @Test
     void testSupers() {
         var result = runtime.execute("""
-            local ArrayList = java.import("java.util.ArrayList")
-            local list = java.new(ArrayList)
-            local s = java.supers(list)
-            local hierarchy = s.hierarchy
-            print("hierarchy type: " .. type(hierarchy))
-            return hierarchy
-            """);
+                local ArrayList = java.import("java.util.ArrayList")
+                local list = java.new(ArrayList)
+                local s = java.supers(list)
+                local hierarchy = s.hierarchy
+                print("hierarchy type: " .. type(hierarchy))
+                return hierarchy
+                """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
     }
 
     @Test
     void testErrorMessages() {
         var result = runtime.execute("""
-            local Foo = java.import("nonexistent.Foo")
-            """);
+                local Foo = java.import("nonexistent.Foo")
+                """);
         assertFalse(result.isSuccess());
         assertTrue(result.error.contains("not found") || result.error.contains("Class"),
-            "Expected class not found error, got: " + result.error);
+                "Expected class not found error, got: " + result.error);
     }
 
     @Test
     void testSecurityBlocking() {
         var result = runtime.execute("""
-            local rt = java.import("java.lang.Runtime")
-            """);
+                local rt = java.import("java.lang.Runtime")
+                """);
         assertFalse(result.isSuccess());
         assertTrue(result.error.contains("blocked") || result.error.contains("security"),
-            "Expected security error, got: " + result.error);
+                "Expected security error, got: " + result.error);
     }
 
     @Test
     void testReturnTable() {
         var result = runtime.execute("""
-            return {name = "test", value = 42, active = true}
-            """);
+                return {name = "test", value = 42, active = true}
+                """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertTrue(result.returnValue.istable());
         assertEquals("test", result.returnValue.get("name").tojstring());
@@ -263,12 +264,12 @@ class LuaBridgeTest {
     @Test
     void testHashMapOperations() {
         var result = runtime.execute("""
-            local HashMap = java.import("java.util.HashMap")
-            local map = java.new(HashMap)
-            map:put("key1", "value1")
-            map:put("key2", "value2")
-            return map:get("key1")
-            """);
+                local HashMap = java.import("java.util.HashMap")
+                local map = java.new(HashMap)
+                map:put("key1", "value1")
+                map:put("key2", "value2")
+                return map:get("key1")
+                """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals("value1", result.returnValue.tojstring());
     }
@@ -276,23 +277,23 @@ class LuaBridgeTest {
     @Test
     void testComplexScenario() {
         var result = runtime.execute("""
-            local ArrayList = java.import("java.util.ArrayList")
-            local list = java.new(ArrayList)
-            list:add("alpha")
-            list:add("beta")
-            list:add("gamma")
+                local ArrayList = java.import("java.util.ArrayList")
+                local list = java.new(ArrayList)
+                list:add("alpha")
+                list:add("beta")
+                list:add("gamma")
 
-            local results = {}
-            for item in java.iter(list) do
-                table.insert(results, string.upper(item))
-            end
+                local results = {}
+                for item in java.iter(list) do
+                    table.insert(results, string.upper(item))
+                end
 
-            return {
-                count = list:size(),
-                items = table.concat(results, ";"),
-                empty = list:isEmpty()
-            }
-            """);
+                return {
+                    count = list:size(),
+                    items = table.concat(results, ";"),
+                    empty = list:isEmpty()
+                }
+                """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertTrue(result.returnValue.istable());
         assertEquals(3, result.returnValue.get("count").toint());

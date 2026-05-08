@@ -14,17 +14,25 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * 1.19 framebuffer capture as JPEG.
- *
+ * <p>
  * {@link Screenshot#takeScreenshot(RenderTarget)} is fully synchronous on
  * this version: it binds the GL color texture, downloads pixels, and flips
  * the image. We then convert to ARGB ints via the (deprecated but still
  * functional) {@link NativeImage#makePixelArray()} and hand them to
  * {@link JpegEncoder}.
- *
+ * <p>
  * Optional CPU downscale is done via stb_image_resize through
  * {@code resizeSubRectTo} before pixel extraction.
  */
 public class Minecraft119ScreenshotProvider implements ScreenshotProvider {
+
+    private static int clampDownscale(int requested, int width, int height) {
+        if (requested < 1) return 1;
+        for (int f = requested; f >= 1; f--) {
+            if (width % f == 0 && height % f == 0) return f;
+        }
+        return 1;
+    }
 
     @Override
     @SuppressWarnings("deprecation")
@@ -39,7 +47,7 @@ public class Minecraft119ScreenshotProvider implements ScreenshotProvider {
                 RenderTarget target = mc.getMainRenderTarget();
                 if (target == null) {
                     future.completeExceptionally(
-                        new IllegalStateException("Main render target is null"));
+                            new IllegalStateException("Main render target is null"));
                     return;
                 }
 
@@ -73,13 +81,5 @@ public class Minecraft119ScreenshotProvider implements ScreenshotProvider {
         });
 
         return future.get(timeoutMs, TimeUnit.MILLISECONDS);
-    }
-
-    private static int clampDownscale(int requested, int width, int height) {
-        if (requested < 1) return 1;
-        for (int f = requested; f >= 1; f--) {
-            if (width % f == 0 && height % f == 0) return f;
-        }
-        return 1;
     }
 }

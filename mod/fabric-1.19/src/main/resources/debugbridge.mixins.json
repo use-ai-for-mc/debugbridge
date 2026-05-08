@@ -1,13 +1,13 @@
 {
-    "required": true,
-    "package": "com.debugbridge.fabric119.mixin",
-    "compatibilityLevel": "JAVA_17",
-    "client": [
-        "MinecraftClientMixin",
-        "EntityGlowMixin",
-        "BlockGlowMixin"
-    ],
-    "injectors": {
-        "defaultRequire": 1
-    }
+  "required": true,
+  "package": "com.debugbridge.fabric119.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+    "BlockGlowMixin",
+    "EntityGlowMixin",
+    "MinecraftClientMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
 }

@@ -1,15 +1,17 @@
 package com.debugbridge.core.mapping;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Parses Mojang's ProGuard mapping files.
- *
+ * <p>
  * Format:
- *   net.minecraft.client.Minecraft -> eev:
- *       net.minecraft.client.player.LocalPlayer player -> s
- *       void setScreen(net.minecraft.client.gui.screens.Screen) -> a
- *       45:67:void tick() -> b
+ * net.minecraft.client.Minecraft -> eev:
+ * net.minecraft.client.player.LocalPlayer player -> s
+ * void setScreen(net.minecraft.client.gui.screens.Screen) -> a
+ * 45:67:void tick() -> b
  */
 public class ProGuardParser {
 
@@ -66,7 +68,7 @@ public class ProGuardParser {
                     String key = name + "(" + params + ")";
                     methods.get(currentMojangClass).put(key, obf);
                     methodDescriptors.computeIfAbsent(currentMojangClass, k -> new HashMap<>())
-                        .put(key, "(" + params + ")" + returnType);
+                            .put(key, "(" + params + ")" + returnType);
                 } else {
                     // Field: "type name -> obf"
                     String[] parts = left.split("\\s+");
@@ -75,7 +77,7 @@ public class ProGuardParser {
                         String name = parts[1];
                         fields.get(currentMojangClass).put(name, obf);
                         fieldTypes.computeIfAbsent(currentMojangClass, k -> new HashMap<>())
-                            .put(name, type);
+                                .put(name, type);
                     }
                 }
             }

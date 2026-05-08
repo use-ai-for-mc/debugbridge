@@ -1,6 +1,9 @@
 package com.debugbridge.core.lua;
 
-import org.luaj.vm2.*;
+import org.luaj.vm2.LuaError;
+import org.luaj.vm2.LuaUserdata;
+import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.Varargs;
 
 /**
  * Wraps a Java object as Lua userdata with metamethods for field/method access.
@@ -28,11 +31,26 @@ public class JavaObjectWrapper extends LuaUserdata {
         this.bridge = bridge;
     }
 
-    public Object getJavaObject() { return javaObject; }
-    public Class<?> getDeclaredType() { return declaredType; }
-    public String getMojangTypeName() { return mojangTypeName; }
+    private static String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
 
-    /** Tag this wrapper with where it came from. Called by JavaObjectWrapper.get(). */
+    public Object getJavaObject() {
+        return javaObject;
+    }
+
+    public Class<?> getDeclaredType() {
+        return declaredType;
+    }
+
+    public String getMojangTypeName() {
+        return mojangTypeName;
+    }
+
+    /**
+     * Tag this wrapper with where it came from. Called by JavaObjectWrapper.get().
+     */
     void setOrigin(AccessOrigin origin) {
         this.origin = origin;
     }
@@ -53,32 +71,22 @@ public class JavaObjectWrapper extends LuaUserdata {
             // Not a field
         }
 
-        // 2. If field exists, check if a method with the same name also exists.
-        // If both exist, prefer the method to handle the common Java pattern:
-        //   private Level level;
-        //   public Level level() { return level; }
-        // Without this, `obj:level()` returns the field and fails with
-        // "attempt to call userdata".
-        // We only do this check when a field exists (rare) to avoid the overhead
-        // of hasMethod() on every property access.
-        if (field != null && hasMethod(declaredType, name)) {
-            return new MethodCallWrapper(javaObject, declaredType, mojangTypeName, name, bridge);
-        }
-
-        // 3. Return field value if field exists (no method collision)
+        // 2. Return field value if field exists. Field-first resolution keeps
+        // nested field access working and lets call interception produce a
+        // targeted error for the common `obj:field()` mistake.
         if (field != null) {
             try {
                 field.setAccessible(true);
                 final java.lang.reflect.Field f = field;
                 Object value = bridge.getDispatcher().executeOnGameThread(
-                    () -> f.get(javaObject), 5000);
+                        () -> f.get(javaObject), 5000);
                 LuaValue wrapped = bridge.wrapJavaValue(value);
                 // Tag the returned wrapper so if the caller tries to invoke it
                 // as a method (common mistake: "entity:level()") the error can
                 // point at the exact field name and suggest alternatives.
                 if (wrapped instanceof JavaObjectWrapper childWrapper) {
                     childWrapper.setOrigin(new AccessOrigin(
-                        name, mojangTypeName, declaredType));
+                            name, mojangTypeName, declaredType));
                 }
                 return wrapped;
             } catch (Exception e) {
@@ -86,28 +94,9 @@ public class JavaObjectWrapper extends LuaUserdata {
             }
         }
 
-        // 4. No field — return a MethodCallWrapper (will error at call time
+        // 3. No field — return a MethodCallWrapper (will error at call time
         // if no such method exists, with a helpful message)
         return new MethodCallWrapper(javaObject, declaredType, mojangTypeName, name, bridge);
-    }
-
-    /**
-     * Check if a method with the given Mojang name exists on this class or its hierarchy.
-     */
-    private boolean hasMethod(Class<?> clazz, String mojangName) {
-        java.util.Set<Class<?>> hierarchy = new java.util.LinkedHashSet<>();
-        MethodCallWrapper.collectHierarchy(clazz, hierarchy);
-        for (Class<?> c : hierarchy) {
-            String mojangClass = bridge.getResolver().unresolveClass(c.getName());
-            String runtimeName = bridge.getResolver().resolveMethod(mojangClass, mojangName, null);
-
-            for (java.lang.reflect.Method m : c.getDeclaredMethods()) {
-                if (m.getName().equals(runtimeName) || m.getName().equals(mojangName)) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     @Override
@@ -135,13 +124,13 @@ public class JavaObjectWrapper extends LuaUserdata {
         }
     }
 
+    // ==================== Call interception ====================
+
     @Override
     public LuaValue tostring() {
         if (javaObject == null) return LuaValue.valueOf("null");
         return LuaValue.valueOf(mojangTypeName + "@" + Integer.toHexString(System.identityHashCode(javaObject)));
     }
-
-    // ==================== Call interception ====================
 
     /**
      * Intercept attempts to invoke this wrapper as if it were a function. By
@@ -151,16 +140,16 @@ public class JavaObjectWrapper extends LuaUserdata {
      * first place, because Mojang 1.21.x has a large number of {@code field /
      * field()} getter-method pairs where the field shadows the method in the
      * bridge's preferred-field resolution order.
-     *
+     * <p>
      * Two common mistakes we can catch here:
-     *
+     * <p>
      * 1. {@code obj:X()} where {@code obj.X} is a Java field (not a method).
-     *    Lua desugars that to {@code (obj.X)(obj)}, which tries to invoke the
-     *    wrapped field value — this wrapper. We detect the self-arg and point
-     *    at both the field-chain form and the getter-method form.
-     *
+     * Lua desugars that to {@code (obj.X)(obj)}, which tries to invoke the
+     * wrapped field value — this wrapper. We detect the self-arg and point
+     * at both the field-chain form and the getter-method form.
+     * <p>
      * 2. {@code obj.X()} where {@code obj.X} is a field — same wrapper, called
-     *    without a self-arg. Same message, minus the "self-arg" mention.
+     * without a self-arg. Same message, minus the "self-arg" mention.
      */
     @Override
     public Varargs invoke(Varargs args) {
@@ -168,53 +157,62 @@ public class JavaObjectWrapper extends LuaUserdata {
     }
 
     @Override
-    public Varargs invoke() { return invoke(LuaValue.NONE); }
+    public Varargs invoke() {
+        return invoke(LuaValue.NONE);
+    }
 
     @Override
-    public Varargs invoke(LuaValue[] a) { return invoke(LuaValue.varargsOf(a)); }
+    public Varargs invoke(LuaValue[] a) {
+        return invoke(LuaValue.varargsOf(a));
+    }
 
     @Override
-    public LuaValue call() { invoke(LuaValue.NONE); return LuaValue.NIL; }
+    public LuaValue call() {
+        invoke(LuaValue.NONE);
+        return LuaValue.NIL;
+    }
 
     @Override
-    public LuaValue call(LuaValue a) { invoke(a); return LuaValue.NIL; }
+    public LuaValue call(LuaValue a) {
+        invoke(a);
+        return LuaValue.NIL;
+    }
 
     @Override
     public LuaValue call(LuaValue a, LuaValue b) {
-        invoke(LuaValue.varargsOf(new LuaValue[]{a, b})); return LuaValue.NIL;
+        invoke(LuaValue.varargsOf(new LuaValue[]{a, b}));
+        return LuaValue.NIL;
     }
 
     @Override
     public LuaValue call(LuaValue a, LuaValue b, LuaValue c) {
-        invoke(LuaValue.varargsOf(new LuaValue[]{a, b, c})); return LuaValue.NIL;
+        invoke(LuaValue.varargsOf(new LuaValue[]{a, b, c}));
+        return LuaValue.NIL;
     }
 
     private String buildCallError(Varargs args) {
         StringBuilder sb = new StringBuilder();
         sb.append("Attempted to call a Java object (").append(mojangTypeName)
-          .append(") as if it were a function.");
+                .append(") as if it were a function.");
 
         AccessOrigin o = this.origin;
         if (o != null) {
             // Detect whether this is the `obj:field()` colon-call shape — the
             // first arg in that case is the parent JavaObjectWrapper that
             // owns the field.
-            boolean looksLikeColonCall = false;
-            if (args != null && args.narg() >= 1
+            boolean looksLikeColonCall = args != null && args.narg() >= 1
                     && args.arg(1) instanceof JavaObjectWrapper parent
-                    && parent.getDeclaredType() == o.parentType) {
-                looksLikeColonCall = true;
-            }
+                    && parent.getDeclaredType() == o.parentType;
 
             sb.append("\n  ").append(o.parentTypeName).append(".")
-              .append(o.accessName)
-              .append(" is a FIELD of type ").append(mojangTypeName)
-              .append(", not a method.");
+                    .append(o.accessName)
+                    .append(" is a FIELD of type ").append(mojangTypeName)
+                    .append(", not a method.");
 
             if (looksLikeColonCall) {
                 sb.append("\n  You wrote something like  obj:").append(o.accessName)
-                  .append("(...)  which Lua parses as  (obj.").append(o.accessName)
-                  .append(")(obj, ...)  — i.e. calling the field value itself.");
+                        .append("(...)  which Lua parses as  (obj.").append(o.accessName)
+                        .append(")(obj, ...)  — i.e. calling the field value itself.");
             }
 
             // Try to surface a getter-style method with the same name if one
@@ -228,21 +226,21 @@ public class JavaObjectWrapper extends LuaUserdata {
 
             sb.append("\n\n  Fix options:");
             sb.append("\n    - If you want a nested field: use  obj.")
-              .append(o.accessName).append(".<sub-field-or-method>");
+                    .append(o.accessName).append(".<sub-field-or-method>");
             if (getterHint != null) {
                 sb.append("\n    - If you want the getter method: use  obj:")
-                  .append(getterHint).append("()");
+                        .append(getterHint).append("()");
             } else {
                 sb.append("\n    - If there is a getter method, use  obj:get")
-                  .append(capitalize(o.accessName)).append("()  or similar");
+                        .append(capitalize(o.accessName)).append("()  or similar");
             }
         } else {
             // No origin metadata — probably a constructed wrapper or something
             // deeper. Keep the error generic but still call out what happened.
             sb.append("\n  This value is a Java object wrapper, not a callable.")
-              .append("\n  If you got here via  obj:X()  where obj.X is a field,")
-              .append("\n  use  obj.X.<sub>  for field chaining, or look for a")
-              .append("\n  getter method like  obj:getX().");
+                    .append("\n  If you got here via  obj:X()  where obj.X is a field,")
+                    .append("\n  use  obj.X.<sub>  for field chaining, or look for a")
+                    .append("\n  getter method like  obj:getX().");
         }
         return sb.toString();
     }
@@ -282,11 +280,6 @@ public class JavaObjectWrapper extends LuaUserdata {
             // Resolver problems shouldn't mask the original error.
         }
         return null;
-    }
-
-    private static String capitalize(String s) {
-        if (s == null || s.isEmpty()) return s;
-        return Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 
     /**

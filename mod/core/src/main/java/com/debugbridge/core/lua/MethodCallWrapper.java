@@ -1,16 +1,12 @@
 package com.debugbridge.core.lua;
 
-import org.luaj.vm2.*;
+import org.luaj.vm2.LuaError;
+import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.Varargs;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Deque;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * A callable Lua function that invokes a Java method via reflection.
@@ -30,6 +26,71 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
         this.mojangClass = mojangClass;
         this.mojangMethodName = mojangMethodName;
         this.bridge = bridge;
+    }
+
+    /**
+     * Collect the full ancestor set for {@code clazz}: superclass chain plus all
+     * interfaces (recursive over super-interfaces). Order: classes first
+     * (most-derived to least-derived), then interfaces in BFS order. The
+     * {@link LinkedHashSet} both preserves order and de-duplicates.
+     */
+    static void collectHierarchy(Class<?> clazz, Set<Class<?>> out) {
+        for (Class<?> c = clazz; c != null && c != Object.class; c = c.getSuperclass()) {
+            out.add(c);
+        }
+        // BFS over interfaces from every class in the chain.
+        Deque<Class<?>> queue = new ArrayDeque<>();
+        for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+            Collections.addAll(queue, c.getInterfaces());
+        }
+        while (!queue.isEmpty()) {
+            Class<?> iface = queue.poll();
+            if (!out.add(iface)) continue;
+            Collections.addAll(queue, iface.getInterfaces());
+        }
+    }
+
+    /**
+     * If {@code method}'s declaring class is not reachable for reflective
+     * setAccessible from our module — either because the package isn't
+     * exported (e.g. an internal jdk.* type) or because the class itself is
+     * package-private (e.g. {@code java.util.HashMap$KeySet} or
+     * {@code java.util.HashMap$Node}, both inside the exported {@code java.util}
+     * package) — find the same signature on a reachable interface or superclass
+     * and return that {@link Method} instead. Falls back to the original if no
+     * reachable equivalent exists.
+     */
+    private static Method preferAccessibleMethod(Method method) {
+        Class<?> dc = method.getDeclaringClass();
+        if (isReachable(dc)) {
+            return method;
+        }
+        Set<Class<?>> hierarchy = new LinkedHashSet<>();
+        collectHierarchy(dc, hierarchy);
+        String name = method.getName();
+        Class<?>[] params = method.getParameterTypes();
+        for (Class<?> c : hierarchy) {
+            if (c == dc) continue;
+            if (!isReachable(c)) continue;
+            try {
+                return c.getDeclaredMethod(name, params);
+            } catch (NoSuchMethodException ignore) {
+            }
+        }
+        return method;
+    }
+
+    /**
+     * A class is reachable for setAccessible from our module iff its package
+     * is exported to us AND the class itself is public. The package-export
+     * check on its own isn't enough: HashMap$Node lives in the exported
+     * java.util package but is package-private, so reflective access still
+     * fails the module-open check.
+     */
+    private static boolean isReachable(Class<?> cls) {
+        Module ours = MethodCallWrapper.class.getModule();
+        return cls.getModule().isExported(cls.getPackageName(), ours)
+                && Modifier.isPublic(cls.getModifiers());
     }
 
     @Override
@@ -75,7 +136,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
             }
             if (method == null) {
                 throw new LuaError("No method '" + mojangMethodName + "' with " + nargs
-                    + " args on " + mojangClass + suggestMethods());
+                        + " args on " + mojangClass + suggestMethods());
             }
 
             // If the declaring class is in a JPMS-sealed module (e.g.
@@ -90,14 +151,14 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
 
             final Method finalMethod = method;
             Object result = bridge.getDispatcher().executeOnGameThread(
-                () -> finalMethod.invoke(target, convertedArgs), 5000);
+                    () -> finalMethod.invoke(target, convertedArgs), 5000);
 
             return bridge.wrapJavaValue(result);
         } catch (LuaError e) {
             throw e;
         } catch (java.lang.reflect.InvocationTargetException e) {
             throw new LuaError("Method '" + mojangMethodName + "' threw: "
-                + e.getCause().getClass().getSimpleName() + ": " + e.getCause().getMessage());
+                    + e.getCause().getClass().getSimpleName() + ": " + e.getCause().getMessage());
         } catch (Exception e) {
             throw new LuaError("Failed to call '" + mojangMethodName + "': " + e.getMessage());
         }
@@ -121,74 +182,8 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
     }
 
     /**
-     * Collect the full ancestor set for {@code clazz}: superclass chain plus all
-     * interfaces (recursive over super-interfaces). Order: classes first
-     * (most-derived to least-derived), then interfaces in BFS order. The
-     * {@link LinkedHashSet} both preserves order and de-duplicates.
+     * Backwards-compat helper kept for {@link #findBestMatch}.
      */
-    static void collectHierarchy(Class<?> clazz, Set<Class<?>> out) {
-        for (Class<?> c = clazz; c != null && c != Object.class; c = c.getSuperclass()) {
-            out.add(c);
-        }
-        // BFS over interfaces from every class in the chain.
-        Deque<Class<?>> queue = new ArrayDeque<>();
-        for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
-            for (Class<?> iface : c.getInterfaces()) {
-                queue.add(iface);
-            }
-        }
-        while (!queue.isEmpty()) {
-            Class<?> iface = queue.poll();
-            if (!out.add(iface)) continue;
-            for (Class<?> superIface : iface.getInterfaces()) {
-                queue.add(superIface);
-            }
-        }
-    }
-
-    /**
-     * If {@code method}'s declaring class is not reachable for reflective
-     * setAccessible from our module — either because the package isn't
-     * exported (e.g. an internal jdk.* type) or because the class itself is
-     * package-private (e.g. {@code java.util.HashMap$KeySet} or
-     * {@code java.util.HashMap$Node}, both inside the exported {@code java.util}
-     * package) — find the same signature on a reachable interface or superclass
-     * and return that {@link Method} instead. Falls back to the original if no
-     * reachable equivalent exists.
-     */
-    private static Method preferAccessibleMethod(Method method) {
-        Class<?> dc = method.getDeclaringClass();
-        if (isReachable(dc)) {
-            return method;
-        }
-        Set<Class<?>> hierarchy = new LinkedHashSet<>();
-        collectHierarchy(dc, hierarchy);
-        String name = method.getName();
-        Class<?>[] params = method.getParameterTypes();
-        for (Class<?> c : hierarchy) {
-            if (c == dc) continue;
-            if (!isReachable(c)) continue;
-            try {
-                return c.getDeclaredMethod(name, params);
-            } catch (NoSuchMethodException ignore) {}
-        }
-        return method;
-    }
-
-    /**
-     * A class is reachable for setAccessible from our module iff its package
-     * is exported to us AND the class itself is public. The package-export
-     * check on its own isn't enough: HashMap$Node lives in the exported
-     * java.util package but is package-private, so reflective access still
-     * fails the module-open check.
-     */
-    private static boolean isReachable(Class<?> cls) {
-        Module ours = MethodCallWrapper.class.getModule();
-        return cls.getModule().isExported(cls.getPackageName(), ours)
-            && Modifier.isPublic(cls.getModifiers());
-    }
-
-    /** Backwards-compat helper kept for {@link #findBestMatch}. */
     private List<Class<?>> getAllInterfaces(Class<?> clazz) {
         Set<Class<?>> all = new LinkedHashSet<>();
         collectHierarchy(clazz, all);
@@ -328,7 +323,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
                 if (displayName.indexOf('$') >= 0) continue;
                 int arity = m.getParameterCount();
                 java.util.Set<Integer> arities = byName.computeIfAbsent(
-                    displayName, k -> new java.util.LinkedHashSet<>());
+                        displayName, k -> new java.util.LinkedHashSet<>());
                 if (!arities.add(arity)) continue;
 
                 String entry = displayName + "(" + arity + " args)";
@@ -350,7 +345,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
         if (!others.isEmpty()) {
             int n = Math.min(others.size(), 10);
             sb.append("\n  Other methods (first ").append(n).append("): ")
-              .append(String.join(", ", others.subList(0, n)));
+                    .append(String.join(", ", others.subList(0, n)));
             if (others.size() > n) sb.append(", ...");
         }
         return sb.toString();

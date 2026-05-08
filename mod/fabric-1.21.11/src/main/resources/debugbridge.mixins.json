@@ -1,12 +1,12 @@
 {
-    "required": true,
-    "package": "com.debugbridge.fabric12111.mixin",
-    "compatibilityLevel": "JAVA_21",
-    "client": [
-        "MinecraftClientMixin",
-        "EntityGlowMixin"
-    ],
-    "injectors": {
-        "defaultRequire": 1
-    }
+  "required": true,
+  "package": "com.debugbridge.fabric12111.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "EntityGlowMixin",
+    "MinecraftClientMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
 }

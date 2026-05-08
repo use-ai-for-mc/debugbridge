@@ -1,28 +1,30 @@
 {
-    "schemaVersion": 1,
-    "id": "debugbridge",
-    "version": "${version}",
-    "name": "DebugBridge",
-    "description": "Lua-Java bridge for Minecraft: a WebSocket REPL into the running client, with auto-downloaded Mojang mappings so you can script the game using official class names.",
-    "authors": ["Weikeng Chen"],
-    "contact": {
-        "homepage": "https://github.com/weikengchen/debugbridge",
-        "sources": "https://github.com/weikengchen/debugbridge",
-        "issues": "https://github.com/weikengchen/debugbridge/issues"
-    },
-    "license": "MIT",
-    "icon": "assets/debugbridge/icon.png",
-    "environment": "client",
-    "entrypoints": {
-        "client": [
-            "com.debugbridge.fabric119.DebugBridgeMod"
-        ]
-    },
-    "depends": {
-        "fabricloader": ">=0.14.0",
-        "minecraft": "1.19.x"
-    },
-    "mixins": [
-        "debugbridge.mixins.json"
+  "schemaVersion": 1,
+  "id": "debugbridge",
+  "version": "${version}",
+  "name": "DebugBridge",
+  "description": "Lua-Java bridge for Minecraft: a WebSocket REPL into the running client, with auto-downloaded Mojang mappings so you can script the game using official class names.",
+  "authors": [
+    "Weikeng Chen"
+  ],
+  "contact": {
+    "homepage": "https://github.com/weikengchen/debugbridge",
+    "sources": "https://github.com/weikengchen/debugbridge",
+    "issues": "https://github.com/weikengchen/debugbridge/issues"
+  },
+  "license": "MIT",
+  "icon": "assets/debugbridge/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.debugbridge.fabric119.DebugBridgeMod"
     ]
+  },
+  "depends": {
+    "fabricloader": ">=0.14.0",
+    "minecraft": "1.19.x"
+  },
+  "mixins": [
+    "debugbridge.mixins.json"
+  ]
 }

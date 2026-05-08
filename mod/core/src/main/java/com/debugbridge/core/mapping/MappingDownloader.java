@@ -14,23 +14,23 @@ import java.time.Duration;
 
 /**
  * Downloads Mojang's official ProGuard mappings for a given Minecraft version.
- *
+ * <p>
  * Flow:
- *   1. Fetch version_manifest_v2.json
- *   2. Find the version entry, get its URL
- *   3. Fetch the version JSON, get client_mappings URL
- *   4. Download the ProGuard text
+ * 1. Fetch version_manifest_v2.json
+ * 2. Find the version entry, get its URL
+ * 3. Fetch the version JSON, get client_mappings URL
+ * 4. Download the ProGuard text
  */
 public class MappingDownloader {
     private static final String MANIFEST_URL =
-        "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
+            "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
 
     private final HttpClient client;
 
     public MappingDownloader() {
         this.client = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
     }
 
     /**
@@ -64,7 +64,7 @@ public class MappingDownloader {
             throw new IOException("No client_mappings found for version " + mcVersion);
         }
         String mappingsUrl = downloads.getAsJsonObject("client_mappings")
-            .get("url").getAsString();
+                .get("url").getAsString();
 
         // 4. Download the mappings
         return fetchString(mappingsUrl);
@@ -72,10 +72,10 @@ public class MappingDownloader {
 
     private String fetchString(String url) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .timeout(Duration.ofSeconds(30))
-            .GET()
-            .build();
+                .uri(URI.create(url))
+                .timeout(Duration.ofSeconds(30))
+                .GET()
+                .build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         if (response.statusCode() != 200) {
             throw new IOException("HTTP " + response.statusCode() + " fetching " + url);

@@ -10,7 +10,8 @@ public class BridgeResponse {
     public String output;
     public String error;
 
-    private BridgeResponse() {}
+    private BridgeResponse() {
+    }
 
     public static BridgeResponse success(String id, JsonElement result, String output) {
         BridgeResponse r = new BridgeResponse();

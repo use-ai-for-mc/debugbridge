@@ -59,7 +59,7 @@ public class Minecraft119ChatHistoryProvider implements ChatHistoryProvider {
         Field f = allMessagesField;
         if (f != null) return f;
         String runtime = resolver.resolveField(
-            "net.minecraft.client.gui.components.ChatComponent", "allMessages");
+                "net.minecraft.client.gui.components.ChatComponent", "allMessages");
         f = ChatComponent.class.getDeclaredField(runtime);
         f.setAccessible(true);
         allMessagesField = f;
@@ -71,7 +71,7 @@ public class Minecraft119ChatHistoryProvider implements ChatHistoryProvider {
         if (m != null && m.getDeclaringClass() == cls) return m;
         String mojangCls = resolver.unresolveClass(cls.getName());
         String runtime = resolver.resolveMethod(mojangCls != null ? mojangCls : cls.getName(),
-            "getMessage", null);
+                "getMessage", null);
         m = cls.getMethod(runtime);
         messageGetter = m;
         return m;
@@ -82,7 +82,7 @@ public class Minecraft119ChatHistoryProvider implements ChatHistoryProvider {
         if (f != null && f.getDeclaringClass() == cls) return f;
         String mojangCls = resolver.unresolveClass(cls.getName());
         String runtime = resolver.resolveField(mojangCls != null ? mojangCls : cls.getName(),
-            "addedTime");
+                "addedTime");
         try {
             f = cls.getDeclaredField(runtime);
             f.setAccessible(true);

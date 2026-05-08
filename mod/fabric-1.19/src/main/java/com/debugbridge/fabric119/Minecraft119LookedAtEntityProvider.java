@@ -30,12 +30,12 @@ public class Minecraft119LookedAtEntityProvider implements LookedAtEntityProvide
                 Vec3 look = player.getLookAngle();
                 Vec3 end = eye.add(look.scale(range));
                 AABB searchBox = player.getBoundingBox()
-                    .expandTowards(look.scale(range))
-                    .inflate(1.0);
+                        .expandTowards(look.scale(range))
+                        .inflate(1.0);
 
                 EntityHitResult hit = ProjectileUtil.getEntityHitResult(
-                    mc.level, player, eye, end, searchBox,
-                    e -> !e.isSpectator() && e.isPickable()
+                        mc.level, player, eye, end, searchBox,
+                        e -> !e.isSpectator() && e.isPickable()
                 );
 
                 future.complete(hit != null ? hit.getEntity().getId() : null);

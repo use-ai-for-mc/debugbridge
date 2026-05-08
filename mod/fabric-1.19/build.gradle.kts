@@ -1,5 +1,5 @@
 plugins {
-    id("fabric-loom") version "1.9.2"
+    id("fabric-loom") version "1.14.10"
 }
 
 base {

@@ -19,6 +19,17 @@ public class Minecraft12111ChatHistoryProvider implements ChatHistoryProvider {
 
     private static volatile Field allMessagesField;
 
+    private static Field allMessagesField(MappingResolver resolver) throws NoSuchFieldException {
+        Field f = allMessagesField;
+        if (f != null) return f;
+        String runtime = resolver.resolveField(
+                "net.minecraft.client.gui.components.ChatComponent", "allMessages");
+        f = ChatComponent.class.getDeclaredField(runtime);
+        f.setAccessible(true);
+        allMessagesField = f;
+        return f;
+    }
+
     @Override
     public List<ChatMessageDto> getRecentMessages(int limit, MappingResolver resolver, boolean includeJson) throws Exception {
         Minecraft mc = Minecraft.getInstance();
@@ -53,16 +64,5 @@ public class Minecraft12111ChatHistoryProvider implements ChatHistoryProvider {
             out.add(dto);
         }
         return out;
-    }
-
-    private static Field allMessagesField(MappingResolver resolver) throws NoSuchFieldException {
-        Field f = allMessagesField;
-        if (f != null) return f;
-        String runtime = resolver.resolveField(
-            "net.minecraft.client.gui.components.ChatComponent", "allMessages");
-        f = ChatComponent.class.getDeclaredField(runtime);
-        f.setAccessible(true);
-        allMessagesField = f;
-        return f;
     }
 }

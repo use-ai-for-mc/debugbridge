@@ -11,7 +11,6 @@ import org.java_websocket.handshake.ServerHandshake;
 import org.junit.jupiter.api.*;
 
 import java.net.URI;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -88,13 +87,13 @@ class IntegrationTest {
     void testExecuteJavaBridge() throws Exception {
         JsonObject payload = new JsonObject();
         payload.addProperty("code", """
-            local ArrayList = java.import("java.util.ArrayList")
-            local list = java.new(ArrayList)
-            list:add("one")
-            list:add("two")
-            list:add("three")
-            return list:size()
-            """);
+                local ArrayList = java.import("java.util.ArrayList")
+                local list = java.new(ArrayList)
+                list:add("one")
+                list:add("two")
+                list:add("three")
+                return list:size()
+                """);
 
         JsonObject resp = sendRequest("execute", payload);
         assertTrue(resp.get("success").getAsBoolean(), "Error: " + resp.get("error"));
@@ -106,9 +105,9 @@ class IntegrationTest {
     void testExecuteReturnJavaObject() throws Exception {
         JsonObject payload = new JsonObject();
         payload.addProperty("code", """
-            local ArrayList = java.import("java.util.ArrayList")
-            return java.new(ArrayList)
-            """);
+                local ArrayList = java.import("java.util.ArrayList")
+                return java.new(ArrayList)
+                """);
 
         JsonObject resp = sendRequest("execute", payload);
         assertTrue(resp.get("success").getAsBoolean(), "Error: " + resp.get("error"));
@@ -122,8 +121,8 @@ class IntegrationTest {
     void testExecuteReturnTable() throws Exception {
         JsonObject payload = new JsonObject();
         payload.addProperty("code", """
-            return {name = "test", value = 42}
-            """);
+                return {name = "test", value = 42}
+                """);
 
         JsonObject resp = sendRequest("execute", payload);
         assertTrue(resp.get("success").getAsBoolean(), "Error: " + resp.get("error"));
@@ -161,11 +160,11 @@ class IntegrationTest {
     void testReflectionDescribe() throws Exception {
         JsonObject payload = new JsonObject();
         payload.addProperty("code", """
-            local ArrayList = java.import("java.util.ArrayList")
-            local list = java.new(ArrayList)
-            local info = java.describe(list)
-            return info.class
-            """);
+                local ArrayList = java.import("java.util.ArrayList")
+                local list = java.new(ArrayList)
+                local info = java.describe(list)
+                return info.class
+                """);
 
         JsonObject resp = sendRequest("execute", payload);
         assertTrue(resp.get("success").getAsBoolean(), "Error: " + resp.get("error"));
@@ -177,17 +176,17 @@ class IntegrationTest {
     void testReflectionMethods() throws Exception {
         JsonObject payload = new JsonObject();
         payload.addProperty("code", """
-            local ArrayList = java.import("java.util.ArrayList")
-            local list = java.new(ArrayList)
-            local methods = java.methods(list, "add")
-            local count = 0
-            local k = next(methods)
-            while k do
-                count = count + 1
-                k = next(methods, k)
-            end
-            return count
-            """);
+                local ArrayList = java.import("java.util.ArrayList")
+                local list = java.new(ArrayList)
+                local methods = java.methods(list, "add")
+                local count = 0
+                local k = next(methods)
+                while k do
+                    count = count + 1
+                    k = next(methods, k)
+                end
+                return count
+                """);
 
         JsonObject resp = sendRequest("execute", payload);
         assertTrue(resp.get("success").getAsBoolean(), "Error: " + resp.get("error"));
@@ -198,12 +197,12 @@ class IntegrationTest {
     void testReflectionSupers() throws Exception {
         JsonObject payload = new JsonObject();
         payload.addProperty("code", """
-            local ArrayList = java.import("java.util.ArrayList")
-            local list = java.new(ArrayList)
-            local s = java.supers(list)
-            local h = s.hierarchy
-            return h
-            """);
+                local ArrayList = java.import("java.util.ArrayList")
+                local list = java.new(ArrayList)
+                local s = java.supers(list)
+                local h = s.hierarchy
+                return h
+                """);
 
         JsonObject resp = sendRequest("execute", payload);
         assertTrue(resp.get("success").getAsBoolean(), "Error: " + resp.get("error"));
@@ -213,11 +212,11 @@ class IntegrationTest {
     void testReflectionFields() throws Exception {
         JsonObject payload = new JsonObject();
         payload.addProperty("code", """
-            local ArrayList = java.import("java.util.ArrayList")
-            local list = java.new(ArrayList)
-            local f = java.fields(list)
-            return f
-            """);
+                local ArrayList = java.import("java.util.ArrayList")
+                local list = java.new(ArrayList)
+                local f = java.fields(list)
+                return f
+                """);
 
         JsonObject resp = sendRequest("execute", payload);
         assertTrue(resp.get("success").getAsBoolean(), "Error: " + resp.get("error"));
@@ -228,31 +227,31 @@ class IntegrationTest {
         // This simulates what an AI agent would do to explore an unknown object
         JsonObject payload = new JsonObject();
         payload.addProperty("code", """
-            -- Create a HashMap and explore it
-            local HashMap = java.import("java.util.HashMap")
-            local map = java.new(HashMap)
-            map:put("key1", "value1")
-            map:put("key2", "value2")
+                -- Create a HashMap and explore it
+                local HashMap = java.import("java.util.HashMap")
+                local map = java.new(HashMap)
+                map:put("key1", "value1")
+                map:put("key2", "value2")
 
-            -- Get type info
-            local typeName = java.typeof(map)
+                -- Get type info
+                local typeName = java.typeof(map)
 
-            -- List methods containing "get"
-            local getMethods = java.methods(map, "get")
+                -- List methods containing "get"
+                local getMethods = java.methods(map, "get")
 
-            -- Get value
-            local val = map:get("key1")
+                -- Get value
+                local val = map:get("key1")
 
-            -- Describe the class
-            local desc = java.describe(map)
+                -- Describe the class
+                local desc = java.describe(map)
 
-            return {
-                type = typeName,
-                value = val,
-                classInfo = desc.class,
-                size = map:size()
-            }
-            """);
+                return {
+                    type = typeName,
+                    value = val,
+                    classInfo = desc.class,
+                    size = map:size()
+                }
+                """);
 
         JsonObject resp = sendRequest("execute", payload);
         assertTrue(resp.get("success").getAsBoolean(), "Error: " + resp.get("error"));
@@ -272,22 +271,22 @@ class IntegrationTest {
     void testIteratorOverWebSocket() throws Exception {
         JsonObject payload = new JsonObject();
         payload.addProperty("code", """
-            local ArrayList = java.import("java.util.ArrayList")
-            local list = java.new(ArrayList)
-            list:add("alpha")
-            list:add("beta")
-            list:add("gamma")
-            local result = {}
-            for item in java.iter(list) do
-                table.insert(result, item)
-            end
-            return table.concat(result, ",")
-            """);
+                local ArrayList = java.import("java.util.ArrayList")
+                local list = java.new(ArrayList)
+                list:add("alpha")
+                list:add("beta")
+                list:add("gamma")
+                local result = {}
+                for item in java.iter(list) do
+                    table.insert(result, item)
+                end
+                return table.concat(result, ",")
+                """);
 
         JsonObject resp = sendRequest("execute", payload);
         assertTrue(resp.get("success").getAsBoolean(), "Error: " + resp.get("error"));
         assertEquals("alpha,beta,gamma",
-            resp.get("result").getAsJsonObject().get("value").getAsString());
+                resp.get("result").getAsJsonObject().get("value").getAsString());
     }
 
     @Test
@@ -318,11 +317,26 @@ class IntegrationTest {
     private static class TestClient extends WebSocketClient {
         final LinkedBlockingQueue<String> responses = new LinkedBlockingQueue<>();
 
-        TestClient(URI uri) { super(uri); }
+        TestClient(URI uri) {
+            super(uri);
+        }
 
-        @Override public void onOpen(ServerHandshake handshake) {}
-        @Override public void onMessage(String message) { responses.offer(message); }
-        @Override public void onClose(int code, String reason, boolean remote) {}
-        @Override public void onError(Exception ex) { ex.printStackTrace(); }
+        @Override
+        public void onOpen(ServerHandshake handshake) {
+        }
+
+        @Override
+        public void onMessage(String message) {
+            responses.offer(message);
+        }
+
+        @Override
+        public void onClose(int code, String reason, boolean remote) {
+        }
+
+        @Override
+        public void onError(Exception ex) {
+            ex.printStackTrace();
+        }
     }
 }

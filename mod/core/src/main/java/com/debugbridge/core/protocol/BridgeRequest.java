@@ -7,7 +7,8 @@ public class BridgeRequest {
     public String type;
     public JsonObject payload;
 
-    public BridgeRequest() {}
+    public BridgeRequest() {
+    }
 
     public BridgeRequest(String id, String type, JsonObject payload) {
         this.id = id;
