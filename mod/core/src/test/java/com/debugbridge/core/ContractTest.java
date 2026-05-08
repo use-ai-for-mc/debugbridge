@@ -17,8 +17,15 @@ import com.debugbridge.core.protocol.dto.EntitySummaryDto;
 import com.debugbridge.core.protocol.dto.ItemStackDto;
 import com.debugbridge.core.protocol.dto.ScreenInspectDto;
 import com.debugbridge.core.protocol.dto.SlotDto;
+import com.debugbridge.core.protocol.dto.SnapshotDto;
+import com.debugbridge.core.protocol.dto.SnapshotPlayerDto;
+import com.debugbridge.core.protocol.dto.SnapshotTargetDto;
+import com.debugbridge.core.protocol.dto.SnapshotVehicleDto;
+import com.debugbridge.core.protocol.dto.SnapshotWorldDto;
+import com.debugbridge.core.protocol.dto.Vec3Dto;
 import com.debugbridge.core.screen.ScreenInspectProvider;
 import com.debugbridge.core.server.BridgeServer;
+import com.debugbridge.core.snapshot.GameStateProvider;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -70,15 +77,20 @@ class ContractTest {
     private static volatile List<EntitySummaryDto> stubNearbyEntities = List.of();
     /** EntityDetails DTO the stub will return; null = "gone". */
     private static volatile EntityDetailsDto stubEntityDetails = null;
+    /** Snapshot DTO the stub will return; tests mutate per case. */
+    private static volatile SnapshotDto stubSnapshot = baseSnapshot();
 
     private TestClient client;
 
     @BeforeAll
     static void startServer() throws Exception {
-        // Resolver that maps `net.minecraft.class_1277` (a real intermediary
-        // name from the audit fixtures) to its Mojang counterpart so the
-        // contract test can verify the handler applies `unresolveClass` to
-        // {@code slots[].container}. Other names pass through unchanged.
+        // Test resolver:
+        //   - maps `net.minecraft.class_1277` → `net.minecraft.world.SimpleContainer`
+        //     so the screenInspect/snapshot/etc. tests can verify the kernel's
+        //     `unresolveClass` is applied to the right fields;
+        //   - exposes a fixed mini "world" of three classes with members,
+        //     so the search-endpoint tests can iterate over real data without
+        //     needing a live Minecraft mappings dump.
         MappingResolver resolver = new PassthroughResolver("test") {
             @Override public String unresolveClass(String name) {
                 if ("net.minecraft.class_1277".equals(name)) {
@@ -86,8 +98,31 @@ class ContractTest {
                 }
                 return name;
             }
+            @Override public java.util.Collection<String> getAllClassNames() {
+                return List.of(
+                    "net.minecraft.world.entity.Entity",
+                    "net.minecraft.world.entity.LivingEntity",
+                    "net.minecraft.world.item.ItemStack");
+            }
+            @Override public java.util.Collection<String> getMethodSignatures(String mojang) {
+                return switch (mojang) {
+                    case "net.minecraft.world.entity.Entity" -> List.of("getId", "tick", "getX");
+                    case "net.minecraft.world.entity.LivingEntity" -> List.of("getHealth", "getMaxHealth");
+                    case "net.minecraft.world.item.ItemStack" -> List.of("getCount", "getItem");
+                    default -> List.of();
+                };
+            }
+            @Override public java.util.Collection<String> getFieldNames(String mojang) {
+                return switch (mojang) {
+                    case "net.minecraft.world.entity.Entity" -> List.of("id", "level");
+                    case "net.minecraft.world.entity.LivingEntity" -> List.of("health");
+                    case "net.minecraft.world.item.ItemStack" -> List.of("count");
+                    default -> List.of();
+                };
+            }
         };
-        server = new BridgeServer(PORT, resolver, new DirectDispatcher());
+        server = new BridgeServer(PORT, resolver, new DirectDispatcher(),
+            (GameStateProvider) () -> stubSnapshot);
         // Stub providers — return whatever the test fixtured.
         server.setLookedAtEntityProvider((LookedAtEntityProvider) range -> stubLookedAtId);
         server.setChatHistoryProvider((ChatHistoryProvider)
@@ -138,6 +173,14 @@ class ContractTest {
         stubBlockDetails = null;
         stubNearbyEntities = List.of();
         stubEntityDetails = null;
+        stubSnapshot = baseSnapshot();
+    }
+
+    private static SnapshotDto baseSnapshot() {
+        SnapshotDto s = new SnapshotDto();
+        s.fps = 60;
+        s.version = "test";
+        return s;
     }
 
     @AfterEach
@@ -556,7 +599,180 @@ class ContractTest {
                 + result);
     }
 
+    // ==================== snapshot ====================
+
+    @Test
+    void testSnapshotMinimalShape() throws Exception {
+        // Default stub: just fps + version. No player, no target, no world.
+        // The Phase 1 schema-lock removed the "player": "not in world" string;
+        // omit-nulls means player is simply absent.
+        JsonObject result = call("snapshot").getAsJsonObject("result");
+        assertEquals(Set.of("fps", "version"), result.keySet(),
+            "Snapshot with no player/target/world should emit only fps + version. Got: "
+                + result);
+        assertEquals(60, result.get("fps").getAsInt());
+        assertEquals("test", result.get("version").getAsString());
+    }
+
+    @Test
+    void testSnapshotFpsAlwaysInteger() throws Exception {
+        // Pins the Phase 0 cross-version drift: fps must be a JSON number on
+        // every version. The 1.19 provider parses an int from
+        // `Minecraft.fpsString`; this test pins the contract that wherever
+        // the value comes from, it lands on the wire as an integer.
+        SnapshotDto s = baseSnapshot();
+        s.fps = 83;
+        stubSnapshot = s;
+        JsonObject result = call("snapshot").getAsJsonObject("result");
+        assertTrue(result.get("fps").isJsonPrimitive(), "fps must be a primitive");
+        assertTrue(result.get("fps").getAsJsonPrimitive().isNumber(),
+            "fps must be a number, not a string. Got: " + result.get("fps"));
+        assertEquals(83, result.get("fps").getAsInt());
+    }
+
+    @Test
+    void testSnapshotPlayerWithVehicleAppliesResolver() throws Exception {
+        // Vehicle.type is the only nested class-name on the player branch.
+        SnapshotDto s = baseSnapshot();
+        SnapshotPlayerDto p = new SnapshotPlayerDto();
+        p.name = "tester";
+        p.x = 100; p.y = 64; p.z = 200;
+        p.dimension = "minecraft:overworld";
+        p.biome = "";
+        p.velocity = new Vec3Dto(0, 0, 0);
+        p.look = new Vec3Dto(1, 0, 0);
+        SnapshotVehicleDto v = new SnapshotVehicleDto();
+        v.entityId = 7;
+        v.type = "net.minecraft.class_1277";  // resolver maps this
+        p.vehicle = v;
+        s.player = p;
+        stubSnapshot = s;
+
+        JsonObject result = call("snapshot").getAsJsonObject("result");
+        JsonObject vehicle = result.getAsJsonObject("player").getAsJsonObject("vehicle");
+        assertEquals("net.minecraft.world.SimpleContainer", vehicle.get("type").getAsString(),
+            "vehicle.type must be resolver-mapped");
+    }
+
+    @Test
+    void testSnapshotTargetEntityAppliesResolver() throws Exception {
+        SnapshotDto s = baseSnapshot();
+        SnapshotTargetDto t = new SnapshotTargetDto();
+        t.type = "entity";
+        t.entityId = 99;
+        t.entityType = "net.minecraft.class_1277";  // resolver maps this
+        s.target = t;
+        stubSnapshot = s;
+
+        JsonObject result = call("snapshot").getAsJsonObject("result");
+        JsonObject target = result.getAsJsonObject("target");
+        assertEquals("net.minecraft.world.SimpleContainer", target.get("entityType").getAsString());
+        assertEquals("entity", target.get("type").getAsString());
+        // Block-branch fields (x/y/z/face) must be absent on entity branch.
+        assertEquals(Set.of("type", "entityId", "entityType"), target.keySet(),
+            "Block-target fields must drop on entity branch. Got: " + target);
+    }
+
+    @Test
+    void testSnapshotTargetBlockShape() throws Exception {
+        SnapshotDto s = baseSnapshot();
+        SnapshotTargetDto t = new SnapshotTargetDto();
+        t.type = "block";
+        t.x = 10; t.y = 64; t.z = -5;
+        t.face = "north";
+        s.target = t;
+        stubSnapshot = s;
+
+        JsonObject result = call("snapshot").getAsJsonObject("result");
+        JsonObject target = result.getAsJsonObject("target");
+        assertEquals(Set.of("type", "x", "y", "z", "face"), target.keySet());
+        assertEquals("block", target.get("type").getAsString());
+        assertEquals("north", target.get("face").getAsString());
+    }
+
+    @Test
+    void testSnapshotWorldShape() throws Exception {
+        SnapshotDto s = baseSnapshot();
+        SnapshotWorldDto w = new SnapshotWorldDto();
+        w.dayTime = 12345;
+        w.isRaining = true;
+        w.isThundering = false;
+        s.world = w;
+        stubSnapshot = s;
+
+        JsonObject result = call("snapshot").getAsJsonObject("result");
+        JsonObject world = result.getAsJsonObject("world");
+        assertEquals(Set.of("dayTime", "isRaining", "isThundering"), world.keySet());
+        assertEquals(12345, world.get("dayTime").getAsLong());
+        assertTrue(world.get("isRaining").getAsBoolean());
+        assertFalse(world.get("isThundering").getAsBoolean());
+    }
+
+    // ==================== search ====================
+
+    @Test
+    void testSearchEmptyOnNoMatch() throws Exception {
+        JsonArray result = callSearch("zzz_no_match_xxx", null).getAsJsonArray("result");
+        assertEquals(0, result.size(),
+            "No-match pattern should yield an empty array, not null. Got: " + result);
+    }
+
+    @Test
+    void testSearchClassHitOmitsOwner() throws Exception {
+        // Class hits have no `owner` field on the wire — pin the omit-nulls
+        // behavior end-to-end (DTO has the field; serializer drops it).
+        JsonArray result = callSearch("ItemStack", "class").getAsJsonArray("result");
+        assertEquals(1, result.size());
+        JsonObject hit = result.get(0).getAsJsonObject();
+        assertEquals(Set.of("type", "name"), hit.keySet(),
+            "Class hits must not emit owner. Got: " + hit);
+        assertEquals("class", hit.get("type").getAsString());
+        assertEquals("net.minecraft.world.item.ItemStack", hit.get("name").getAsString());
+    }
+
+    @Test
+    void testSearchMethodHitIncludesOwner() throws Exception {
+        JsonArray result = callSearch("getHealth", "method").getAsJsonArray("result");
+        assertEquals(1, result.size());
+        JsonObject hit = result.get(0).getAsJsonObject();
+        assertEquals(Set.of("type", "name", "owner"), hit.keySet());
+        assertEquals("method", hit.get("type").getAsString());
+        assertEquals("getHealth", hit.get("name").getAsString());
+        assertEquals("net.minecraft.world.entity.LivingEntity",
+            hit.get("owner").getAsString());
+    }
+
+    @Test
+    void testSearchFieldHitIncludesOwner() throws Exception {
+        JsonArray result = callSearch("count", "field").getAsJsonArray("result");
+        assertEquals(1, result.size());
+        JsonObject hit = result.get(0).getAsJsonObject();
+        assertEquals(Set.of("type", "name", "owner"), hit.keySet());
+        assertEquals("field", hit.get("type").getAsString());
+    }
+
+    @Test
+    void testSearchAllScopeIsDefault() throws Exception {
+        // No scope key in payload → defaults to "all".
+        JsonArray result = callSearch("get", null).getAsJsonArray("result");
+        // All "get*" methods + maybe field/class hits. Exact set depends on
+        // resolver fixture; just ensure we got method results across multiple
+        // owners to prove the all-scope iterates everything.
+        assertTrue(result.size() >= 3, "Expected ≥3 hits across types. Got: " + result);
+        java.util.Set<String> types = new java.util.HashSet<>();
+        for (var el : result) types.add(el.getAsJsonObject().get("type").getAsString());
+        assertTrue(types.contains("method"),
+            "Default-scope search must include method hits. Got types: " + types);
+    }
+
     // ==================== Helpers ====================
+
+    private JsonObject callSearch(String pattern, String scope) throws Exception {
+        JsonObject payload = new JsonObject();
+        payload.addProperty("pattern", pattern);
+        if (scope != null) payload.addProperty("scope", scope);
+        return call("search", payload);
+    }
 
     private JsonObject call(String type) throws Exception {
         return call(type, new JsonObject());

@@ -6,14 +6,20 @@ import com.debugbridge.core.mapping.MappingCache;
 import com.debugbridge.core.mapping.MappingDownloader;
 import com.debugbridge.core.mapping.ProGuardParser;
 import com.debugbridge.core.mapping.ParsedMappings;
+import com.debugbridge.core.mapping.FabricMojangResolver;
 import com.debugbridge.core.mapping.MappingResolver;
 import com.debugbridge.core.block.NearbyBlocksProvider;
 import com.debugbridge.core.entity.NearbyEntitiesProvider;
 import com.debugbridge.core.screenshot.ScreenshotProvider;
 import com.debugbridge.core.server.BridgeServer;
+import com.debugbridge.core.protocol.dto.SnapshotDto;
+import com.debugbridge.core.protocol.dto.SnapshotPlayerDto;
+import com.debugbridge.core.protocol.dto.SnapshotTargetDto;
+import com.debugbridge.core.protocol.dto.SnapshotVehicleDto;
+import com.debugbridge.core.protocol.dto.SnapshotWorldDto;
+import com.debugbridge.core.protocol.dto.Vec3Dto;
 import com.debugbridge.core.snapshot.GameStateProvider;
 import com.debugbridge.core.texture.ItemTextureProvider;
-import com.google.gson.JsonObject;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
@@ -243,7 +249,7 @@ public class DebugBridgeMod implements ClientModInitializer {
 
             ParsedMappings mappings = ProGuardParser.parse(proguardContent);
             LOG.info("[DebugBridge] Parsed {} classes from mappings.", mappings.classes.size());
-            return new FabricMojangResolver(MC_VERSION, mappings);
+            return new FabricMojangResolver(MC_VERSION, mappings, new FabricLoaderNamespaceLookup());
         } catch (Exception e) {
             LOG.error("[DebugBridge] Failed to load mappings, falling back to passthrough", e);
             return new com.debugbridge.core.mapping.PassthroughResolver(MC_VERSION);
@@ -255,77 +261,84 @@ public class DebugBridgeMod implements ClientModInitializer {
      */
     private static class Minecraft119StateProvider implements GameStateProvider {
         @Override
-        public JsonObject captureSnapshot() {
+        public SnapshotDto captureSnapshot() {
             Minecraft mc = Minecraft.getInstance();
             LocalPlayer player = mc.player;
-            JsonObject snap = new JsonObject();
+            SnapshotDto snap = new SnapshotDto();
 
             if (player != null) {
-                JsonObject playerObj = new JsonObject();
-                playerObj.addProperty("name", player.getName().getString());
-                playerObj.addProperty("x", player.getX());
-                playerObj.addProperty("y", player.getY());
-                playerObj.addProperty("z", player.getZ());
-                playerObj.addProperty("yaw", player.getYRot());
-                playerObj.addProperty("pitch", player.getXRot());
-                playerObj.addProperty("hotbarSlot", player.getInventory().selected);
-                playerObj.addProperty("health", player.getHealth());
-                playerObj.addProperty("maxHealth", player.getMaxHealth());
-                playerObj.addProperty("food", player.getFoodData().getFoodLevel());
-                playerObj.addProperty("saturation", player.getFoodData().getSaturationLevel());
-                playerObj.addProperty("dimension",
-                    player.level.dimension().location().toString());
-                playerObj.addProperty("biome", ""); // Would need world access
+                SnapshotPlayerDto p = new SnapshotPlayerDto();
+                p.name = player.getName().getString();
+                p.x = player.getX();
+                p.y = player.getY();
+                p.z = player.getZ();
+                p.yaw = player.getYRot();
+                p.pitch = player.getXRot();
+                p.hotbarSlot = player.getInventory().selected;
+                p.health = player.getHealth();
+                p.maxHealth = player.getMaxHealth();
+                p.food = player.getFoodData().getFoodLevel();
+                p.saturation = player.getFoodData().getSaturationLevel();
+                p.dimension = player.level.dimension().location().toString();
+                p.biome = "";  // Stub — see review queue.
                 Vec3 vel = player.getDeltaMovement();
-                JsonObject velObj = new JsonObject();
-                velObj.addProperty("x", vel.x); velObj.addProperty("y", vel.y); velObj.addProperty("z", vel.z);
-                playerObj.add("velocity", velObj);
+                p.velocity = new Vec3Dto(vel.x, vel.y, vel.z);
                 Vec3 look = player.getLookAngle();
-                JsonObject lookObj = new JsonObject();
-                lookObj.addProperty("x", look.x); lookObj.addProperty("y", look.y); lookObj.addProperty("z", look.z);
-                playerObj.add("look", lookObj);
+                p.look = new Vec3Dto(look.x, look.y, look.z);
                 Entity vehicle = player.getVehicle();
                 if (vehicle != null) {
-                    JsonObject vObj = new JsonObject();
-                    vObj.addProperty("entityId", vehicle.getId());
-                    vObj.addProperty("type", vehicle.getClass().getName());
-                    playerObj.add("vehicle", vObj);
+                    SnapshotVehicleDto v = new SnapshotVehicleDto();
+                    v.entityId = vehicle.getId();
+                    v.type = vehicle.getClass().getName();
+                    p.vehicle = v;
                 }
-                snap.add("player", playerObj);
-            } else {
-                snap.addProperty("player", "not in world");
+                snap.player = p;
             }
+            // No player → snap.player stays null and is omitted on the wire
+            // (older code emitted the literal string "not in world" here).
 
             HitResult hit = mc.hitResult;
             if (hit != null && hit.getType() != HitResult.Type.MISS) {
-                JsonObject target = new JsonObject();
-                target.addProperty("type", hit.getType().name().toLowerCase());
+                SnapshotTargetDto t = new SnapshotTargetDto();
+                t.type = hit.getType().name().toLowerCase();
                 if (hit instanceof BlockHitResult bhr) {
                     BlockPos pos = bhr.getBlockPos();
-                    target.addProperty("x", pos.getX());
-                    target.addProperty("y", pos.getY());
-                    target.addProperty("z", pos.getZ());
-                    target.addProperty("face", bhr.getDirection().name().toLowerCase());
+                    t.x = pos.getX();
+                    t.y = pos.getY();
+                    t.z = pos.getZ();
+                    t.face = bhr.getDirection().name().toLowerCase();
                 } else if (hit instanceof EntityHitResult ehr) {
-                    target.addProperty("entityId", ehr.getEntity().getId());
-                    target.addProperty("entityType", ehr.getEntity().getClass().getName());
+                    t.entityId = ehr.getEntity().getId();
+                    t.entityType = ehr.getEntity().getClass().getName();
                 }
-                snap.add("target", target);
+                snap.target = t;
             }
 
-            // World info
             if (mc.level != null) {
-                JsonObject world = new JsonObject();
-                world.addProperty("dayTime", mc.level.getDayTime());
-                world.addProperty("isRaining", mc.level.isRaining());
-                world.addProperty("isThundering", mc.level.isThundering());
-                snap.add("world", world);
+                SnapshotWorldDto w = new SnapshotWorldDto();
+                w.dayTime = mc.level.getDayTime();
+                w.isRaining = mc.level.isRaining();
+                w.isThundering = mc.level.isThundering();
+                snap.world = w;
             }
 
-            snap.addProperty("fps", mc.fpsString);
-            snap.addProperty("version", "1.19");
-
+            // 1.19 has no Minecraft.getFps(); parse the leading int from the
+            // formatted F3 debug string (e.g. "83 fps T: 120 vsyncfast …").
+            // Older code leaked the whole string here, breaking schema parity
+            // with 1.21.11 (audit Phase 0).
+            snap.fps = parseFpsLeading(mc.fpsString);
+            snap.version = "1.19";
             return snap;
+        }
+
+        private static int parseFpsLeading(String fpsString) {
+            if (fpsString == null) return 0;
+            try {
+                int sp = fpsString.indexOf(' ');
+                return Integer.parseInt(sp > 0 ? fpsString.substring(0, sp) : fpsString);
+            } catch (NumberFormatException ignore) {
+                return 0;  // Better than crashing on a malformed format.
+            }
         }
     }
 }

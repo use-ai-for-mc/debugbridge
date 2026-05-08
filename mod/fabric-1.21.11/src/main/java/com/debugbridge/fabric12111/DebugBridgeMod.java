@@ -7,12 +7,18 @@ import com.debugbridge.core.mapping.MappingCache;
 import com.debugbridge.core.mapping.MappingDownloader;
 import com.debugbridge.core.mapping.ProGuardParser;
 import com.debugbridge.core.mapping.ParsedMappings;
+import com.debugbridge.core.mapping.FabricMojangResolver;
 import com.debugbridge.core.mapping.MappingResolver;
 import com.debugbridge.core.screenshot.ScreenshotProvider;
 import com.debugbridge.core.server.BridgeServer;
+import com.debugbridge.core.protocol.dto.SnapshotDto;
+import com.debugbridge.core.protocol.dto.SnapshotPlayerDto;
+import com.debugbridge.core.protocol.dto.SnapshotTargetDto;
+import com.debugbridge.core.protocol.dto.SnapshotVehicleDto;
+import com.debugbridge.core.protocol.dto.SnapshotWorldDto;
+import com.debugbridge.core.protocol.dto.Vec3Dto;
 import com.debugbridge.core.snapshot.GameStateProvider;
 import com.debugbridge.core.texture.ItemTextureProvider;
-import com.google.gson.JsonObject;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
@@ -254,7 +260,7 @@ public class DebugBridgeMod implements ClientModInitializer {
 
             ParsedMappings mappings = ProGuardParser.parse(proguardContent);
             LOG.info("[DebugBridge] Parsed {} classes from mappings.", mappings.classes.size());
-            return new FabricMojangResolver(MC_VERSION, mappings);
+            return new FabricMojangResolver(MC_VERSION, mappings, new FabricLoaderNamespaceLookup());
         } catch (Exception e) {
             LOG.error("[DebugBridge] Failed to load mappings, falling back to passthrough", e);
             return new com.debugbridge.core.mapping.PassthroughResolver(MC_VERSION);
@@ -266,75 +272,69 @@ public class DebugBridgeMod implements ClientModInitializer {
      */
     private static class Minecraft12111StateProvider implements GameStateProvider {
         @Override
-        public JsonObject captureSnapshot() {
+        public SnapshotDto captureSnapshot() {
             Minecraft mc = Minecraft.getInstance();
             LocalPlayer player = mc.player;
-            JsonObject snap = new JsonObject();
+            SnapshotDto snap = new SnapshotDto();
 
             if (player != null) {
-                JsonObject playerObj = new JsonObject();
-                playerObj.addProperty("name", player.getName().getString());
-                playerObj.addProperty("x", player.getX());
-                playerObj.addProperty("y", player.getY());
-                playerObj.addProperty("z", player.getZ());
-                playerObj.addProperty("yaw", player.getYRot());
-                playerObj.addProperty("pitch", player.getXRot());
-                playerObj.addProperty("hotbarSlot", player.getInventory().getSelectedSlot());
-                playerObj.addProperty("health", player.getHealth());
-                playerObj.addProperty("maxHealth", player.getMaxHealth());
-                playerObj.addProperty("food", player.getFoodData().getFoodLevel());
-                playerObj.addProperty("saturation", player.getFoodData().getSaturationLevel());
-                playerObj.addProperty("dimension",
-                    player.level().dimension().identifier().toString());
-                playerObj.addProperty("biome", "");
+                SnapshotPlayerDto p = new SnapshotPlayerDto();
+                p.name = player.getName().getString();
+                p.x = player.getX();
+                p.y = player.getY();
+                p.z = player.getZ();
+                p.yaw = player.getYRot();
+                p.pitch = player.getXRot();
+                p.hotbarSlot = player.getInventory().getSelectedSlot();
+                p.health = player.getHealth();
+                p.maxHealth = player.getMaxHealth();
+                p.food = player.getFoodData().getFoodLevel();
+                p.saturation = player.getFoodData().getSaturationLevel();
+                p.dimension = player.level().dimension().identifier().toString();
+                p.biome = "";  // Stub — see review queue.
                 Vec3 vel = player.getDeltaMovement();
-                JsonObject velObj = new JsonObject();
-                velObj.addProperty("x", vel.x); velObj.addProperty("y", vel.y); velObj.addProperty("z", vel.z);
-                playerObj.add("velocity", velObj);
+                p.velocity = new Vec3Dto(vel.x, vel.y, vel.z);
                 Vec3 look = player.getLookAngle();
-                JsonObject lookObj = new JsonObject();
-                lookObj.addProperty("x", look.x); lookObj.addProperty("y", look.y); lookObj.addProperty("z", look.z);
-                playerObj.add("look", lookObj);
+                p.look = new Vec3Dto(look.x, look.y, look.z);
                 Entity vehicle = player.getVehicle();
                 if (vehicle != null) {
-                    JsonObject vObj = new JsonObject();
-                    vObj.addProperty("entityId", vehicle.getId());
-                    vObj.addProperty("type", vehicle.getClass().getName());
-                    playerObj.add("vehicle", vObj);
+                    SnapshotVehicleDto v = new SnapshotVehicleDto();
+                    v.entityId = vehicle.getId();
+                    v.type = vehicle.getClass().getName();
+                    p.vehicle = v;
                 }
-                snap.add("player", playerObj);
-            } else {
-                snap.addProperty("player", "not in world");
+                snap.player = p;
             }
+            // No player → snap.player stays null and is omitted on the wire
+            // (older code emitted the literal string "not in world" here).
 
             HitResult hit = mc.hitResult;
             if (hit != null && hit.getType() != HitResult.Type.MISS) {
-                JsonObject target = new JsonObject();
-                target.addProperty("type", hit.getType().name().toLowerCase());
+                SnapshotTargetDto t = new SnapshotTargetDto();
+                t.type = hit.getType().name().toLowerCase();
                 if (hit instanceof BlockHitResult bhr) {
                     BlockPos pos = bhr.getBlockPos();
-                    target.addProperty("x", pos.getX());
-                    target.addProperty("y", pos.getY());
-                    target.addProperty("z", pos.getZ());
-                    target.addProperty("face", bhr.getDirection().name().toLowerCase());
+                    t.x = pos.getX();
+                    t.y = pos.getY();
+                    t.z = pos.getZ();
+                    t.face = bhr.getDirection().name().toLowerCase();
                 } else if (hit instanceof EntityHitResult ehr) {
-                    target.addProperty("entityId", ehr.getEntity().getId());
-                    target.addProperty("entityType", ehr.getEntity().getClass().getName());
+                    t.entityId = ehr.getEntity().getId();
+                    t.entityType = ehr.getEntity().getClass().getName();
                 }
-                snap.add("target", target);
+                snap.target = t;
             }
 
             if (mc.level != null) {
-                JsonObject world = new JsonObject();
-                world.addProperty("dayTime", mc.level.getDayTime());
-                world.addProperty("isRaining", mc.level.isRaining());
-                world.addProperty("isThundering", mc.level.isThundering());
-                snap.add("world", world);
+                SnapshotWorldDto w = new SnapshotWorldDto();
+                w.dayTime = mc.level.getDayTime();
+                w.isRaining = mc.level.isRaining();
+                w.isThundering = mc.level.isThundering();
+                snap.world = w;
             }
 
-            snap.addProperty("fps", mc.getFps());
-            snap.addProperty("version", MC_VERSION);
-
+            snap.fps = mc.getFps();
+            snap.version = MC_VERSION;
             return snap;
         }
     }

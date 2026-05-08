@@ -15,7 +15,9 @@ import com.debugbridge.core.protocol.dto.LookedAtEntityDto;
 import com.debugbridge.core.protocol.dto.NearbyBlocksDto;
 import com.debugbridge.core.protocol.dto.NearbyEntitiesDto;
 import com.debugbridge.core.protocol.dto.ScreenInspectDto;
+import com.debugbridge.core.protocol.dto.SearchResultDto;
 import com.debugbridge.core.protocol.dto.SlotDto;
+import com.debugbridge.core.protocol.dto.SnapshotDto;
 import com.debugbridge.core.protocol.dto.StatusDto;
 import com.debugbridge.core.refs.ObjectRefStore;
 import com.debugbridge.core.entity.ClientEntityGlowManager;
@@ -336,16 +338,16 @@ public class BridgeServer extends WebSocketServer {
             return BridgeResponse.error(req.id, "search: invalid regex — " + e.getDescription());
         }
 
-        JsonArray results = new JsonArray();
+        List<SearchResultDto> results = new java.util.ArrayList<>();
         int limit = 100;
 
         if (scope.equals("class") || scope.equals("all")) {
             for (String mojangClass : resolver.getAllClassNames()) {
                 if (timedFind(regex, mojangClass)) {
-                    JsonObject entry = new JsonObject();
-                    entry.addProperty("type", "class");
-                    entry.addProperty("name", mojangClass);
-                    results.add(entry);
+                    SearchResultDto r = new SearchResultDto();
+                    r.type = "class";
+                    r.name = mojangClass;
+                    results.add(r);
                     if (results.size() >= limit) break;
                 }
             }
@@ -355,11 +357,11 @@ public class BridgeServer extends WebSocketServer {
             for (String className : resolver.getAllClassNames()) {
                 for (String methodSig : resolver.getMethodSignatures(className)) {
                     if (timedFind(regex, methodSig)) {
-                        JsonObject entry = new JsonObject();
-                        entry.addProperty("type", "method");
-                        entry.addProperty("owner", className);
-                        entry.addProperty("name", methodSig);
-                        results.add(entry);
+                        SearchResultDto r = new SearchResultDto();
+                        r.type = "method";
+                        r.owner = className;
+                        r.name = methodSig;
+                        results.add(r);
                         if (results.size() >= limit) break;
                     }
                 }
@@ -371,11 +373,11 @@ public class BridgeServer extends WebSocketServer {
             for (String className : resolver.getAllClassNames()) {
                 for (String fieldName : resolver.getFieldNames(className)) {
                     if (timedFind(regex, fieldName)) {
-                        JsonObject entry = new JsonObject();
-                        entry.addProperty("type", "field");
-                        entry.addProperty("owner", className);
-                        entry.addProperty("name", fieldName);
-                        results.add(entry);
+                        SearchResultDto r = new SearchResultDto();
+                        r.type = "field";
+                        r.owner = className;
+                        r.name = fieldName;
+                        results.add(r);
                         if (results.size() >= limit) break;
                     }
                 }
@@ -383,7 +385,9 @@ public class BridgeServer extends WebSocketServer {
             }
         }
 
-        return BridgeResponse.success(req.id, results, null);
+        // Wire shape is a bare array (no wrapper). Gson serializes
+        // `List<SearchResultDto>` directly to a JsonArray.
+        return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(results), null);
     }
 
     /** Hard cap on `search` pattern length. Class/method names are tiny; very
@@ -477,22 +481,19 @@ public class BridgeServer extends WebSocketServer {
                 "No game state provider configured. Use mc_execute with Lua instead.");
         }
         try {
-            JsonObject snapshot = stateProvider.captureSnapshot();
-            // Map intermediary class names on any nested entity-type fields.
-            unresolveClassField(snapshot.has("player") && snapshot.get("player").isJsonObject()
-                ? snapshot.getAsJsonObject("player").getAsJsonObject("vehicle") : null, "type");
-            unresolveClassField(snapshot.getAsJsonObject("target"), "entityType");
-            return BridgeResponse.success(req.id, snapshot, null);
+            SnapshotDto snapshot = stateProvider.captureSnapshot();
+            // Class-name mapping on the two nested entity-type fields.
+            if (snapshot.player != null && snapshot.player.vehicle != null) {
+                snapshot.player.vehicle.type = unresolveOrNull(snapshot.player.vehicle.type);
+            }
+            if (snapshot.target != null) {
+                snapshot.target.entityType = unresolveOrNull(snapshot.target.entityType);
+            }
+            return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(snapshot), null);
         } catch (Exception e) {
             return BridgeResponse.error(req.id,
                 "Snapshot failed: " + e.getMessage());
         }
-    }
-
-    private void unresolveClassField(JsonObject obj, String field) {
-        if (obj == null || !obj.has(field)) return;
-        String mapped = resolver.unresolveClass(obj.get(field).getAsString());
-        if (mapped != null) obj.addProperty(field, mapped);
     }
 
     /** Apply {@link MappingResolver#unresolveClass} to a raw runtime class
