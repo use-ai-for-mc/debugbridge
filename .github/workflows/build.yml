@@ -21,9 +21,16 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Build Fabric 1.21.11 mod
+      - name: Build Fabric mods (1.19 + 1.21.11)
         working-directory: mod
-        run: ./gradlew :fabric-1.21.11:build --no-daemon
+        run: ./gradlew :fabric-1.19:build :fabric-1.21.11:build --no-daemon
+
+      - name: Upload 1.19 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: debugbridge-1.19
+          path: mod/fabric-1.19/build/libs/*.jar
+          if-no-files-found: error
 
       - name: Upload 1.21.11 artifact
         uses: actions/upload-artifact@v4
