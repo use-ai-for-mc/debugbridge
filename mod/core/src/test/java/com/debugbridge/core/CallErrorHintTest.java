@@ -29,14 +29,19 @@ class CallErrorHintTest {
     private TestClient client;
 
     /**
-     * Public helper class used as the target of field-shadows-method tests.
-     * Mimics the {@code Entity.level} / {@code Entity.level()} pattern that
-     * causes the in-game error: a same-named field of Object type wins over
-     * the method in {@link com.debugbridge.core.lua.JavaObjectWrapper}'s
-     * field-first resolution order.
+     * Public helper class used as the target of call-as-method tests.
+     *
+     * <p>{@code inner} mirrors the Mojang {@code Entity.level} / {@code Entity.level()}
+     * field-shadows-method pattern. {@link com.debugbridge.core.lua.JavaObjectWrapper}'s
+     * resolution order prefers the method when both exist, so {@code o:inner()}
+     * succeeds and returns the field — see {@link #testFieldShadowedByMethodCallsMethod()}.
+     *
+     * <p>{@code only} is field-only (no shadowing method); calling it as a method
+     * is the path that triggers the actionable error hint.
      */
     public static class Outer {
         public final Inner inner = new Inner();
+        public final Inner only = new Inner();
 
         @SuppressWarnings("unused")  // Accessed reflectively through the bridge
         public Inner inner() { return inner; }
@@ -75,10 +80,12 @@ class CallErrorHintTest {
 
     @Test
     void testCallingFieldAsMethodGivesActionableError() throws Exception {
+        // `only` is field-only (no shadowing method), so calling it as a method
+        // takes the field-then-call path that produces the actionable error.
         JsonObject resp = execute("""
             local Outer = java.import("com.debugbridge.core.CallErrorHintTest$Outer")
             local o = java.new(Outer)
-            o:inner()
+            o:only()
             """);
         assertFalse(resp.get("success").getAsBoolean(), "Should fail");
         String error = resp.get("error").getAsString();
@@ -88,16 +95,16 @@ class CallErrorHintTest {
         assertTrue(error.contains("Java object"),
             "Error should mention it's a Java object, got: " + error);
         // Must name the field and the parent type.
-        assertTrue(error.contains("inner"),
-            "Error should mention the field name 'inner', got: " + error);
+        assertTrue(error.contains("only"),
+            "Error should mention the field name 'only', got: " + error);
         assertTrue(error.contains("Outer") || error.contains("CallErrorHintTest"),
             "Error should mention the parent type, got: " + error);
         // Must mention that it's a FIELD (not a method).
         assertTrue(error.contains("FIELD") || error.contains("field"),
             "Error should say it's a field, got: " + error);
         // Must give the exact corrected syntax.
-        assertTrue(error.contains("obj.inner") || error.contains(".inner."),
-            "Error should suggest obj.inner.<sub> syntax, got: " + error);
+        assertTrue(error.contains("obj.only") || error.contains(".only."),
+            "Error should suggest obj.only.<sub> syntax, got: " + error);
     }
 
     @Test
@@ -105,25 +112,43 @@ class CallErrorHintTest {
         JsonObject resp = execute("""
             local Outer = java.import("com.debugbridge.core.CallErrorHintTest$Outer")
             local o = java.new(Outer)
-            o:inner()
+            o:only()
             """);
         String error = resp.get("error").getAsString();
         // The colon-call detection should fire because the first "arg" passed
         // to the invoked wrapper is the parent Outer wrapper.
-        assertTrue(error.contains("obj:") || error.contains("obj.inner"),
+        assertTrue(error.contains("obj:") || error.contains("obj.only"),
             "Should explain the colon-call desugaring, got: " + error);
     }
 
     @Test
     void testFieldChainAfterFieldAccessStillWorks() throws Exception {
-        // Field chaining (the suggested fix) should still work normally.
+        // Field chaining (the suggested fix) should still work normally on a
+        // non-shadowed field.
         JsonObject resp = execute("""
             local Outer = java.import("com.debugbridge.core.CallErrorHintTest$Outer")
             local o = java.new(Outer)
-            return o.inner.value
+            return o.only.value
             """);
         assertTrue(resp.get("success").getAsBoolean(),
             "Field chaining should work: " + resp);
+        assertEquals(42,
+            resp.get("result").getAsJsonObject().get("value").getAsInt());
+    }
+
+    @Test
+    void testFieldShadowedByMethodCallsMethod() throws Exception {
+        // Regression test for JavaObjectWrapper's policy: when a field and a
+        // same-named method both exist, prefer the method. This is the
+        // Entity.level / Entity.level() in-game pattern: `o:inner()` should
+        // invoke the method (returning the field value), not produce an error.
+        JsonObject resp = execute("""
+            local Outer = java.import("com.debugbridge.core.CallErrorHintTest$Outer")
+            local o = java.new(Outer)
+            return o:inner().value
+            """);
+        assertTrue(resp.get("success").getAsBoolean(),
+            "Shadowed-field method call should succeed: " + resp);
         assertEquals(42,
             resp.get("result").getAsJsonObject().get("value").getAsInt());
     }

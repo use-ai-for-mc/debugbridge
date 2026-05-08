@@ -21,6 +21,18 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Run core tests
+        working-directory: mod
+        run: ./gradlew :core:test --no-daemon
+
+      - name: Upload core test report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-test-report
+          path: mod/core/build/reports/tests/test/
+          if-no-files-found: ignore
+
       - name: Build Fabric mods (1.19 + 1.21.11)
         working-directory: mod
         run: ./gradlew :fabric-1.19:build :fabric-1.21.11:build --no-daemon
