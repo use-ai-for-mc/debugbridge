@@ -475,7 +475,7 @@ class ContractTest {
         d.containerSize = 27;
         BlockItemDto item = new BlockItemDto();
         item.slot = 5;
-        item.itemId = "item.minecraft.diamond";
+        item.itemId = "minecraft:diamond";
         item.count = 12;
         // damage/maxDamage/name null → must drop
         d.items = List.of(item);
@@ -486,7 +486,7 @@ class ContractTest {
         JsonObject only = result.getAsJsonArray("items").get(0).getAsJsonObject();
         assertEquals(Set.of("slot", "itemId", "count"), only.keySet(),
             "Optional damage/name fields must drop. Got: " + only);
-        assertEquals("item.minecraft.diamond", only.get("itemId").getAsString());
+        assertEquals("minecraft:diamond", only.get("itemId").getAsString());
         assertEquals(12, only.get("count").getAsInt());
     }
 

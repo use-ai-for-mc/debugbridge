@@ -4,13 +4,11 @@ package com.debugbridge.core.protocol.dto;
  * One item in a block-entity container ({@code blockDetails.items[]}).
  *
  * <p>Note: deliberately distinct from {@link ItemStackDto}. Block-container
- * items carry a flat {@code slot} index (whereas screenInspect uses a wrapper
- * {@link SlotDto} around an {@link ItemStackDto}), and the {@code itemId}
- * here is currently {@code Item#getDescriptionId()} (e.g.
- * {@code "item.minecraft.diamond"}) rather than the registry key
- * (e.g. {@code "minecraft:diamond"}) used by screenInspect. The
- * inconsistency is preserved by Phase 1 (schema-lock) and tracked separately
- * for resolution.
+ * items carry a flat {@code slot} index, whereas screenInspect uses a wrapper
+ * {@link SlotDto} around an {@link ItemStackDto}. {@code itemId} is the
+ * canonical registry-key form (e.g. {@code "minecraft:diamond"}), matching
+ * every other {@code itemId} on the wire and accepted directly by the
+ * texture-fetch endpoints.
  */
 public final class BlockItemDto {
     public int slot;

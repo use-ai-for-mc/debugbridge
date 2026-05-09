@@ -146,7 +146,7 @@ public class Minecraft12111NearbyBlocksProvider implements NearbyBlocksProvider 
                         if (stack == null || stack.isEmpty()) continue;
                         BlockItemDto item = new BlockItemDto();
                         item.slot = i;
-                        item.itemId = stack.getItem().getDescriptionId();
+                        item.itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
                         item.count = stack.getCount();
                         if (stack.has(DataComponents.CUSTOM_NAME)) {
                             item.name = stack.getHoverName().getString();

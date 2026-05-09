@@ -90,12 +90,7 @@ Remaining endpoints to migrate (smallest-first to keep each PR scoped):
 
 - [x] `nearbyEntities` + `entityDetails` → 6 DTOs total (`NearbyEntitiesDto`, `EntitySummaryDto`, `EntityPrimaryEquipmentDto`, `EntityDetailsDto`, `EntityFrameItemDto`, `EntityEquipmentItemDto`). The Display.* branches (1.21.11 only) populate `displayItem`/`displayText`/`displayBlock` that the 1.19 impl leaves null — same divergence pattern as the sign extras. Handler maps `type`, `vehicle`, AND each passenger entry uniformly. 6 new contract tests pin empty/populated summary, multi-field class mapping, and required-only details shape. _2026-05-08_
 
-**Item-id convention drift** surfaced across all migrations so far (logged as future cleanup, not blocking): the codebase has **three** distinct ways to identify an item on the wire:
-- `BlockItemDto.itemId` and `EntityFrameItemDto.itemId` and `EntityEquipmentItemDto.itemId` use `Item#getDescriptionId()` (e.g. `item.minecraft.diamond`).
-- `ItemStackDto.itemId` (screenInspect slots) and `EntityPrimaryEquipmentDto.itemId` use the registry key (e.g. `minecraft:diamond`).
-- These are not interchangeable for clients (the icon-fetch endpoints accept registry keys).
-
-A follow-up should pick one canonical form (registry key, since that's what the texture endpoints consume) and converge all sites. Phase 1 schema-locks the existing behavior so the divergence is at least visible in the DTO definitions.
+~~**Item-id convention drift**~~ — _resolved 2026-05-09_. Every `itemId` on the wire is now the canonical registry-key form (e.g. `minecraft:diamond`). `BlockItemDto`, `EntityFrameItemDto`, and `EntityEquipmentItemDto` all switched from `Item#getDescriptionId()` to `BuiltInRegistries.ITEM.getKey(...).toString()` (1.21.11 / 26.2-dev) or `Registry.ITEM.getKey(...).toString()` (1.19), matching the form `ItemStackDto` and `EntityPrimaryEquipmentDto` already used. The texture-fetch endpoints (which only accept registry keys) now work uniformly across every DTO that exposes an `itemId`. This is a wire-shape break for external MCP clients reading the affected endpoints; the mismatch was the bug.
 - [x] `snapshot` → `SnapshotDto` + `SnapshotPlayerDto` + `SnapshotVehicleDto` + `SnapshotTargetDto` + `SnapshotWorldDto` + `Vec3Dto`. **Two wire-shape fixes landed**: (1) `fps` is now `int` on both versions — the 1.19 provider parses the leading number from `Minecraft.fpsString` instead of leaking the whole debug string; (2) the legacy `"player": "not in world"` string variant is gone — `player` is now either a typed object or absent (clients do a presence check, which is the cleaner contract). Handler is now ~10 lines: build the DTO, run two `unresolveOrNull` calls on `player.vehicle.type` and `target.entityType`, serialize. Old `unresolveClassField(JsonObject, String)` helper removed (it had no remaining callers after this migration). 6 new contract tests pin the minimal shape, fps-as-integer, vehicle/target class mapping, mutually-exclusive block-vs-entity target fields, and the world block. _2026-05-08_
 - [x] `search` → `SearchResultDto`. Smallest schema lift — no provider interface (uses the resolver directly), one DTO, ~15-line handler refactor. Wire shape is a bare array, so the handler returns `Gson.toJsonTree(List<SearchResultDto>)` directly without a wrapper. 5 new contract tests cover empty result, class hits omitting `owner` (omit-nulls end-to-end), method/field hits including `owner`, and default-scope behavior. _2026-05-08_
 
@@ -106,10 +101,13 @@ Notes for the remaining migrations:
 - `ContractTest` should grow one new section per migration; aim for ~3 assertions per endpoint (key presence, conditional behavior, type pinning).
 - After each migration, re-run the smoke test against both ports + diff the live response against the captured baseline. Diffs should be empty modulo transient game state.
 
-### Phase 2 — Mapping-coverage cleanup (Theme 1 in dream review)
-- [ ] Apply `MappingResolver.unresolveClass` to `screenInspect.{type, menuClass, slots[].container}`.
-- [ ] Verify `snapshot.{vehicle.type, target.entityType}` already routed through `unresolveClass` (audit said partially done — confirm).
-- [ ] Verify via the contract tests + smoke-test fixtures.
+### Phase 2 — Closed (absorbed by Phase 1) _2026-05-09_
+
+Phase 2 was originally planned as a stand-alone sweep to apply `MappingResolver.unresolveClass` everywhere the audit flagged drift. The Phase 1 per-endpoint DTO migrations landed each fix as part of the same refactor, so by the time Phase 1 closed there was nothing left for Phase 2 to do.
+
+- [x] `screenInspect.{type, menuClass, slots[].container}` — done in the Phase 1 `screenInspect` migration. Handler iterates `slots[].container` and applies `unresolveClass`; the Theme 1 regression is pinned by `ContractTest.testScreenInspectAppliesResolverToSlotContainerThemeOneFix`.
+- [x] `snapshot.{vehicle.type, target.entityType}` — handler runs `unresolveOrNull` on both fields after building the `SnapshotDto`; `ContractTest.testSnapshotPlayerWithVehicleAppliesResolver` and `testSnapshotTargetEntityAppliesResolver` pin the behavior.
+- [x] Contract-test coverage — 33 wire-format tests now pin every mapping site that Phase 2 was scoped to verify; smoke-test fixtures captured in Phase 0 reflect the post-mapping shape.
 
 ### Phase 3 — `FabricMojangResolver` proof-of-shape migration  _2026-05-08_
 

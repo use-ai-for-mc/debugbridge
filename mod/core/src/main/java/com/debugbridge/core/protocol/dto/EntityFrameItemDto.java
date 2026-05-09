@@ -6,10 +6,9 @@ package com.debugbridge.core.protocol.dto;
  *
  * <p>Carries {@code count} (which {@link EntityEquipmentItemDto} omits) because
  * frames and item-displays can in principle hold a stack, and the shape was
- * defined that way historically. {@code itemId} uses
- * {@code Item#getDescriptionId()} (e.g. {@code item.minecraft.diamond}) — the
- * same convention as block-container items, distinct from {@link
- * EntityPrimaryEquipmentDto}'s registry-key form.
+ * defined that way historically. {@code itemId} is the canonical registry-key
+ * form (e.g. {@code "minecraft:diamond"}), matching every other {@code itemId}
+ * on the wire.
  */
 public final class EntityFrameItemDto {
     public String itemId;

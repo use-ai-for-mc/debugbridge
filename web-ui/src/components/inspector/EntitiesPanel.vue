@@ -112,9 +112,13 @@ function equipLabel(slot: string): string {
   return map[slot] ?? slot
 }
 
-function shortItemName(descId: string): string {
-  const parts = descId.split('.')
-  return (parts[parts.length - 1] || descId).replace(/_/g, ' ')
+function shortItemName(id: string): string {
+  // Item ids ("minecraft:diamond") are registry keys; displayBlock is still
+  // a block descriptionId ("block.minecraft.diamond_block"). Strip both forms.
+  return id
+    .replace(/^minecraft:/, '')
+    .replace(/^(item|block)\.minecraft\./, '')
+    .replace(/_/g, ' ')
 }
 
 function shortClassName(fullName: string): string {

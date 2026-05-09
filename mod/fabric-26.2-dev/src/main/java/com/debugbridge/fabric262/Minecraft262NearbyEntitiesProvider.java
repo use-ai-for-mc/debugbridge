@@ -209,7 +209,7 @@ public class Minecraft262NearbyEntitiesProvider implements NearbyEntitiesProvide
                     ItemStack stack = renderState.itemStack();
                     if (stack != null && !stack.isEmpty()) {
                         EntityFrameItemDto item = new EntityFrameItemDto();
-                        item.itemId = stack.getItem().getDescriptionId();
+                        item.itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
                         item.count = stack.getCount();
                         var hoverName = stack.getHoverName();
                         if (hoverName != null) item.name = hoverName.getString();
@@ -236,7 +236,7 @@ public class Minecraft262NearbyEntitiesProvider implements NearbyEntitiesProvide
 
     private EntityFrameItemDto buildFrameItem(ItemStack stack) {
         EntityFrameItemDto item = new EntityFrameItemDto();
-        item.itemId = stack.getItem().getDescriptionId();
+        item.itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
         item.count = stack.getCount();
         if (stack.getMaxDamage() > 0) {
             item.damage = stack.getDamageValue();
@@ -252,7 +252,7 @@ public class Minecraft262NearbyEntitiesProvider implements NearbyEntitiesProvide
         ItemStack stack = living.getItemBySlot(slot);
         if (stack != null && !stack.isEmpty()) {
             EntityEquipmentItemDto item = new EntityEquipmentItemDto();
-            item.itemId = stack.getItem().getDescriptionId();
+            item.itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
             if (stack.getMaxDamage() > 0) {
                 item.damage = stack.getDamageValue();
                 item.maxDamage = stack.getMaxDamage();

@@ -137,7 +137,7 @@ public class Minecraft119NearbyEntitiesProvider implements NearbyEntitiesProvide
                     ItemStack framed = frame.getItem();
                     if (framed != null && !framed.isEmpty()) {
                         EntityFrameItemDto item = new EntityFrameItemDto();
-                        item.itemId = framed.getItem().getDescriptionId();
+                        item.itemId = Registry.ITEM.getKey(framed.getItem()).toString();
                         item.count = framed.getCount();
                         if (framed.getMaxDamage() > 0) {
                             item.damage = framed.getDamageValue();
@@ -199,7 +199,7 @@ public class Minecraft119NearbyEntitiesProvider implements NearbyEntitiesProvide
         ItemStack stack = living.getItemBySlot(slot);
         if (stack != null && !stack.isEmpty()) {
             EntityEquipmentItemDto item = new EntityEquipmentItemDto();
-            item.itemId = stack.getItem().getDescriptionId();
+            item.itemId = Registry.ITEM.getKey(stack.getItem()).toString();
             if (stack.getMaxDamage() > 0) {
                 item.damage = stack.getDamageValue();
                 item.maxDamage = stack.getMaxDamage();

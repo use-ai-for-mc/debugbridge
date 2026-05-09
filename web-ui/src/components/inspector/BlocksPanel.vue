@@ -38,8 +38,8 @@ function shortBlockId(id: string): string {
 }
 
 function shortItemName(id: string): string {
-  // "block.minecraft.oak_sign" / "item.minecraft.diamond" -> "oak sign" / "diamond"
-  return id.replace(/^(item|block)\.minecraft\./, '').replace(/_/g, ' ')
+  // "minecraft:diamond" -> "diamond"
+  return id.replace(/^minecraft:/, '').replace(/_/g, ' ')
 }
 
 function blockColor(b: NearbyBlock): string {
