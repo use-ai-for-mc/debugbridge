@@ -159,9 +159,21 @@ The version-specific provider impls retain the shape they had at the end of Phas
 ### Phase 6 — Add a third MC version when it ships
 At this point, adding a new version should be: add `mod/fabric-X.Y/` with the small adapter classes, register in `settings.gradle.kts`, run smoke test. Targeted line count for a new version module: <500 lines total (down from ~2200 today).
 
+### Phase 7 — `AbstractDebugBridgeMod` extraction _2026-05-09_
+
+- [x] New `mod/core/.../lifecycle/AbstractDebugBridgeMod.java` (342 lines) holds the AtomicBoolean state bookkeeping, port-probe loop with wraparound, BridgeServer bootstrap, and tick-time error/info + warning-screen orchestration. Subclasses implement ~16 hook methods covering version-specific Minecraft-API touches.
+- [x] All three Fabric `DebugBridgeMod` files now extend the kernel class. Per-version sizes: 235 / 236 / 231 lines (was 335 / 332 / 294). Net duplicate-code reduction of ~290 lines across the three modules; the kernel adds 342 lines with a cleaner test surface than what it replaced.
+- [x] Default `buildResolver()` in core handles the download → cache → parse → wrap pipeline; subclasses implement only `createNamespaceLookup()` (returns the version's `FabricLoaderNamespaceLookup` adapter, or `null` to fall back to `PassthroughResolver` for unobfuscated snapshot builds). Removes the ~22-line `buildResolver` stanza from every version module that had it.
+- [x] Default `createDispatcher()` in core wraps `Callable`/`CompletableFuture`/timeout boilerplate; subclasses implement only `submitToGameThread(Runnable)` (one-line delegate to `Minecraft#execute`).
+- [x] **15 new kernel unit tests** in `mod/core/test/.../lifecycle/AbstractDebugBridgeModTest.java` exercising the port-probe loop (fallthrough, wraparound, exhaustion, range-clamping), startup-info routing, tick error/info routing (display/retain by player readiness), the `onPostTick` hook, and the warning-screen flow (open-once, wait-for-ready, accept, decline, idempotent re-accept). Uses a `StubMod` subclass that overrides `tryStartOnPort` so the loop is exercised without binding real sockets.
+- [x] Strict kernel/adapter boundary preserved: `grep -r 'net.minecraft\|net.fabricmc' mod/core/` returns only doc-comment text. The version-touching parts (`Minecraft.getInstance()`, `mc.player.displayClientMessage`, `mc.gui.setScreen`, `LevelRenderer.gameTestBlockHighlightRenderer`) all live in subclass hooks.
+- [x] Smoke-test wire-shape parity: ContractTest's 33 wire-format tests serve as the static parity check (same DTO shapes regardless of refactor). Live-client smoke-test fixtures aren't captured in this PR — the refactor is pure structural movement, no provider call shape changed.
+
+**Net effect:** the "Open question" on shared entry-point is closed. Adding a fourth MC version's `DebugBridgeMod` is now ~150 lines of subclass overrides plus the inner `StateProvider` (which is genuinely Minecraft-API-bound and doesn't share). The kernel handles port management, lifecycle ordering, and player-message routing identically across all versions.
+
 ## Open questions
 
-- **Shared `DebugBridgeMod` entry-point.** Both files are 331/341 lines and largely parallel. Tentative: extract `core.AbstractDebugBridgeMod` once providers are kernel-resident; revisit at end of Phase 4.
+- ~~**Shared `DebugBridgeMod` entry-point.**~~ Closed by Phase 7 (2026-05-09). The kernel `AbstractDebugBridgeMod` now owns lifecycle; per-version subclasses are down ~30% from their pre-refactor sizes. The remaining per-version weight (~75-115 lines) is the inner `StateProvider` — extracting it would need a SnapshotCapture SPI with ~10 small methods, each just wrapping one MC accessor; a Phase-4-style trap. Not pursued.
 - **MC version floor for kernel SPIs.** 1.19 is the floor today; `ItemTextureProvider` stays adapter-side specifically because the 1.19 render pipeline can't be expressed against the 1.21 SPI. Re-evaluate when 1.19 support is dropped.
 - **Texture/screenshot test approach.** Layer 3 (smoke test) won't validate pixel correctness across versions. Likely manual fixture comparison; not blocked on this plan.
 
