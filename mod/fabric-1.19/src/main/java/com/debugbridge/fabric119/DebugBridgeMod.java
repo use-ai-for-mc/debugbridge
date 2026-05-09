@@ -1,18 +1,19 @@
 package com.debugbridge.fabric119;
 
-import com.debugbridge.core.BridgeConfig;
 import com.debugbridge.core.block.NearbyBlocksProvider;
+import com.debugbridge.core.chat.ChatHistoryProvider;
+import com.debugbridge.core.entity.LookedAtEntityProvider;
 import com.debugbridge.core.entity.NearbyEntitiesProvider;
-import com.debugbridge.core.lua.ThreadDispatcher;
-import com.debugbridge.core.mapping.*;
-import com.debugbridge.core.screenshot.ScreenshotProvider;
-import com.debugbridge.core.server.BridgeServer;
+import com.debugbridge.core.lifecycle.AbstractDebugBridgeMod;
+import com.debugbridge.core.mapping.FabricNamespaceLookup;
 import com.debugbridge.core.protocol.dto.SnapshotDto;
 import com.debugbridge.core.protocol.dto.SnapshotPlayerDto;
 import com.debugbridge.core.protocol.dto.SnapshotTargetDto;
 import com.debugbridge.core.protocol.dto.SnapshotVehicleDto;
 import com.debugbridge.core.protocol.dto.SnapshotWorldDto;
 import com.debugbridge.core.protocol.dto.Vec3Dto;
+import com.debugbridge.core.screen.ScreenInspectProvider;
+import com.debugbridge.core.screenshot.ScreenshotProvider;
 import com.debugbridge.core.snapshot.GameStateProvider;
 import com.debugbridge.core.texture.ItemTextureProvider;
 import net.fabricmc.api.ClientModInitializer;
@@ -26,225 +27,124 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.nio.file.Path;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
-public class DebugBridgeMod implements ClientModInitializer {
-    private static final Logger LOG = LoggerFactory.getLogger("DebugBridge");
+public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModInitializer {
     private static final String MC_VERSION = "1.19";
-    private static final int PORT_RANGE_START = 9876;
-    private static final int PORT_RANGE_END = 9886;
     private static DebugBridgeMod INSTANCE;
-    private final AtomicBoolean warningShown = new AtomicBoolean(false);
-    private final AtomicBoolean serverStarted = new AtomicBoolean(false);
-    private BridgeConfig config;
-    private BridgeServer server;
-    private boolean needsWarning = false;
-    private String startupError = null;
-    private String startupInfo = null;  // Info message (e.g., port changed)
 
-    /**
-     * Called by MinecraftClientMixin on each client tick.
-     */
     public static void onClientTick(Minecraft mc) {
         if (INSTANCE != null) {
-            INSTANCE.handleTick(mc);
+            INSTANCE.handleTick();
         }
     }
 
     @Override
     public void onInitializeClient() {
         INSTANCE = this;
-        LOG.info("[DebugBridge] Initializing for Minecraft {}...", MC_VERSION);
-
-        Path configDir = FabricLoader.getInstance().getConfigDir();
-        config = BridgeConfig.load(configDir);
-
-        if (config.developerModeAccepted) {
-            // Already accepted, start server immediately
-            startServer();
-        } else {
-            // Need to show warning screen - will be triggered by mixin tick
-            LOG.info("[DebugBridge] Developer mode not yet accepted, will show warning screen");
-            needsWarning = true;
-        }
+        initialize();
     }
 
-    private void handleTick(Minecraft mc) {
-        // Show startup messages when player is available
-        if (startupError != null && mc.player != null) {
-            mc.player.displayClientMessage(
-                    Component.literal("[DebugBridge] " + startupError).withStyle(s -> s.withColor(0xFF5555)),
-                    false);
-            startupError = null;
-        }
-        if (startupInfo != null && mc.player != null) {
-            mc.player.displayClientMessage(
-                    Component.literal("[DebugBridge] " + startupInfo).withStyle(s -> s.withColor(0x55FF55)),
-                    false);
-            startupInfo = null;
-        }
-
-        if (!needsWarning) return;
-
-        // Only show once, and only when no screen is open (game is ready)
-        if (!warningShown.get() && mc.screen == null && mc.getOverlay() == null) {
-            warningShown.set(true);
-            mc.setScreen(new DeveloperWarningScreen(config, accepted -> {
-                mc.setScreen(null);
-                if (accepted) {
-                    LOG.info("[DebugBridge] Developer mode accepted by user");
-                    startServer();
-                } else {
-                    LOG.info("[DebugBridge] Developer mode declined, mod disabled");
-                }
-                needsWarning = false;
-            }));
-        }
+    @Override
+    protected String mcVersion() {
+        return MC_VERSION;
     }
 
-    private void startServer() {
-        if (serverStarted.getAndSet(true)) {
-            return; // Already started
-        }
+    @Override
+    protected Path configDir() {
+        return FabricLoader.getInstance().getConfigDir();
+    }
 
-        MappingResolver resolver = buildResolver();
+    @Override
+    protected Path gameDir() {
+        return FabricLoader.getInstance().getGameDir();
+    }
 
+    @Override
+    protected FabricNamespaceLookup createNamespaceLookup() {
+        return new FabricLoaderNamespaceLookup();
+    }
+
+    @Override
+    protected void submitToGameThread(Runnable task) {
+        Minecraft.getInstance().execute(task);
+    }
+
+    @Override
+    protected GameStateProvider createStateProvider() {
+        return new Minecraft119StateProvider();
+    }
+
+    @Override
+    protected ScreenshotProvider createScreenshotProvider() {
+        return new Minecraft119ScreenshotProvider();
+    }
+
+    @Override
+    protected ItemTextureProvider createTextureProvider() {
+        return new Minecraft119ItemTextureProvider();
+    }
+
+    @Override
+    protected NearbyEntitiesProvider createEntitiesProvider() {
+        return new Minecraft119NearbyEntitiesProvider();
+    }
+
+    @Override
+    protected NearbyBlocksProvider createBlocksProvider() {
+        return new Minecraft119NearbyBlocksProvider();
+    }
+
+    @Override
+    protected LookedAtEntityProvider createLookedAtEntityProvider() {
+        return new Minecraft119LookedAtEntityProvider();
+    }
+
+    @Override
+    protected ChatHistoryProvider createChatHistoryProvider() {
+        return new Minecraft119ChatHistoryProvider();
+    }
+
+    @Override
+    protected ScreenInspectProvider createScreenInspectProvider() {
+        return new Minecraft119ScreenInspectProvider();
+    }
+
+    @Override
+    protected boolean displayPlayerError(String message) {
         Minecraft mc = Minecraft.getInstance();
-        ThreadDispatcher dispatcher = new ThreadDispatcher() {
-            @Override
-            public <T> T executeOnGameThread(Callable<T> task, long timeout) throws Exception {
-                CompletableFuture<T> future = new CompletableFuture<>();
-                mc.execute(() -> {
-                    try {
-                        future.complete(task.call());
-                    } catch (Exception e) {
-                        future.completeExceptionally(e);
-                    }
-                });
-                return future.get(timeout, TimeUnit.MILLISECONDS);
-            }
-        };
-
-        GameStateProvider stateProvider = new Minecraft119StateProvider();
-        ScreenshotProvider screenshotProvider = new Minecraft119ScreenshotProvider();
-        NearbyEntitiesProvider entitiesProvider = new Minecraft119NearbyEntitiesProvider();
-        NearbyBlocksProvider blocksProvider = new Minecraft119NearbyBlocksProvider();
-        ItemTextureProvider textureProvider = new Minecraft119ItemTextureProvider();
-        Minecraft119LookedAtEntityProvider lookedAtProvider = new Minecraft119LookedAtEntityProvider();
-
-        // Find available port and start server
-        int actualPort = startServerOnAvailablePort(config.port, resolver, dispatcher, stateProvider, screenshotProvider);
-
-        if (actualPort == -1) {
-            String msg = "Could not bind to any port in range " + PORT_RANGE_START + "-" + PORT_RANGE_END;
-            LOG.error("[DebugBridge] {}", msg);
-            startupError = msg;
-        } else {
-            server.setEntitiesProvider(entitiesProvider);
-            server.setBlocksProvider(blocksProvider);
-            server.setTextureProvider(textureProvider);
-            server.setLookedAtEntityProvider(lookedAtProvider);
-            server.setChatHistoryProvider(new Minecraft119ChatHistoryProvider());
-            server.setScreenInspectProvider(new Minecraft119ScreenInspectProvider());
-            server.setRunCommandEnabled(config.runCommandEnabled);
-
-            if (actualPort != config.port) {
-                startupInfo = "Server started on port " + actualPort + " (default " + config.port + " was in use)";
-            }
-            LOG.info("[DebugBridge] Server started on port {}", actualPort);
-        }
+        if (mc.player == null) return false;
+        mc.player.displayClientMessage(
+                Component.literal("[DebugBridge] " + message).withStyle(s -> s.withColor(0xFF5555)),
+                false);
+        return true;
     }
 
-    /**
-     * Try to start server on preferred port, scanning range if needed.
-     * Returns actual port used, or -1 if all ports occupied.
-     */
-    private int startServerOnAvailablePort(int preferredPort, MappingResolver resolver,
-                                           ThreadDispatcher dispatcher, GameStateProvider stateProvider,
-                                           ScreenshotProvider screenshotProvider) {
-        int startPort = Math.max(PORT_RANGE_START, Math.min(preferredPort, PORT_RANGE_END));
-
-        // First pass: preferred port -> end of range
-        for (int port = startPort; port <= PORT_RANGE_END; port++) {
-            if (tryStartOnPort(port, resolver, dispatcher, stateProvider, screenshotProvider)) {
-                return port;
-            }
-        }
-
-        // Second pass (wraparound): start of range -> preferred port
-        for (int port = PORT_RANGE_START; port < startPort; port++) {
-            if (tryStartOnPort(port, resolver, dispatcher, stateProvider, screenshotProvider)) {
-                return port;
-            }
-        }
-
-        return -1;
+    @Override
+    protected boolean displayPlayerInfo(String message) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return false;
+        mc.player.displayClientMessage(
+                Component.literal("[DebugBridge] " + message).withStyle(s -> s.withColor(0x55FF55)),
+                false);
+        return true;
     }
 
-    private boolean tryStartOnPort(int port, MappingResolver resolver, ThreadDispatcher dispatcher,
-                                   GameStateProvider stateProvider, ScreenshotProvider screenshotProvider) {
-        LOG.info("[DebugBridge] Checking if port {} is available...", port);
-        if (!isPortAvailable(port)) {
-            LOG.info("[DebugBridge] Port {} is not available, skipping", port);
-            return false;
-        }
-        LOG.info("[DebugBridge] Port {} appears available, starting server...", port);
-
-        try {
-            server = new BridgeServer(port, resolver, dispatcher, stateProvider, screenshotProvider);
-            server.setReuseAddr(true);
-            server.setGameDir(FabricLoader.getInstance().getGameDir());
-            server.start();
-            LOG.info("[DebugBridge] Server.start() called on port {}", port);
-            return true;
-        } catch (Exception e) {
-            LOG.error("[DebugBridge] Failed to start server on port {}", port, e);
-            return false;
-        }
+    @Override
+    protected boolean canShowWarningScreen() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.screen == null && mc.getOverlay() == null;
     }
 
-    private boolean isPortAvailable(int port) {
-        try (ServerSocket socket = new ServerSocket()) {
-            socket.setReuseAddress(true);  // Must be set BEFORE bind
-            socket.bind(new InetSocketAddress("127.0.0.1", port));  // Same address as WebSocketServer
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    private MappingResolver buildResolver() {
-        try {
-            MappingCache cache = new MappingCache();
-            String proguardContent;
-
-            if (cache.has(MC_VERSION)) {
-                LOG.info("[DebugBridge] Loading cached {} mappings...", MC_VERSION);
-                proguardContent = cache.load(MC_VERSION);
-            } else {
-                LOG.info("[DebugBridge] Downloading {} mappings from Mojang...", MC_VERSION);
-                MappingDownloader downloader = new MappingDownloader();
-                proguardContent = downloader.download(MC_VERSION);
-                cache.save(MC_VERSION, proguardContent);
-                LOG.info("[DebugBridge] Mappings downloaded and cached.");
-            }
-
-            ParsedMappings mappings = ProGuardParser.parse(proguardContent);
-            LOG.info("[DebugBridge] Parsed {} classes from mappings.", mappings.classes.size());
-            return new FabricMojangResolver(MC_VERSION, mappings, new FabricLoaderNamespaceLookup());
-        } catch (Exception e) {
-            LOG.error("[DebugBridge] Failed to load mappings, falling back to passthrough", e);
-            return new com.debugbridge.core.mapping.PassthroughResolver(MC_VERSION);
-        }
+    @Override
+    protected void showWarningScreen(Consumer<Boolean> onResult) {
+        Minecraft mc = Minecraft.getInstance();
+        mc.setScreen(new DeveloperWarningScreen(config, accepted -> {
+            mc.setScreen(null);
+            onResult.accept(accepted);
+        }));
     }
 
     /**
@@ -318,7 +218,7 @@ public class DebugBridgeMod implements ClientModInitializer {
             // Older code leaked the whole string here, breaking schema parity
             // with 1.21.11 (audit Phase 0).
             snap.fps = parseFpsLeading(mc.fpsString);
-            snap.version = "1.19";
+            snap.version = MC_VERSION;
             return snap;
         }
 
