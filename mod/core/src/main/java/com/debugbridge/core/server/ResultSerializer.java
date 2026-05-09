@@ -1,6 +1,5 @@
 package com.debugbridge.core.server;
 
-import com.debugbridge.core.lua.JavaBridge;
 import com.debugbridge.core.lua.JavaClassWrapper;
 import com.debugbridge.core.lua.JavaObjectWrapper;
 import com.debugbridge.core.mapping.MappingResolver;
@@ -9,8 +8,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
-import org.luaj.vm2.*;
+import org.luaj.vm2.LuaTable;
+import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.Varargs;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -112,7 +112,7 @@ public class ResultSerializer {
         // Shallow field summary
         try {
             JsonObject fields = summarizeFields(javaObj, mojangType);
-            if (fields.size() > 0) {
+            if (!fields.isEmpty()) {
                 obj.add("fields", fields);
             }
         } catch (Exception e) {
@@ -145,7 +145,7 @@ public class ResultSerializer {
                     fields.addProperty(name, s);
                 } else {
                     fields.addProperty(name, val.getClass().getSimpleName() + "@" +
-                        Integer.toHexString(System.identityHashCode(val)));
+                            Integer.toHexString(System.identityHashCode(val)));
                 }
                 count++;
             } catch (Exception e) {

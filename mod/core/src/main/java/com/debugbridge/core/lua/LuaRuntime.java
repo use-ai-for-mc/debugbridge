@@ -2,7 +2,10 @@ package com.debugbridge.core.lua;
 
 import com.debugbridge.core.mapping.MappingResolver;
 import com.debugbridge.core.refs.ObjectRefStore;
-import org.luaj.vm2.*;
+import org.luaj.vm2.Globals;
+import org.luaj.vm2.LuaError;
+import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.Varargs;
 import org.luaj.vm2.lib.jse.JsePlatform;
 
 import java.util.concurrent.*;
@@ -60,23 +63,25 @@ public class LuaRuntime {
      */
     private void installMinecraftGlobals() {
         String bootstrap =
-            "do\n" +
-            "  local ok, Minecraft = pcall(java.import, 'net.minecraft.client.Minecraft')\n" +
-            "  if not ok then return end\n" +
-            "  local gmt = getmetatable(_G) or {}\n" +
-            "  local prev = gmt.__index\n" +
-            "  gmt.__index = function(t, k)\n" +
-            "    if k == 'mc' then return Minecraft:getInstance() end\n" +
-            "    if k == 'player' then return Minecraft:getInstance().player end\n" +
-            "    if k == 'level' then return Minecraft:getInstance().level end\n" +
-            "    if prev then\n" +
-            "      if type(prev) == 'function' then return prev(t, k) end\n" +
-            "      return prev[k]\n" +
-            "    end\n" +
-            "    return nil\n" +
-            "  end\n" +
-            "  setmetatable(_G, gmt)\n" +
-            "end\n";
+                """
+                        do
+                          local ok, Minecraft = pcall(java.import, 'net.minecraft.client.Minecraft')
+                          if not ok then return end
+                          local gmt = getmetatable(_G) or {}
+                          local prev = gmt.__index
+                          gmt.__index = function(t, k)
+                            if k == 'mc' then return Minecraft:getInstance() end
+                            if k == 'player' then return Minecraft:getInstance().player end
+                            if k == 'level' then return Minecraft:getInstance().level end
+                            if prev then
+                              if type(prev) == 'function' then return prev(t, k) end
+                              return prev[k]
+                            end
+                            return nil
+                          end
+                          setmetatable(_G, gmt)
+                        end
+                        """;
         try {
             globals.load(bootstrap, "=mc-globals").invoke();
         } catch (Exception e) {
@@ -99,15 +104,17 @@ public class LuaRuntime {
         // Set a count-based debug hook: fires every 10000 VM instructions
         try {
             globals.load(
-                "debug.sethook(__check_interrupt, '', 10000)",
-                "=hook"
+                    "debug.sethook(__check_interrupt, '', 10000)",
+                    "=hook"
             ).invoke();
         } catch (Exception e) {
             // debug lib may not be available; timeout won't work but bridge still functions
         }
     }
 
-    public JavaBridge getBridge() { return bridge; }
+    public JavaBridge getBridge() {
+        return bridge;
+    }
 
     public void setMaxExecutionTimeMs(long ms) {
         this.maxExecutionTimeMs = ms;
@@ -146,9 +153,9 @@ public class LuaRuntime {
 
                 LuaValue returnValue = result.arg1();
                 return new ExecutionResult(
-                    returnValue.isnil() ? null : returnValue,
-                    printBuffer.toString(),
-                    null
+                        returnValue.isnil() ? null : returnValue,
+                        printBuffer.toString(),
+                        null
                 );
             } catch (LuaError e) {
                 String msg = e.getMessage();
@@ -160,13 +167,13 @@ public class LuaRuntime {
                 return new ExecutionResult(null, printBuffer.toString(), msg);
             } catch (StackOverflowError e) {
                 return new ExecutionResult(null, printBuffer.toString(),
-                    "Stack overflow — script has infinite recursion or is too deeply nested");
+                        "Stack overflow — script has infinite recursion or is too deeply nested");
             } catch (OutOfMemoryError e) {
                 return new ExecutionResult(null, printBuffer.toString(),
-                    "Out of memory — script allocated too much data");
+                        "Out of memory — script allocated too much data");
             } catch (Exception e) {
                 return new ExecutionResult(null, printBuffer.toString(),
-                    e.getClass().getSimpleName() + ": " + e.getMessage());
+                        e.getClass().getSimpleName() + ": " + e.getMessage());
             } finally {
                 luaThread = null;
             }
@@ -184,25 +191,9 @@ public class LuaRuntime {
                 + "ms — script may have an infinite loop or infinite recursion");
         } catch (Exception e) {
             return new ExecutionResult(null, printBuffer.toString(),
-                e.getClass().getSimpleName() + ": " + e.getMessage());
+                    e.getClass().getSimpleName() + ": " + e.getMessage());
         } finally {
             executor.shutdownNow();
-        }
-    }
-
-    /**
-     * Custom print function that captures output instead of writing to stdout.
-     */
-    private class PrintFunction extends org.luaj.vm2.lib.VarArgFunction {
-        @Override
-        public Varargs invoke(Varargs args) {
-            StringBuilder line = new StringBuilder();
-            for (int i = 1; i <= args.narg(); i++) {
-                if (i > 1) line.append("\t");
-                line.append(args.arg(i).tojstring());
-            }
-            printBuffer.append(line).append("\n");
-            return LuaValue.NONE;
         }
     }
 
@@ -220,6 +211,24 @@ public class LuaRuntime {
             this.error = error;
         }
 
-        public boolean isSuccess() { return error == null; }
+        public boolean isSuccess() {
+            return error == null;
+        }
+    }
+
+    /**
+     * Custom print function that captures output instead of writing to stdout.
+     */
+    private class PrintFunction extends org.luaj.vm2.lib.VarArgFunction {
+        @Override
+        public Varargs invoke(Varargs args) {
+            StringBuilder line = new StringBuilder();
+            for (int i = 1; i <= args.narg(); i++) {
+                if (i > 1) line.append("\t");
+                line.append(args.arg(i).tojstring());
+            }
+            printBuffer.append(line).append("\n");
+            return LuaValue.NONE;
+        }
     }
 }

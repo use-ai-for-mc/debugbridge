@@ -50,15 +50,106 @@ import java.util.logging.Logger;
  */
 public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
     private static final Logger LOG = Logger.getLogger("DebugBridge");
-
+    // Cache of fetched skin PNGs keyed by CDN URL.
+    private static final ConcurrentHashMap<String, NativeImage> SKIN_CACHE = new ConcurrentHashMap<>();
+    private static final int MAP_SIZE = 128;
+    private static final int[] BRIGHTNESS_MOD = {180, 220, 255, 135};
     // Reflection cache: TextureAtlasSprite → NativeImage[] field
     private static volatile Field spritePixelsField;
-
     // Reflection cache: Minecraft → ItemColors field (private, no accessor in 1.19).
     private static volatile ItemColors cachedItemColors;
 
-    // Cache of fetched skin PNGs keyed by CDN URL.
-    private static final ConcurrentHashMap<String, NativeImage> SKIN_CACHE = new ConcurrentHashMap<>();
+    private static int mapPixelArgb(byte packedColor) {
+        int colorId = (packedColor & 0xFF) >> 2;
+        int shade = packedColor & 3;
+        if (colorId == 0) return 0;
+        MaterialColor color = MaterialColor.byId(colorId);
+        if (color == null) return 0;
+        int col = color.col;
+        int modifier = BRIGHTNESS_MOD[shade];
+        int r = ((col >> 16) & 255) * modifier / 255;
+        int g = ((col >> 8) & 255) * modifier / 255;
+        int b = (col & 255) * modifier / 255;
+        return (0xFF << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    /**
+     * Convert NativeImage's little-endian ABGR packing to standard ARGB.
+     */
+    private static int nativeToArgb(int abgr) {
+        int a = (abgr >>> 24) & 0xFF;
+        int b = (abgr >> 16) & 0xFF;
+        int g = (abgr >> 8) & 0xFF;
+        int r = abgr & 0xFF;
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    /**
+     * Standard "source over" alpha compositing — top pixel drawn over bottom.
+     */
+    private static int alphaOver(int topArgb, int bottomArgb) {
+        int ta = (topArgb >>> 24) & 0xFF;
+        if (ta == 0) return bottomArgb;
+        if (ta == 255) return topArgb;
+        int ba = (bottomArgb >>> 24) & 0xFF;
+        int tr = (topArgb >> 16) & 0xFF;
+        int tg = (topArgb >> 8) & 0xFF;
+        int tb = topArgb & 0xFF;
+        int br = (bottomArgb >> 16) & 0xFF;
+        int bg = (bottomArgb >> 8) & 0xFF;
+        int bb = bottomArgb & 0xFF;
+        int invTa = 255 - ta;
+        int outA = ta + ba * invTa / 255;
+        if (outA == 0) return 0;
+        int outR = (tr * ta + br * ba * invTa / 255) / outA;
+        int outG = (tg * ta + bg * ba * invTa / 255) / outA;
+        int outB = (tb * ta + bb * ba * invTa / 255) / outA;
+        return (outA << 24) | (outR << 16) | (outG << 8) | outB;
+    }
+
+    /**
+     * Look up {@link ItemColors} on the {@link Minecraft} instance via reflection.
+     * In 1.19 the field is private with no accessor, so we can't call a getter.
+     * Returns null on failure; callers should skip tint in that case.
+     */
+    private static ItemColors resolveItemColors(Minecraft mc) {
+        ItemColors cached = cachedItemColors;
+        if (cached != null) return cached;
+        try {
+            Class<?> c = Minecraft.class;
+            while (c != null && c != Object.class) {
+                for (Field f : c.getDeclaredFields()) {
+                    if (f.getType() == ItemColors.class) {
+                        f.setAccessible(true);
+                        ItemColors ic = (ItemColors) f.get(mc);
+                        if (ic != null) {
+                            cachedItemColors = ic;
+                            return ic;
+                        }
+                    }
+                }
+                c = c.getSuperclass();
+            }
+        } catch (Exception e) {
+            LOG.warning("[DebugBridge] Failed to resolve ItemColors via reflection: " + e.getMessage());
+        }
+        return null;
+    }
+
+    // ---- Filled-map rendering (bypasses the baked model pipeline) ----
+
+    private static Field findNativeImageArrayField(Class<?> cls) {
+        Class<?> c = cls;
+        while (c != null && c != Object.class) {
+            for (Field f : c.getDeclaredFields()) {
+                if (f.getType() == NativeImage[].class) {
+                    return f;
+                }
+            }
+            c = c.getSuperclass();
+        }
+        return null;
+    }
 
     @Override
     public TextureResult getItemTexture(int slot) throws Exception {
@@ -95,7 +186,10 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
 
             Entity target = null;
             for (Entity e : mc.level.entitiesForRendering()) {
-                if (e.getId() == entityId) { target = e; break; }
+                if (e.getId() == entityId) {
+                    target = e;
+                    break;
+                }
             }
             if (target == null) throw new Exception("Entity " + entityId + " not found");
 
@@ -119,6 +213,8 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
             return stack;
         });
     }
+
+    // ---- Custom-head face from profile NBT ----
 
     private TextureResult renderStack(StackSupplier supplier) throws Exception {
         Minecraft mc = Minecraft.getInstance();
@@ -161,18 +257,6 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         return phase3.get(10, TimeUnit.SECONDS);
     }
 
-    @FunctionalInterface
-    private interface StackSupplier {
-        ItemStack get() throws Exception;
-    }
-
-    private record StackOrResult(ItemStack stack, TextureResult result) {}
-
-    // ---- Filled-map rendering (bypasses the baked model pipeline) ----
-
-    private static final int MAP_SIZE = 128;
-    private static final int[] BRIGHTNESS_MOD = { 180, 220, 255, 135 };
-
     private TextureResult tryRenderFilledMap(Minecraft mc, ItemStack stack) throws Exception {
         if (!stack.is(Items.FILLED_MAP)) return null;
         if (mc.level == null) return null;
@@ -195,28 +279,14 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         return new TextureResult(base64, MAP_SIZE, MAP_SIZE, "filled_map");
     }
 
-    private static int mapPixelArgb(byte packedColor) {
-        int colorId = (packedColor & 0xFF) >> 2;
-        int shade = packedColor & 3;
-        if (colorId == 0) return 0;
-        MaterialColor color = MaterialColor.byId(colorId);
-        if (color == null) return 0;
-        int col = color.col;
-        int modifier = BRIGHTNESS_MOD[shade];
-        int r = ((col >> 16) & 255) * modifier / 255;
-        int g = ((col >> 8) & 255) * modifier / 255;
-        int b = (col & 255) * modifier / 255;
-        return (0xFF << 24) | (r << 16) | (g << 8) | b;
-    }
-
-    // ---- Custom-head face from profile NBT ----
+    // ---- Baked-model rendering with tint compositing ----
 
     /**
      * For a player head whose NBT carries a texture profile, decode the profile,
      * fetch the skin PNG from the Mojang CDN, and composite the face + hat
      * overlay into a 16×16 icon. Returns null for anything that isn't a
      * profile-backed head, or if fetch/decoding fails.
-     *
+     * <p>
      * Runs on the caller thread — blocking HTTP is safe here.
      */
     private TextureResult tryRenderHeadFromProfile(ItemStack stack) {
@@ -290,6 +360,8 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         }
     }
 
+    // ---- Pixel helpers ----
+
     private NativeImage fetchSkin(String url) throws Exception {
         NativeImage cached = SKIN_CACHE.get(url);
         if (cached != null) return cached;
@@ -304,15 +376,13 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         }
     }
 
-    // ---- Baked-model rendering with tint compositing ----
-
     /**
      * Composite a baked item model's sprites onto a single canvas, applying
      * per-quad tint via {@link ItemColors}. Needed because dyed leather armor,
      * potions, tipped arrows, spawn eggs, and firework stars encode their color
      * as a tint that's applied at render time — the sprites alone are grayscale
      * or uncolored.
-     *
+     * <p>
      * Multi-layer items (e.g. leather armor's body + stitching) are handled by
      * compositing each quad's sprite in order over the canvas.
      */
@@ -327,8 +397,8 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         if (quads.isEmpty()) {
             TextureAtlasSprite particle = model.getParticleIcon();
             if (particle == null) throw new Exception("No sprite found for item");
-            sprites = new TextureAtlasSprite[] { particle };
-            tintIndices = new int[] { -1 };
+            sprites = new TextureAtlasSprite[]{particle};
+            tintIndices = new int[]{-1};
         } else {
             sprites = new TextureAtlasSprite[quads.size()];
             tintIndices = new int[quads.size()];
@@ -386,38 +456,6 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         ImageIO.write(canvas, "png", baos);
         String base64 = Base64.getEncoder().encodeToString(baos.toByteArray());
         return new TextureResult(base64, maxW, maxH, getSpriteName(sprites[0]));
-    }
-
-    // ---- Pixel helpers ----
-
-    /** Convert NativeImage's little-endian ABGR packing to standard ARGB. */
-    private static int nativeToArgb(int abgr) {
-        int a = (abgr >>> 24) & 0xFF;
-        int b = (abgr >> 16) & 0xFF;
-        int g = (abgr >> 8) & 0xFF;
-        int r = abgr & 0xFF;
-        return (a << 24) | (r << 16) | (g << 8) | b;
-    }
-
-    /** Standard "source over" alpha compositing — top pixel drawn over bottom. */
-    private static int alphaOver(int topArgb, int bottomArgb) {
-        int ta = (topArgb >>> 24) & 0xFF;
-        if (ta == 0) return bottomArgb;
-        if (ta == 255) return topArgb;
-        int ba = (bottomArgb >>> 24) & 0xFF;
-        int tr = (topArgb >> 16) & 0xFF;
-        int tg = (topArgb >> 8) & 0xFF;
-        int tb = topArgb & 0xFF;
-        int br = (bottomArgb >> 16) & 0xFF;
-        int bg = (bottomArgb >> 8) & 0xFF;
-        int bb = bottomArgb & 0xFF;
-        int invTa = 255 - ta;
-        int outA = ta + ba * invTa / 255;
-        if (outA == 0) return 0;
-        int outR = (tr * ta + br * ba * invTa / 255) / outA;
-        int outG = (tg * ta + bg * ba * invTa / 255) / outA;
-        int outB = (tb * ta + bb * ba * invTa / 255) / outA;
-        return (outA << 24) | (outR << 16) | (outG << 8) | outB;
     }
 
     /**
@@ -488,45 +526,11 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         return "";
     }
 
-    /**
-     * Look up {@link ItemColors} on the {@link Minecraft} instance via reflection.
-     * In 1.19 the field is private with no accessor, so we can't call a getter.
-     * Returns null on failure; callers should skip tint in that case.
-     */
-    private static ItemColors resolveItemColors(Minecraft mc) {
-        ItemColors cached = cachedItemColors;
-        if (cached != null) return cached;
-        try {
-            Class<?> c = Minecraft.class;
-            while (c != null && c != Object.class) {
-                for (Field f : c.getDeclaredFields()) {
-                    if (f.getType() == ItemColors.class) {
-                        f.setAccessible(true);
-                        ItemColors ic = (ItemColors) f.get(mc);
-                        if (ic != null) {
-                            cachedItemColors = ic;
-                            return ic;
-                        }
-                    }
-                }
-                c = c.getSuperclass();
-            }
-        } catch (Exception e) {
-            LOG.warning("[DebugBridge] Failed to resolve ItemColors via reflection: " + e.getMessage());
-        }
-        return null;
+    @FunctionalInterface
+    private interface StackSupplier {
+        ItemStack get() throws Exception;
     }
 
-    private static Field findNativeImageArrayField(Class<?> cls) {
-        Class<?> c = cls;
-        while (c != null && c != Object.class) {
-            for (Field f : c.getDeclaredFields()) {
-                if (f.getType() == NativeImage[].class) {
-                    return f;
-                }
-            }
-            c = c.getSuperclass();
-        }
-        return null;
+    private record StackOrResult(ItemStack stack, TextureResult result) {
     }
 }

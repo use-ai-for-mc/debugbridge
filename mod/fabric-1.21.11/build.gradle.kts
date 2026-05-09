@@ -1,9 +1,18 @@
+import org.gradle.api.tasks.compile.JavaCompile
+import org.gradle.jvm.toolchain.JavaLanguageVersion
+
 plugins {
-    id("fabric-loom") version "1.9.2"
+    id("fabric-loom") version "1.14.10"
 }
 
 base {
     archivesName.set("debugbridge-1.21.11")
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
 }
 
 dependencies {
@@ -19,6 +28,10 @@ dependencies {
     include("org.luaj:luaj-jse:3.0.1")
     include("org.java-websocket:Java-WebSocket:1.5.7")
     include("com.google.code.gson:gson:2.11.0")
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(21)
 }
 
 tasks.processResources {

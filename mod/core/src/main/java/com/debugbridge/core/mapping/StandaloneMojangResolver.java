@@ -1,13 +1,15 @@
 package com.debugbridge.core.mapping;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * A standalone Mojang mapping resolver that works without Fabric's runtime.
  * Uses only the parsed ProGuard mappings. This is suitable for:
- *   - Testing outside of Minecraft
- *   - Environments where Fabric's MappingResolver isn't available
- *
+ * - Testing outside of Minecraft
+ * - Environments where Fabric's MappingResolver isn't available
+ * <p>
  * For actual Fabric runtime use, a FabricMojangResolver would chain
  * ProGuard (mojang→obfuscated) with Fabric's resolver (obfuscated→intermediary).
  */
@@ -78,8 +80,12 @@ public class StandaloneMojangResolver implements MappingResolver {
     }
 
     @Override
-    public String getVersion() { return version; }
+    public String getVersion() {
+        return version;
+    }
 
     @Override
-    public boolean isObfuscated() { return true; }
+    public boolean isObfuscated() {
+        return true;
+    }
 }

@@ -14,29 +14,30 @@ import java.util.Iterator;
 /**
  * JPEG encoder shared by all fabric shims. Takes raw ARGB pixels (alpha is
  * discarded by JPEG) and writes a quality-controlled JPEG to a temp file.
- *
+ * <p>
  * Lives in core because it depends only on the JDK ({@link ImageIO} via the
  * {@code java.desktop} module, which is part of every standard JRE).
  */
 public final class JpegEncoder {
-    private JpegEncoder() {}
+    private JpegEncoder() {
+    }
 
     /**
      * Write the given ARGB pixels as a JPEG to a fresh temp file.
      *
      * @param argbPixels pixels in row-major order, 0xAARRGGBB layout. Length must be width * height.
-     * @param width image width
-     * @param height image height
-     * @param quality JPEG quality in [0.0, 1.0]; clamped to [0.05, 1.0]
+     * @param width      image width
+     * @param height     image height
+     * @param quality    JPEG quality in [0.0, 1.0]; clamped to [0.05, 1.0]
      * @return the absolute path of the written file
      */
     public static Path writeJpegTempFile(int[] argbPixels, int width, int height, float quality)
             throws IOException {
         if (argbPixels.length != width * height) {
             throw new IllegalArgumentException(
-                "pixel buffer length " + argbPixels.length + " != " + width + "*" + height);
+                    "pixel buffer length " + argbPixels.length + " != " + width + "*" + height);
         }
-        float clamped = Math.max(0.05f, Math.min(1.0f, quality));
+        float clamped = Math.max(0.05f, Math.min(quality, 1.0f));
 
         // TYPE_INT_RGB drops the alpha byte when we setRGB with ARGB ints,
         // which is exactly what we want for JPEG (no alpha channel).

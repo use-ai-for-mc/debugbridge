@@ -13,14 +13,18 @@ public class ObjectRefStore {
     private final Map<String, WeakReference<Object>> refs = new ConcurrentHashMap<>();
     private final AtomicInteger counter = new AtomicInteger(0);
 
-    /** Store an object and return its reference ID. */
+    /**
+     * Store an object and return its reference ID.
+     */
     public String store(Object obj) {
         String id = "$ref_" + counter.incrementAndGet();
         refs.put(id, new WeakReference<>(obj));
         return id;
     }
 
-    /** Retrieve an object by reference ID. Returns null if GC'd. */
+    /**
+     * Retrieve an object by reference ID. Returns null if GC'd.
+     */
     public Object get(String id) {
         WeakReference<Object> ref = refs.get(id);
         if (ref == null) return null;
@@ -31,13 +35,17 @@ public class ObjectRefStore {
         return obj;
     }
 
-    /** Clear all references. */
+    /**
+     * Clear all references.
+     */
     public void clear() {
         refs.clear();
         counter.set(0);
     }
 
-    /** Count of live references. */
+    /**
+     * Count of live references.
+     */
     public int size() {
         refs.entrySet().removeIf(e -> e.getValue().get() == null);
         return refs.size();

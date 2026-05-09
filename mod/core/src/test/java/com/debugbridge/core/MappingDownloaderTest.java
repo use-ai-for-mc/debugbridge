@@ -2,10 +2,6 @@ package com.debugbridge.core;
 
 import com.debugbridge.core.mapping.*;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -39,17 +35,17 @@ class MappingDownloaderTest {
 
         // Verify some well-known classes exist
         assertTrue(mappings.classes.containsKey("net.minecraft.client.Minecraft"),
-            "Should contain Minecraft class");
+                "Should contain Minecraft class");
         assertTrue(mappings.classes.containsKey("net.minecraft.world.entity.Entity"),
-            "Should contain Entity class");
+                "Should contain Entity class");
 
         System.out.println("Parsed " + mappings.classes.size() + " classes");
 
         // Check Minecraft class has expected members
         assertNotNull(mappings.fields.get("net.minecraft.client.Minecraft"),
-            "Minecraft should have fields");
+                "Minecraft should have fields");
         assertNotNull(mappings.methods.get("net.minecraft.client.Minecraft"),
-            "Minecraft should have methods");
+                "Minecraft should have methods");
 
         // Print some interesting mappings for verification
         String mcObf = mappings.classes.get("net.minecraft.client.Minecraft");
@@ -79,18 +75,18 @@ class MappingDownloaderTest {
         var entityFields = mappings.fields.get("net.minecraft.world.entity.Entity");
         if (entityFields != null) {
             entityFields.entrySet().stream().limit(10).forEach(e ->
-                System.out.println("  " + e.getKey() + " -> " + e.getValue()));
+                    System.out.println("  " + e.getKey() + " -> " + e.getValue()));
         }
 
         System.out.println("\nSample Entity methods:");
         var entityMethods = mappings.methods.get("net.minecraft.world.entity.Entity");
         if (entityMethods != null) {
             entityMethods.entrySet().stream().limit(10).forEach(e ->
-                System.out.println("  " + e.getKey() + " -> " + e.getValue()));
+                    System.out.println("  " + e.getKey() + " -> " + e.getValue()));
         }
 
         // Verify search works
         assertTrue(resolver.getAllClassNames().size() > 1000,
-            "Should have many classes, got: " + resolver.getAllClassNames().size());
+                "Should have many classes, got: " + resolver.getAllClassNames().size());
     }
 }

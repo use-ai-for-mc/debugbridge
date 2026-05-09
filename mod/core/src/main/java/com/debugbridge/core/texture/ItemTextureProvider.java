@@ -4,7 +4,7 @@ package com.debugbridge.core.texture;
  * Resolves the displayed texture for an inventory item by walking Minecraft's
  * baked item-model tree (handling damage-based overrides, etc.) and reading
  * the pixel data from the resolved sprite.
- *
+ * <p>
  * Each version-specific mod provides its own implementation because the model
  * resolution APIs differ between MC versions.
  */
@@ -25,7 +25,7 @@ public interface ItemTextureProvider {
      * so resource-pack overrides fire the same as in-game.
      *
      * @param entityId network entity ID
-     * @param slot equipment slot name (MAINHAND, OFFHAND, HEAD, CHEST, LEGS, FEET)
+     * @param slot     equipment slot name (MAINHAND, OFFHAND, HEAD, CHEST, LEGS, FEET)
      * @return texture result with base64-encoded PNG and metadata
      * @throws Exception if extraction fails
      */
@@ -43,6 +43,9 @@ public interface ItemTextureProvider {
      */
     TextureResult getItemTextureById(String itemId) throws Exception;
 
-    /** Result of a successful texture extraction. */
-    record TextureResult(String base64Png, int width, int height, String spriteName) {}
+    /**
+     * Result of a successful texture extraction.
+     */
+    record TextureResult(String base64Png, int width, int height, String spriteName) {
+    }
 }

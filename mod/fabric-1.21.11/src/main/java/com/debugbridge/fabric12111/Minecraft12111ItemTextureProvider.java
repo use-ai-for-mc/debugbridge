@@ -2,9 +2,6 @@ package com.debugbridge.fabric12111;
 
 import com.debugbridge.core.texture.ItemTextureProvider;
 import com.mojang.blaze3d.ProjectionType;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
-import net.minecraft.world.item.Item;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.CommandEncoder;
@@ -22,17 +19,16 @@ import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
 import net.minecraft.client.renderer.item.ItemModelResolver;
 import net.minecraft.client.renderer.item.TrackingItemStackRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.decoration.ItemFrame;
-import net.minecraft.world.item.ItemDisplayContext;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.MapItem;
-import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
+import net.minecraft.world.item.*;
 import net.minecraft.world.level.material.MapColor;
+import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -58,13 +54,78 @@ import java.util.logging.Logger;
 public class Minecraft12111ItemTextureProvider implements ItemTextureProvider {
     private static final Logger LOG = Logger.getLogger("DebugBridge");
     private static final int TEXTURE_SIZE = 32;
-
+    private static final int MAP_SIZE = 128;
+    private static final int[] BRIGHTNESS_MOD = {180, 220, 255, 135};
     // Reflection cache
     private static volatile boolean reflectionReady = false;
     private static Field gameRendererGuiRendererField;       // GameRenderer → GuiRenderer
     private static Field guiRendererBufferSourceField;       // GuiRenderer → MultiBufferSource.BufferSource
     private static Field guiRendererSubmitCollectorField;    // GuiRenderer → SubmitNodeCollector
     private static Field guiRendererFeatureDispatcherField;  // GuiRenderer → FeatureRenderDispatcher
+
+    private static int mapPixelArgb(byte packedColor) {
+        int colorId = (packedColor & 0xFF) >> 2;
+        int shade = packedColor & 3;
+        if (colorId == 0) return 0;
+        MapColor color = MapColor.byId(colorId);
+        if (color == null) return 0;
+        int col = color.col;
+        int modifier = BRIGHTNESS_MOD[shade];
+        int r = ((col >> 16) & 255) * modifier / 255;
+        int g = ((col >> 8) & 255) * modifier / 255;
+        int b = (col & 255) * modifier / 255;
+        return (0xFF << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    private static synchronized void initReflection() throws Exception {
+        if (reflectionReady) return;
+
+        for (Field f : net.minecraft.client.renderer.GameRenderer.class.getDeclaredFields()) {
+            if (f.getType() == GuiRenderer.class && !Modifier.isStatic(f.getModifiers())) {
+                gameRendererGuiRendererField = f;
+                f.setAccessible(true);
+                break;
+            }
+        }
+        if (gameRendererGuiRendererField == null)
+            throw new Exception("Cannot find GameRenderer.guiRenderer field");
+
+        for (Field f : GuiRenderer.class.getDeclaredFields()) {
+            if (f.getType() == MultiBufferSource.BufferSource.class
+                    && !Modifier.isStatic(f.getModifiers())) {
+                guiRendererBufferSourceField = f;
+                f.setAccessible(true);
+                break;
+            }
+        }
+        if (guiRendererBufferSourceField == null)
+            throw new Exception("Cannot find GuiRenderer.bufferSource field");
+
+        for (Field f : GuiRenderer.class.getDeclaredFields()) {
+            if (SubmitNodeCollector.class.isAssignableFrom(f.getType())
+                    && !Modifier.isStatic(f.getModifiers())) {
+                guiRendererSubmitCollectorField = f;
+                f.setAccessible(true);
+                break;
+            }
+        }
+        if (guiRendererSubmitCollectorField == null)
+            throw new Exception("Cannot find GuiRenderer.submitNodeCollector field");
+
+        for (Field f : GuiRenderer.class.getDeclaredFields()) {
+            if (f.getType() == FeatureRenderDispatcher.class
+                    && !Modifier.isStatic(f.getModifiers())) {
+                guiRendererFeatureDispatcherField = f;
+                f.setAccessible(true);
+                break;
+            }
+        }
+        if (guiRendererFeatureDispatcherField == null)
+            throw new Exception("Cannot find GuiRenderer.featureRenderDispatcher field");
+
+        reflectionReady = true;
+        LOG.info("[DebugBridge] Item texture provider reflection initialized (offscreen render)");
+    }
 
     @Override
     public TextureResult getItemTexture(int slot) throws Exception {
@@ -76,6 +137,8 @@ public class Minecraft12111ItemTextureProvider implements ItemTextureProvider {
             return stack;
         });
     }
+
+    // ---- Filled-map rendering (bypasses the GUI item pipeline) ----
 
     @Override
     public TextureResult getItemTextureById(String itemId) throws Exception {
@@ -97,29 +160,33 @@ public class Minecraft12111ItemTextureProvider implements ItemTextureProvider {
 
             Entity target = null;
             for (Entity e : mc.level.entitiesForRendering()) {
-                if (e.getId() == entityId) { target = e; break; }
+                if (e.getId() == entityId) {
+                    target = e;
+                    break;
+                }
             }
             if (target == null) throw new Exception("Entity " + entityId + " not found");
 
             ItemStack stack;
-            if ("FRAME".equals(slotName) && target instanceof ItemFrame frame) {
-                stack = frame.getItem();
-            } else if ("DISPLAY".equals(slotName) && target instanceof Display.ItemDisplay itemDisplay) {
-                var renderState = itemDisplay.itemRenderState();
-                if (renderState == null || renderState.itemStack() == null) {
-                    throw new Exception("ItemDisplay render state not ready");
+            switch (target) {
+                case ItemFrame frame when "FRAME".equals(slotName) -> stack = frame.getItem();
+                case Display.ItemDisplay itemDisplay when "DISPLAY".equals(slotName) -> {
+                    var renderState = itemDisplay.itemRenderState();
+                    if (renderState == null) {
+                        throw new Exception("ItemDisplay render state not ready");
+                    }
+                    stack = renderState.itemStack();
                 }
-                stack = renderState.itemStack();
-            } else if (target instanceof LivingEntity living) {
-                EquipmentSlot slot;
-                try {
-                    slot = EquipmentSlot.valueOf(slotName);
-                } catch (IllegalArgumentException e) {
-                    throw new Exception("Unknown slot " + slotName);
+                case LivingEntity living -> {
+                    EquipmentSlot slot;
+                    try {
+                        slot = EquipmentSlot.valueOf(slotName);
+                    } catch (IllegalArgumentException e) {
+                        throw new Exception("Unknown slot " + slotName);
+                    }
+                    stack = living.getItemBySlot(slot);
                 }
-                stack = living.getItemBySlot(slot);
-            } else {
-                throw new Exception("Entity " + entityId + " has no equipment");
+                default -> throw new Exception("Entity " + entityId + " has no equipment");
             }
 
             if (stack.isEmpty())
@@ -293,16 +360,6 @@ public class Minecraft12111ItemTextureProvider implements ItemTextureProvider {
         return future.get(10, TimeUnit.SECONDS);
     }
 
-    @FunctionalInterface
-    private interface StackSupplier {
-        ItemStack get() throws Exception;
-    }
-
-    // ---- Filled-map rendering (bypasses the GUI item pipeline) ----
-
-    private static final int MAP_SIZE = 128;
-    private static final int[] BRIGHTNESS_MOD = { 180, 220, 255, 135 };
-
     private TextureResult tryRenderFilledMap(Minecraft mc, ItemStack stack) throws Exception {
         if (!stack.is(Items.FILLED_MAP)) return null;
         if (mc.level == null) return null;
@@ -325,69 +382,10 @@ public class Minecraft12111ItemTextureProvider implements ItemTextureProvider {
         return new TextureResult(base64, MAP_SIZE, MAP_SIZE, "filled_map");
     }
 
-    private static int mapPixelArgb(byte packedColor) {
-        int colorId = (packedColor & 0xFF) >> 2;
-        int shade = packedColor & 3;
-        if (colorId == 0) return 0;
-        MapColor color = MapColor.byId(colorId);
-        if (color == null) return 0;
-        int col = color.col;
-        int modifier = BRIGHTNESS_MOD[shade];
-        int r = ((col >> 16) & 255) * modifier / 255;
-        int g = ((col >> 8) & 255) * modifier / 255;
-        int b = (col & 255) * modifier / 255;
-        return (0xFF << 24) | (r << 16) | (g << 8) | b;
-    }
-
     // ---- One-time reflection setup ----
 
-    private static synchronized void initReflection() throws Exception {
-        if (reflectionReady) return;
-
-        for (Field f : net.minecraft.client.renderer.GameRenderer.class.getDeclaredFields()) {
-            if (f.getType() == GuiRenderer.class && !Modifier.isStatic(f.getModifiers())) {
-                gameRendererGuiRendererField = f;
-                f.setAccessible(true);
-                break;
-            }
-        }
-        if (gameRendererGuiRendererField == null)
-            throw new Exception("Cannot find GameRenderer.guiRenderer field");
-
-        for (Field f : GuiRenderer.class.getDeclaredFields()) {
-            if (f.getType() == MultiBufferSource.BufferSource.class
-                    && !Modifier.isStatic(f.getModifiers())) {
-                guiRendererBufferSourceField = f;
-                f.setAccessible(true);
-                break;
-            }
-        }
-        if (guiRendererBufferSourceField == null)
-            throw new Exception("Cannot find GuiRenderer.bufferSource field");
-
-        for (Field f : GuiRenderer.class.getDeclaredFields()) {
-            if (SubmitNodeCollector.class.isAssignableFrom(f.getType())
-                    && !Modifier.isStatic(f.getModifiers())) {
-                guiRendererSubmitCollectorField = f;
-                f.setAccessible(true);
-                break;
-            }
-        }
-        if (guiRendererSubmitCollectorField == null)
-            throw new Exception("Cannot find GuiRenderer.submitNodeCollector field");
-
-        for (Field f : GuiRenderer.class.getDeclaredFields()) {
-            if (f.getType() == FeatureRenderDispatcher.class
-                    && !Modifier.isStatic(f.getModifiers())) {
-                guiRendererFeatureDispatcherField = f;
-                f.setAccessible(true);
-                break;
-            }
-        }
-        if (guiRendererFeatureDispatcherField == null)
-            throw new Exception("Cannot find GuiRenderer.featureRenderDispatcher field");
-
-        reflectionReady = true;
-        LOG.info("[DebugBridge] Item texture provider reflection initialized (offscreen render)");
+    @FunctionalInterface
+    private interface StackSupplier {
+        ItemStack get() throws Exception;
     }
 }

@@ -1,6 +1,9 @@
 package com.debugbridge.core.lua;
 
-import org.luaj.vm2.*;
+import org.luaj.vm2.LuaError;
+import org.luaj.vm2.LuaUserdata;
+import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.Varargs;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -30,8 +33,13 @@ public class JavaClassWrapper extends LuaUserdata {
         this.bridge = bridge;
     }
 
-    public Class<?> getJavaClass() { return javaClass; }
-    public String getMojangClassName() { return mojangClassName; }
+    public Class<?> getJavaClass() {
+        return javaClass;
+    }
+
+    public String getMojangClassName() {
+        return mojangClassName;
+    }
 
     @Override
     public LuaValue get(LuaValue key) {
@@ -62,7 +70,7 @@ public class JavaClassWrapper extends LuaUserdata {
                 field.setAccessible(true);
                 final Field f = field;
                 Object value = bridge.getDispatcher().executeOnGameThread(
-                    () -> f.get(null), 5000);
+                        () -> f.get(null), 5000);
                 return bridge.wrapJavaValue(value);
             } catch (Exception e) {
                 // Fall through to method wrapper
@@ -116,33 +124,45 @@ public class JavaClassWrapper extends LuaUserdata {
     }
 
     @Override
-    public Varargs invoke() { return invoke(LuaValue.NONE); }
+    public Varargs invoke() {
+        return invoke(LuaValue.NONE);
+    }
 
     @Override
-    public Varargs invoke(LuaValue[] a) { return invoke(LuaValue.varargsOf(a)); }
+    public Varargs invoke(LuaValue[] a) {
+        return invoke(LuaValue.varargsOf(a));
+    }
 
     @Override
-    public LuaValue call() { invoke(LuaValue.NONE); return LuaValue.NIL; }
+    public LuaValue call() {
+        invoke(LuaValue.NONE);
+        return LuaValue.NIL;
+    }
 
     @Override
-    public LuaValue call(LuaValue a) { invoke(a); return LuaValue.NIL; }
+    public LuaValue call(LuaValue a) {
+        invoke(a);
+        return LuaValue.NIL;
+    }
 
     @Override
     public LuaValue call(LuaValue a, LuaValue b) {
-        invoke(LuaValue.varargsOf(new LuaValue[]{a, b})); return LuaValue.NIL;
+        invoke(LuaValue.varargsOf(new LuaValue[]{a, b}));
+        return LuaValue.NIL;
     }
 
     @Override
     public LuaValue call(LuaValue a, LuaValue b, LuaValue c) {
-        invoke(LuaValue.varargsOf(new LuaValue[]{a, b, c})); return LuaValue.NIL;
+        invoke(LuaValue.varargsOf(new LuaValue[]{a, b, c}));
+        return LuaValue.NIL;
     }
 
     private String buildCallError() {
         return "Attempted to call the class " + mojangClassName + " directly."
-            + "\n  Classes returned by java.import() are not callable."
-            + "\n  Fix options:"
-            + "\n    - Construct an instance:     java.new(cls, args...)"
-            + "\n    - Call a static method:      cls:methodName(args)  or  cls.methodName(args)"
-            + "\n    - Read a static field:       cls.fieldName";
+                + "\n  Classes returned by java.import() are not callable."
+                + "\n  Fix options:"
+                + "\n    - Construct an instance:     java.new(cls, args...)"
+                + "\n    - Call a static method:      cls:methodName(args)  or  cls.methodName(args)"
+                + "\n    - Read a static field:       cls.fieldName";
     }
 }

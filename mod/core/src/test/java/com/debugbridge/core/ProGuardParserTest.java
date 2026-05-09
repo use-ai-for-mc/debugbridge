@@ -1,6 +1,9 @@
 package com.debugbridge.core;
 
-import com.debugbridge.core.mapping.*;
+import com.debugbridge.core.mapping.ParsedMappings;
+import com.debugbridge.core.mapping.PassthroughResolver;
+import com.debugbridge.core.mapping.ProGuardParser;
+import com.debugbridge.core.mapping.StandaloneMojangResolver;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -56,19 +59,19 @@ class ProGuardParserTest {
 
         // Method with params
         assertEquals("a", m.methods.get("net.minecraft.client.Minecraft")
-            .get("setScreen(net.minecraft.client.gui.screens.Screen)"));
+                .get("setScreen(net.minecraft.client.gui.screens.Screen)"));
 
         // Static method no params
         assertEquals("D", m.methods.get("net.minecraft.client.Minecraft")
-            .get("getInstance()"));
+                .get("getInstance()"));
 
         // Method with line numbers stripped
         assertEquals("b", m.methods.get("net.minecraft.client.Minecraft")
-            .get("tick()"));
+                .get("tick()"));
 
         // Method on LocalPlayer
         assertEquals("bF", m.methods.get("net.minecraft.client.player.LocalPlayer")
-            .get("getHealth()"));
+                .get("getHealth()"));
     }
 
     @Test

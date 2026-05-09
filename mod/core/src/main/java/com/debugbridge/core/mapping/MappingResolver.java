@@ -47,9 +47,13 @@ public interface MappingResolver {
      */
     Collection<String> getMethodSignatures(String mojangClassName);
 
-    /** The Minecraft version this resolver is for. */
+    /**
+     * The Minecraft version this resolver is for.
+     */
     String getVersion();
 
-    /** Whether this resolver actually translates names (false for passthrough). */
+    /**
+     * Whether this resolver actually translates names (false for passthrough).
+     */
     boolean isObfuscated();
 }

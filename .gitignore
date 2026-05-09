@@ -86,3 +86,5 @@ logs/
 # MCP server build artifacts
 mcp-server/mcpb/
 mcp-server/*.mcpb
+
+docs/superpowers

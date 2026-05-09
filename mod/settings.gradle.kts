@@ -13,4 +13,5 @@ include(":core")
 // Uncomment when building with Gradle 8.x and Fabric Loom.
 include(":fabric-1.19")
 include(":fabric-1.21.11")
+include(":fabric-26.2-dev")
 // include(":fabric-26.1")

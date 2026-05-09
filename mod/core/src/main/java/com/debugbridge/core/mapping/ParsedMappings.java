@@ -1,23 +1,38 @@
 package com.debugbridge.core.mapping;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Result of parsing a ProGuard mappings file.
  * All maps use Mojang names as keys.
  */
 public class ParsedMappings {
-    /** Mojang class name -> obfuscated class name */
+    /**
+     * Mojang class name -> obfuscated class name
+     */
     public final Map<String, String> classes;
-    /** Obfuscated class name -> Mojang class name */
+    /**
+     * Obfuscated class name -> Mojang class name
+     */
     public final Map<String, String> classesReverse;
-    /** Mojang class -> { mojang field name -> obfuscated field name } */
+    /**
+     * Mojang class -> { mojang field name -> obfuscated field name }
+     */
     public final Map<String, Map<String, String>> fields;
-    /** Mojang class -> { "methodName(paramTypes)" -> obfuscated method name } */
+    /**
+     * Mojang class -> { "methodName(paramTypes)" -> obfuscated method name }
+     */
     public final Map<String, Map<String, String>> methods;
-    /** Mojang class -> { field name -> mojang type name } */
+    /**
+     * Mojang class -> { field name -> mojang type name }
+     */
     public final Map<String, Map<String, String>> fieldTypes;
-    /** Mojang class -> { "methodName(paramTypes)" -> "(paramTypes)returnType" } */
+    /**
+     * Mojang class -> { "methodName(paramTypes)" -> "(paramTypes)returnType" }
+     */
     public final Map<String, Map<String, String>> methodDescriptors;
 
     public ParsedMappings(
@@ -36,6 +51,14 @@ public class ParsedMappings {
     }
 
     /**
+     * Get the simple method name from a qualified key like "getName()" -> "getName"
+     */
+    public static String simpleMethodName(String key) {
+        int paren = key.indexOf('(');
+        return paren >= 0 ? key.substring(0, paren) : key;
+    }
+
+    /**
      * Find all method names (without descriptor) that match a simple name in a class.
      * Returns the obfuscated names for all overloads.
      */
@@ -51,13 +74,5 @@ public class ParsedMappings {
             }
         }
         return results;
-    }
-
-    /**
-     * Get the simple method name from a qualified key like "getName()" -> "getName"
-     */
-    public static String simpleMethodName(String key) {
-        int paren = key.indexOf('(');
-        return paren >= 0 ? key.substring(0, paren) : key;
     }
 }

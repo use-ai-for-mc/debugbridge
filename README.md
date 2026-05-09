@@ -1,6 +1,6 @@
 # DebugBridge
 
-A Fabric client mod for Minecraft (1.19 and 1.21.11) that exposes game state over a local WebSocket server, plus a Vue web UI for visual inspection. Built for AI-assisted Minecraft development and debugging.
+A Fabric client mod for Minecraft (1.19, 1.21.11, and 26.2 development snapshots) that exposes game state over a local WebSocket server, plus a Vue web UI for visual inspection. Built for AI-assisted Minecraft development and debugging.
 
 ## What It Does
 
@@ -100,6 +100,8 @@ The web UI connects directly to the WebSocket server — no MCP layer required.
 
 The mod automatically downloads official Mojang mappings at startup and uses them to translate human-readable names (`net.minecraft.client.Minecraft`) to the obfuscated names used at runtime. In 1.21.11+, Mojang ships unobfuscated names and mapping is a no-op.
 
+The 26.2 development build targets Mojang-named snapshot classes directly and skips mapping download/remap entirely.
+
 ## Security Model
 
 **DebugBridge binds exclusively to localhost (127.0.0.1).** Only processes running on the same machine can connect. The debug port is never exposed to the network.
@@ -118,18 +120,23 @@ mod/
   core/          — Shared Java: BridgeServer, Lua runtime, mapping resolver, provider interfaces
   fabric-1.19/   — Fabric mod for Minecraft 1.19.x (provider impls + mixins)
   fabric-1.21.11/— Fabric mod for Minecraft 1.21.11 (provider impls + mixins)
+  fabric-26.2-dev/— Fabric mod for Minecraft 26.2 development snapshots
 web-ui/          — Vue 3 + Pinia + Tailwind inspection app
 ```
 
 ## Building
 
-Requires **JDK 21** and **Node ≥20.19**.
+Requires **JDK 21+** for the stable Fabric modules, **JDK 26** for `fabric-26.2-dev`, and **Node ≥20.19** for the web UI.
 
 ```bash
 # Fabric mods
 cd mod
 JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ./gradlew build
-# JARs → mod/fabric-1.19/build/libs/ and mod/fabric-1.21.11/build/libs/
+# JARs -> mod/fabric-*/build/libs/
+
+# 26.2 development snapshot bridge
+cd mod
+./gradlew :core:test :fabric-26.2-dev:jar
 
 # Web UI
 cd web-ui

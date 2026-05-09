@@ -35,10 +35,14 @@ public class BridgeConfig {
      */
     public boolean runCommandEnabled = false;
 
-    /** Path to the config file, set when loaded. */
+    /**
+     * Path to the config file, set when loaded.
+     */
     private transient Path configFile;
 
-    /** Load config from a directory (e.g. .minecraft/config/). */
+    /**
+     * Load config from a directory (e.g. .minecraft/config/).
+     */
     public static BridgeConfig load(Path configDir) {
         Path file = configDir.resolve("debugbridge.json");
         BridgeConfig config = new BridgeConfig();

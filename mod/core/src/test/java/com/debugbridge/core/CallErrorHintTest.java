@@ -31,13 +31,19 @@ class CallErrorHintTest {
     /**
      * Public helper class used as the target of call-as-method tests.
      *
-     * <p>{@code inner} mirrors the Mojang {@code Entity.level} / {@code Entity.level()}
-     * field-shadows-method pattern. {@link com.debugbridge.core.lua.JavaObjectWrapper}'s
-     * resolution order prefers the method when both exist, so {@code o:inner()}
-     * succeeds and returns the field — see {@link #testFieldShadowedByMethodCallsMethod()}.
+     * <p>Both {@code inner} and {@code only} are fields of type {@link Inner}.
+     * {@code inner} is shadowed by a same-named getter method — this mirrors
+     * the Mojang {@code Entity.level} / {@code Entity.level()} pattern.
+     * {@code only} is field-only.
      *
-     * <p>{@code only} is field-only (no shadowing method); calling it as a method
-     * is the path that triggers the actionable error hint.
+     * <p>Under {@link com.debugbridge.core.lua.JavaObjectWrapper}'s field-first
+     * resolution policy, accessing either name returns the field value. Calling
+     * either as a method ({@code o:inner()} / {@code o:only()}) hits the
+     * actionable error path — see
+     * {@link #testCallingFieldAsMethodGivesActionableError()} for the
+     * field-only case and
+     * {@link #testCallingShadowedFieldAsMethodAlsoGivesActionableError()} for
+     * the shadowed case.
      */
     public static class Outer {
         public final Inner inner = new Inner();
@@ -137,18 +143,40 @@ class CallErrorHintTest {
     }
 
     @Test
-    void testFieldShadowedByMethodCallsMethod() throws Exception {
-        // Regression test for JavaObjectWrapper's policy: when a field and a
-        // same-named method both exist, prefer the method. This is the
-        // Entity.level / Entity.level() in-game pattern: `o:inner()` should
-        // invoke the method (returning the field value), not produce an error.
+    void testCallingShadowedFieldAsMethodAlsoGivesActionableError() throws Exception {
+        // Under the field-first resolution policy, `o:inner()` returns the
+        // field value (an Inner) and then attempts to call it. The error path
+        // should still produce the actionable hint, and additionally surface
+        // the same-named getter method so the user knows how to invoke it.
+        // This is the Mojang `Entity.level` / `Entity.level()` pattern.
         JsonObject resp = execute("""
             local Outer = java.import("com.debugbridge.core.CallErrorHintTest$Outer")
             local o = java.new(Outer)
-            return o:inner().value
+            o:inner()
+            """);
+        assertFalse(resp.get("success").getAsBoolean(), "Should fail");
+        String error = resp.get("error").getAsString();
+
+        // Same actionable shape as the field-only case.
+        assertTrue(error.contains("Java object"),
+            "Error should mention it's a Java object, got: " + error);
+        assertTrue(error.contains("inner"),
+            "Error should mention the field name 'inner', got: " + error);
+        assertTrue(error.contains("FIELD") || error.contains("field"),
+            "Error should say it's a field, got: " + error);
+    }
+
+    @Test
+    void testShadowedFieldChainStillResolvesField() throws Exception {
+        // The disambiguation form should keep working on a shadowed field too:
+        // `o.inner.value` reads the field, no method call involved.
+        JsonObject resp = execute("""
+            local Outer = java.import("com.debugbridge.core.CallErrorHintTest$Outer")
+            local o = java.new(Outer)
+            return o.inner.value
             """);
         assertTrue(resp.get("success").getAsBoolean(),
-            "Shadowed-field method call should succeed: " + resp);
+            "Shadowed-field chaining should work: " + resp);
         assertEquals(42,
             resp.get("result").getAsJsonObject().get("value").getAsInt());
     }
