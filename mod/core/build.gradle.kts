@@ -7,10 +7,10 @@ dependencies {
     implementation("org.luaj:luaj-jse:3.0.1")
 
     // Java-WebSocket - lightweight WebSocket server
-    implementation("org.java-websocket:Java-WebSocket:1.5.7")
+    implementation("org.java-websocket:Java-WebSocket:1.6.0")
 
     // Gson - JSON serialization
-    implementation("com.google.code.gson:gson:2.11.0")
+    implementation("com.google.code.gson:gson:2.14.0")
 
     // Testing
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")

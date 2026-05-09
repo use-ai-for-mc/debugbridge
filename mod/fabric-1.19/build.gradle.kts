@@ -1,5 +1,5 @@
 plugins {
-    id("fabric-loom") version "1.14.10"
+    id("fabric-loom") version "1.16.1"
 }
 
 base {
@@ -8,17 +8,17 @@ base {
 
 dependencies {
     implementation(project(":core"))
-    implementation("org.java-websocket:Java-WebSocket:1.5.7")
+    implementation("org.java-websocket:Java-WebSocket:1.6.0")
 
     minecraft("com.mojang:minecraft:1.19")
     mappings(loom.officialMojangMappings())
-    modImplementation("net.fabricmc:fabric-loader:0.14.21")
+    modImplementation("net.fabricmc:fabric-loader:0.19.2")
 
     // Include core's dependencies
     include(project(":core"))
     include("org.luaj:luaj-jse:3.0.1")
-    include("org.java-websocket:Java-WebSocket:1.5.7")
-    include("com.google.code.gson:gson:2.11.0")
+    include("org.java-websocket:Java-WebSocket:1.6.0")
+    include("com.google.code.gson:gson:2.14.0")
 }
 
 tasks.processResources {
