@@ -146,9 +146,13 @@ class CallErrorHintTest {
     void testCallingShadowedFieldAsMethodAlsoGivesActionableError() throws Exception {
         // Under the field-first resolution policy, `o:inner()` returns the
         // field value (an Inner) and then attempts to call it. The error path
-        // should still produce the actionable hint, and additionally surface
-        // the same-named getter method so the user knows how to invoke it.
-        // This is the Mojang `Entity.level` / `Entity.level()` pattern.
+        // should produce the actionable hint AND avoid the misleading
+        // "use obj:inner()" suggestion — that form is exactly what just
+        // failed, because the field shadows the method. The only working
+        // syntax is to dot-access the field, then operate on its value
+        // (e.g. `obj.inner:<method>(...)`). This is the Mojang
+        // `Entity.level` / `Entity.level()` and
+        // `ClientPacketListener.registryAccess` pattern.
         JsonObject resp = execute("""
             local Outer = java.import("com.debugbridge.core.CallErrorHintTest$Outer")
             local o = java.new(Outer)
@@ -156,6 +160,7 @@ class CallErrorHintTest {
             """);
         assertFalse(resp.get("success").getAsBoolean(), "Should fail");
         String error = resp.get("error").getAsString();
+        System.out.println("Shadowed field error:\n" + error);
 
         // Same actionable shape as the field-only case.
         assertTrue(error.contains("Java object"),
@@ -164,6 +169,22 @@ class CallErrorHintTest {
             "Error should mention the field name 'inner', got: " + error);
         assertTrue(error.contains("FIELD") || error.contains("field"),
             "Error should say it's a field, got: " + error);
+
+        // Must NOT suggest `obj:inner()` as a fix — that's the exact syntax
+        // that failed under field-first resolution. Suggesting it is the bug
+        // this test guards against.
+        assertFalse(error.contains("obj:inner()"),
+            "Should not suggest the unreachable obj:inner() form, got: " + error);
+
+        // Must explain the shadow situation so the user understands why their
+        // first instinct didn't work.
+        assertTrue(error.contains("shadow"),
+            "Should mention the shadow situation, got: " + error);
+
+        // Must give the field-chain advice — dot-access the field, then
+        // colon-call or dot-access on its value.
+        assertTrue(error.contains("obj.inner:") || error.contains("obj.inner."),
+            "Should suggest obj.inner:<method> or obj.inner.<sub-field>, got: " + error);
     }
 
     @Test

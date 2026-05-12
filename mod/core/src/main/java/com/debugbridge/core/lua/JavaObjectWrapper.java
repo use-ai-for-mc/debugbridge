@@ -225,14 +225,26 @@ public class JavaObjectWrapper extends LuaUserdata {
             String getterHint = findGetterHint(o);
 
             sb.append("\n\n  Fix options:");
-            sb.append("\n    - If you want a nested field: use  obj.")
-                    .append(o.accessName).append(".<sub-field-or-method>");
-            if (getterHint != null) {
-                sb.append("\n    - If you want the getter method: use  obj:")
-                        .append(getterHint).append("()");
+            if (getterHint != null && getterHint.equals(o.accessName)) {
+                // Same-name shadow: the parent type has both a field and a
+                // method called accessName. Field-first resolution means
+                // `obj:accessName()` always hits the field — so suggesting
+                // `obj:accessName()` as the "getter method" form is the exact
+                // syntax that just failed. The only working path is to
+                // dot-access the field, then operate on its value.
+                sb.append("\n    - The field shadows the same-name method. Access via the field:")
+                        .append("\n      use  obj.").append(o.accessName).append(":<method>(...)")
+                        .append("  or  obj.").append(o.accessName).append(".<sub-field>");
             } else {
-                sb.append("\n    - If there is a getter method, use  obj:get")
-                        .append(capitalize(o.accessName)).append("()  or similar");
+                sb.append("\n    - If you want a nested field: use  obj.")
+                        .append(o.accessName).append(".<sub-field-or-method>");
+                if (getterHint != null) {
+                    sb.append("\n    - If you want the getter method: use  obj:")
+                            .append(getterHint).append("()");
+                } else {
+                    sb.append("\n    - If there is a getter method, use  obj:get")
+                            .append(capitalize(o.accessName)).append("()  or similar");
+                }
             }
         } else {
             // No origin metadata — probably a constructed wrapper or something
