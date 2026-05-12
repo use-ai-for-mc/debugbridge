@@ -12,9 +12,10 @@ public final class Vec3Dto {
     public double x;
     public double y;
     public double z;
-
-    public Vec3Dto() {}
-
+    
+    public Vec3Dto() {
+    }
+    
     public Vec3Dto(double x, double y, double z) {
         this.x = x;
         this.y = y;

@@ -16,30 +16,30 @@ import java.util.logging.Logger;
 public class BridgeConfig {
     private static final Logger LOG = Logger.getLogger("DebugBridge");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-
+    
     public int port = 9876;
     public long timeoutMs = 5000;
     public int maxResults = 100;
     public long luaMaxExecutionTimeMs = 5000;
-
+    
     /**
      * Whether the user has acknowledged this is a developer tool.
      * Must be true for the mod to activate.
      */
     public boolean developerModeAccepted = false;
-
+    
     /**
      * Slash-command execution via the bridge. Off by default — the runtime
      * still runs whatever Lua a connected client sends, so flipping this on
      * only widens the surface for anyone authorized to drive the bridge.
      */
     public boolean runCommandEnabled = false;
-
+    
     /**
      * Path to the config file, set when loaded.
      */
     private transient Path configFile;
-
+    
     /**
      * Load config from a directory (e.g. .minecraft/config/).
      */
@@ -47,7 +47,7 @@ public class BridgeConfig {
         Path file = configDir.resolve("debugbridge.json");
         BridgeConfig config = new BridgeConfig();
         config.configFile = file;
-
+        
         if (!Files.exists(file)) {
             LOG.info("[DebugBridge] No config file at " + file + ", using defaults (port 9876)");
             return config;
@@ -76,7 +76,7 @@ public class BridgeConfig {
             return config;
         }
     }
-
+    
     /**
      * Save the current config to the config file.
      */
@@ -95,7 +95,7 @@ public class BridgeConfig {
             JsonObject lua = new JsonObject();
             lua.addProperty("max_execution_time_ms", luaMaxExecutionTimeMs);
             obj.add("lua", lua);
-
+            
             Files.writeString(configFile, GSON.toJson(obj));
             LOG.info("[DebugBridge] Config saved to " + configFile);
         } catch (IOException e) {

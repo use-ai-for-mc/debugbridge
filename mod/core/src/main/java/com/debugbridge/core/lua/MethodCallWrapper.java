@@ -18,7 +18,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
     private final String mojangClass;
     private final String mojangMethodName;
     private final JavaBridge bridge;
-
+    
     public MethodCallWrapper(Object target, Class<?> targetClass,
                              String mojangClass, String mojangMethodName, JavaBridge bridge) {
         this.target = target;
@@ -27,7 +27,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
         this.mojangMethodName = mojangMethodName;
         this.bridge = bridge;
     }
-
+    
     /**
      * Collect the full ancestor set for {@code clazz}: superclass chain plus all
      * interfaces (recursive over super-interfaces). Order: classes first
@@ -49,7 +49,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
             Collections.addAll(queue, iface.getInterfaces());
         }
     }
-
+    
     /**
      * If {@code method}'s declaring class is not reachable for reflective
      * setAccessible from our module — either because the package isn't
@@ -79,7 +79,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
         }
         return method;
     }
-
+    
     /**
      * A class is reachable for setAccessible from our module iff its package
      * is exported to us AND the class itself is public. The package-export
@@ -92,7 +92,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
         return cls.getModule().isExported(cls.getPackageName(), ours)
                 && Modifier.isPublic(cls.getModifiers());
     }
-
+    
     @Override
     public Varargs invoke(Varargs args) {
         try {
@@ -115,7 +115,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
                     startIdx = 1; // skip self for static call via Class:method()
                 }
             }
-
+            
             int nargs = totalArgs - startIdx;
             Object[] javaArgs = new Object[nargs];
             Class<?>[] argTypes = new Class<?>[nargs];
@@ -124,10 +124,10 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
                 javaArgs[i] = bridge.unwrapLuaValue(arg, null);
                 argTypes[i] = javaArgs[i] == null ? null : javaArgs[i].getClass();
             }
-
+            
             // Resolve method name through mappings
             String runtimeName = resolveMethodName();
-
+            
             // Find the best matching method
             Method method = findBestMatch(targetClass, runtimeName, argTypes, nargs);
             if (method == null) {
@@ -138,21 +138,21 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
                 throw new LuaError("No method '" + mojangMethodName + "' with " + nargs
                         + " args on " + mojangClass + suggestMethods());
             }
-
+            
             // If the declaring class is in a JPMS-sealed module (e.g.
             // HashMap$KeySet inside java.util), try the same signature on a
             // JPMS-accessible interface / superclass first. setAccessible(true)
             // would otherwise throw InaccessibleObjectException.
             method = preferAccessibleMethod(method);
             method.setAccessible(true);
-
+            
             // Convert args to match parameter types
             Object[] convertedArgs = convertArgs(javaArgs, method.getParameterTypes());
-
+            
             final Method finalMethod = method;
             Object result = bridge.getDispatcher().executeOnGameThread(
                     () -> finalMethod.invoke(target, convertedArgs), 5000);
-
+            
             return bridge.wrapJavaValue(result);
         } catch (LuaError e) {
             throw e;
@@ -163,7 +163,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
             throw new LuaError("Failed to call '" + mojangMethodName + "': " + e.getMessage());
         }
     }
-
+    
     private String resolveMethodName() {
         // Walk the runtime class+interface graph (recursive over super-interfaces).
         // For each class encountered, ask the resolver to map mojangMethodName on
@@ -180,7 +180,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
         }
         return mojangMethodName;
     }
-
+    
     /**
      * Backwards-compat helper kept for {@link #findBestMatch}.
      */
@@ -193,7 +193,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
         }
         return ifaces;
     }
-
+    
     /**
      * Find the best matching method by name and argument count/types.
      * Walks the entire class hierarchy including interfaces.
@@ -237,7 +237,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
         }
         return null;
     }
-
+    
     private boolean isCompatible(Class<?>[] paramTypes, Class<?>[] argTypes) {
         for (int i = 0; i < paramTypes.length; i++) {
             if (argTypes[i] == null) continue; // null matches any reference type
@@ -249,11 +249,11 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
         }
         return true;
     }
-
+    
     private boolean isNumericCompatible(Class<?> param, Class<?> arg) {
         return Number.class.isAssignableFrom(param) && Number.class.isAssignableFrom(arg);
     }
-
+    
     private Class<?> boxType(Class<?> t) {
         if (t == int.class) return Integer.class;
         if (t == long.class) return Long.class;
@@ -265,7 +265,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
         if (t == char.class) return Character.class;
         return t;
     }
-
+    
     private Object[] convertArgs(Object[] javaArgs, Class<?>[] paramTypes) {
         Object[] result = new Object[javaArgs.length];
         for (int i = 0; i < javaArgs.length; i++) {
@@ -273,11 +273,11 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
         }
         return result;
     }
-
+    
     private Object convertArg(Object arg, Class<?> targetType) {
         if (arg == null) return null;
         if (targetType.isInstance(arg)) return arg;
-
+        
         // Numeric conversions
         if (arg instanceof Number num) {
             if (targetType == int.class || targetType == Integer.class) return num.intValue();
@@ -287,15 +287,15 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
             if (targetType == byte.class || targetType == Byte.class) return num.byteValue();
             if (targetType == short.class || targetType == Short.class) return num.shortValue();
         }
-
+        
         // String to char
         if (arg instanceof String str && (targetType == char.class || targetType == Character.class)) {
             if (!str.isEmpty()) return str.charAt(0);
         }
-
+        
         return arg;
     }
-
+    
     private String suggestMethods() {
         // Build a list of methods that are visible on the target class, displayed
         // in Mojang names where the resolver can find them. Walk the full
@@ -304,7 +304,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
         // entity/item hierarchies.
         Set<Class<?>> hierarchy = new LinkedHashSet<>();
         collectHierarchy(targetClass, hierarchy);
-
+        
         // Group by Mojang method name → set of arities, so we collapse overloads.
         java.util.Map<String, java.util.Set<Integer>> byName = new java.util.LinkedHashMap<>();
         // Also track methods whose names start with the requested prefix so we
@@ -312,7 +312,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
         java.util.List<String> matches = new ArrayList<>();
         java.util.List<String> others = new ArrayList<>();
         String wanted = mojangMethodName.toLowerCase();
-
+        
         for (Class<?> c : hierarchy) {
             for (Method m : c.getDeclaredMethods()) {
                 if (Modifier.isPrivate(m.getModifiers())) continue;
@@ -325,7 +325,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
                 java.util.Set<Integer> arities = byName.computeIfAbsent(
                         displayName, k -> new java.util.LinkedHashSet<>());
                 if (!arities.add(arity)) continue;
-
+                
                 String entry = displayName + "(" + arity + " args)";
                 if (displayName.toLowerCase().contains(wanted)) {
                     matches.add(entry);
@@ -334,7 +334,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
                 }
             }
         }
-
+        
         if (matches.isEmpty() && others.isEmpty()) return "";
         StringBuilder sb = new StringBuilder();
         if (!matches.isEmpty()) {

@@ -21,7 +21,7 @@ import java.util.Iterator;
 public final class JpegEncoder {
     private JpegEncoder() {
     }
-
+    
     /**
      * Write the given ARGB pixels as a JPEG to a fresh temp file.
      *
@@ -38,18 +38,18 @@ public final class JpegEncoder {
                     "pixel buffer length " + argbPixels.length + " != " + width + "*" + height);
         }
         float clamped = Math.max(0.05f, Math.min(quality, 1.0f));
-
+        
         // TYPE_INT_RGB drops the alpha byte when we setRGB with ARGB ints,
         // which is exactly what we want for JPEG (no alpha channel).
         BufferedImage bi = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         bi.setRGB(0, 0, width, height, argbPixels, 0, width);
-
+        
         Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpg");
         if (!writers.hasNext()) {
             throw new IOException("No JPEG ImageWriter available in this JRE");
         }
         ImageWriter writer = writers.next();
-
+        
         Path file = Files.createTempFile("debugbridge-screenshot-", ".jpg");
         try (FileImageOutputStream out = new FileImageOutputStream(file.toFile())) {
             writer.setOutput(out);

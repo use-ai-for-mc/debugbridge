@@ -22,15 +22,15 @@ import static org.junit.jupiter.api.Assertions.*;
  * deeper sandbox hardening is tracked separately in the dream review queue.
  */
 class SecurityHardeningTest {
-    private static BridgeServer server;
     private static final int PORT = 19884;
+    private static BridgeServer server;
     private TestClient client;
-
+    
     @BeforeAll
     static void startServer() throws Exception {
         server = new BridgeServer(PORT,
-            new PassthroughResolver("test"),
-            new DirectDispatcher());
+                new PassthroughResolver("test"),
+                new DirectDispatcher());
         // runCommand is gated off by default; flip it on so we can exercise the
         // injection-hardening path. The validity of the gating itself is
         // covered separately.
@@ -38,25 +38,32 @@ class SecurityHardeningTest {
         server.start();
         Thread.sleep(500);
     }
-
+    
     @AfterAll
     static void stopServer() throws Exception {
         if (server != null) server.stop();
     }
-
+    
+    private static JsonObject baseRequest(String type) {
+        JsonObject req = new JsonObject();
+        req.addProperty("id", "sec_" + System.nanoTime());
+        req.addProperty("type", type);
+        return req;
+    }
+    
     @BeforeEach
     void connect() throws Exception {
         client = new TestClient(new URI("ws://127.0.0.1:" + PORT));
         assertTrue(client.connectBlocking(3, TimeUnit.SECONDS));
     }
-
+    
+    // ==================== runCommand injection hardening ====================
+    
     @AfterEach
     void disconnect() throws Exception {
         if (client != null) client.closeBlocking();
     }
-
-    // ==================== runCommand injection hardening ====================
-
+    
     /**
      * The previous implementation built a Lua source string by replacing only
      * single-quotes in the user's command. A backslash-then-quote sequence
@@ -84,28 +91,30 @@ class SecurityHardeningTest {
         if (resp.get("success").getAsBoolean()) {
             String result = resp.has("result") ? resp.get("result").toString() : "";
             assertFalse(result.contains("os.exit"),
-                "Injection-shaped payload must not have executed: " + result);
+                    "Injection-shaped payload must not have executed: " + result);
         } else {
             String error = resp.get("error").getAsString();
             // Accept any failure from the Minecraft side. Reject any sign of
             // Lua-syntax errors (would indicate the user input slipped into
             // the source) or `os` execution.
             assertFalse(error.contains("unfinished string"),
-                "Lua syntax error means user input reached the parser: " + error);
+                    "Lua syntax error means user input reached the parser: " + error);
             assertFalse(error.contains("'<eof>'"),
-                "Lua parse error suggests injection: " + error);
+                    "Lua parse error suggests injection: " + error);
         }
     }
-
+    
     @Test
     void testRunCommandRejectsOverLongInput() throws Exception {
         String tooLong = "a".repeat(2000);
         JsonObject resp = sendRunCommand(tooLong);
         assertFalse(resp.get("success").getAsBoolean());
         assertTrue(resp.get("error").getAsString().contains("too long"),
-            "Expected 'too long' rejection, got: " + resp.get("error"));
+                "Expected 'too long' rejection, got: " + resp.get("error"));
     }
-
+    
+    // ==================== search ReDoS hardening ====================
+    
     @Test
     void testRunCommandRejectsMissingField() throws Exception {
         JsonObject req = baseRequest("runCommand");
@@ -113,11 +122,9 @@ class SecurityHardeningTest {
         JsonObject resp = roundtrip(req);
         assertFalse(resp.get("success").getAsBoolean());
         assertTrue(resp.get("error").getAsString().contains("'command'"),
-            "Expected validation error, got: " + resp.get("error"));
+                "Expected validation error, got: " + resp.get("error"));
     }
-
-    // ==================== search ReDoS hardening ====================
-
+    
     @Test
     void testSearchRejectsOverLongPattern() throws Exception {
         String tooLong = "a".repeat(500);
@@ -125,14 +132,14 @@ class SecurityHardeningTest {
         assertFalse(resp.get("success").getAsBoolean());
         assertTrue(resp.get("error").getAsString().contains("too long"));
     }
-
+    
     @Test
     void testSearchRejectsInvalidRegex() throws Exception {
         JsonObject resp = sendSearch("[unterminated");
         assertFalse(resp.get("success").getAsBoolean());
         assertTrue(resp.get("error").getAsString().contains("invalid regex"));
     }
-
+    
     @Test
     void testSearchRejectsMissingField() throws Exception {
         JsonObject req = baseRequest("search");
@@ -141,7 +148,9 @@ class SecurityHardeningTest {
         assertFalse(resp.get("success").getAsBoolean());
         assertTrue(resp.get("error").getAsString().contains("'pattern'"));
     }
-
+    
+    // ==================== Helpers ====================
+    
     /**
      * The classic catastrophic-backtracking trigger pattern. With no timeout
      * guard, this hangs the matcher for many seconds. Our {@code timedFind}
@@ -161,9 +170,7 @@ class SecurityHardeningTest {
         // sanity check, not a tight bound.
         assertTrue(elapsed < 5_000, "Compile path should be fast, took " + elapsed + "ms");
     }
-
-    // ==================== Helpers ====================
-
+    
     private JsonObject sendSearch(String pattern) throws Exception {
         JsonObject req = baseRequest("search");
         JsonObject payload = new JsonObject();
@@ -171,7 +178,7 @@ class SecurityHardeningTest {
         req.add("payload", payload);
         return roundtrip(req);
     }
-
+    
     private JsonObject sendRunCommand(String command) throws Exception {
         JsonObject req = baseRequest("runCommand");
         JsonObject payload = new JsonObject();
@@ -179,27 +186,37 @@ class SecurityHardeningTest {
         req.add("payload", payload);
         return roundtrip(req);
     }
-
-    private static JsonObject baseRequest(String type) {
-        JsonObject req = new JsonObject();
-        req.addProperty("id", "sec_" + System.nanoTime());
-        req.addProperty("type", type);
-        return req;
-    }
-
+    
     private JsonObject roundtrip(JsonObject req) throws Exception {
         client.send(new Gson().toJson(req));
         String response = client.responses.poll(8, TimeUnit.SECONDS);
         assertNotNull(response, "No response within 8s");
         return JsonParser.parseString(response).getAsJsonObject();
     }
-
+    
     private static class TestClient extends WebSocketClient {
         final LinkedBlockingQueue<String> responses = new LinkedBlockingQueue<>();
-        TestClient(URI uri) { super(uri); }
-        @Override public void onOpen(ServerHandshake h) {}
-        @Override public void onMessage(String msg) { responses.offer(msg); }
-        @Override public void onClose(int c, String r, boolean rem) {}
-        @Override public void onError(Exception e) { e.printStackTrace(); }
+        
+        TestClient(URI uri) {
+            super(uri);
+        }
+        
+        @Override
+        public void onOpen(ServerHandshake h) {
+        }
+        
+        @Override
+        public void onMessage(String msg) {
+            responses.offer(msg);
+        }
+        
+        @Override
+        public void onClose(int c, String r, boolean rem) {
+        }
+        
+        @Override
+        public void onError(Exception e) {
+            e.printStackTrace();
+        }
     }
 }

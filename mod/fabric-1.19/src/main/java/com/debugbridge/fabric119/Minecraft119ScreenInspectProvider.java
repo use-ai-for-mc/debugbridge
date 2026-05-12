@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Minecraft119ScreenInspectProvider implements ScreenInspectProvider {
-
+    
     @Override
     public ScreenInspectDto inspectCurrentScreen() throws Exception {
         ScreenInspectDto dto = new ScreenInspectDto();
@@ -29,7 +29,7 @@ public class Minecraft119ScreenInspectProvider implements ScreenInspectProvider 
         dto.open = true;
         dto.type = screen.getClass().getName();
         dto.title = screen.getTitle().getString();
-
+        
         if (screen instanceof AbstractContainerScreen<?> cs) {
             AbstractContainerMenu menu = cs.getMenu();
             dto.menuClass = menu.getClass().getName();

@@ -7,12 +7,7 @@ import com.debugbridge.core.entity.LookedAtEntityProvider;
 import com.debugbridge.core.entity.NearbyEntitiesProvider;
 import com.debugbridge.core.lifecycle.AbstractDebugBridgeMod;
 import com.debugbridge.core.mapping.FabricNamespaceLookup;
-import com.debugbridge.core.protocol.dto.SnapshotDto;
-import com.debugbridge.core.protocol.dto.SnapshotPlayerDto;
-import com.debugbridge.core.protocol.dto.SnapshotTargetDto;
-import com.debugbridge.core.protocol.dto.SnapshotVehicleDto;
-import com.debugbridge.core.protocol.dto.SnapshotWorldDto;
-import com.debugbridge.core.protocol.dto.Vec3Dto;
+import com.debugbridge.core.protocol.dto.*;
 import com.debugbridge.core.screen.ScreenInspectProvider;
 import com.debugbridge.core.screenshot.ScreenshotProvider;
 import com.debugbridge.core.snapshot.GameStateProvider;
@@ -35,86 +30,86 @@ import java.util.function.Consumer;
 public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModInitializer {
     private static final String MC_VERSION = "26.2-snapshot-6";
     private static DebugBridgeMod INSTANCE;
-
+    
     public static void onClientTick(Minecraft mc) {
         if (INSTANCE != null) {
             INSTANCE.handleTick();
         }
     }
-
+    
     @Override
     public void onInitializeClient() {
         INSTANCE = this;
         initialize();
     }
-
+    
     @Override
     protected String mcVersion() {
         return MC_VERSION;
     }
-
+    
     @Override
     protected Path configDir() {
         return FabricLoader.getInstance().getConfigDir();
     }
-
+    
     @Override
     protected Path gameDir() {
         return FabricLoader.getInstance().getGameDir();
     }
-
+    
     @Override
     protected FabricNamespaceLookup createNamespaceLookup() {
         // 26.2-dev snapshots ship unobfuscated, so the kernel falls back to
         // PassthroughResolver — no Mojang mappings needed.
         return null;
     }
-
+    
     @Override
     protected void submitToGameThread(Runnable task) {
         Minecraft.getInstance().execute(task);
     }
-
+    
     @Override
     protected GameStateProvider createStateProvider() {
         return new Minecraft262StateProvider();
     }
-
+    
     @Override
     protected ScreenshotProvider createScreenshotProvider() {
         return new Minecraft262ScreenshotProvider();
     }
-
+    
     @Override
     protected ItemTextureProvider createTextureProvider() {
         return new Minecraft262ItemTextureProvider();
     }
-
+    
     @Override
     protected NearbyEntitiesProvider createEntitiesProvider() {
         return new Minecraft262NearbyEntitiesProvider();
     }
-
+    
     @Override
     protected NearbyBlocksProvider createBlocksProvider() {
         return new Minecraft262NearbyBlocksProvider();
     }
-
+    
     @Override
     protected LookedAtEntityProvider createLookedAtEntityProvider() {
         return new Minecraft262LookedAtEntityProvider();
     }
-
+    
     @Override
     protected ChatHistoryProvider createChatHistoryProvider() {
         return new Minecraft262ChatHistoryProvider();
     }
-
+    
     @Override
     protected ScreenInspectProvider createScreenInspectProvider() {
         return new Minecraft262ScreenInspectProvider();
     }
-
+    
     @Override
     protected boolean displayPlayerError(String message) {
         Minecraft mc = Minecraft.getInstance();
@@ -123,7 +118,7 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
                 Component.literal("[DebugBridge] " + message).withStyle(s -> s.withColor(0xFF5555)));
         return true;
     }
-
+    
     @Override
     protected boolean displayPlayerInfo(String message) {
         Minecraft mc = Minecraft.getInstance();
@@ -132,13 +127,13 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
                 Component.literal("[DebugBridge] " + message).withStyle(s -> s.withColor(0x55FF55)));
         return true;
     }
-
+    
     @Override
     protected boolean canShowWarningScreen() {
         Minecraft mc = Minecraft.getInstance();
         return mc.gui.screen() == null && mc.gui.overlay() == null;
     }
-
+    
     @Override
     protected void showWarningScreen(Consumer<Boolean> onResult) {
         Minecraft mc = Minecraft.getInstance();
@@ -147,7 +142,7 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
             onResult.accept(accepted);
         }));
     }
-
+    
     @Override
     protected void onPostTick() {
         Minecraft mc = Minecraft.getInstance();
@@ -159,14 +154,14 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
             mc.levelExtractor.gameTestBlockHighlightRenderer.highlightPos(pos, pos);
         }
     }
-
+    
     private static class Minecraft262StateProvider implements GameStateProvider {
         @Override
         public SnapshotDto captureSnapshot() {
             Minecraft mc = Minecraft.getInstance();
             LocalPlayer player = mc.player;
             SnapshotDto snap = new SnapshotDto();
-
+            
             if (player != null) {
                 SnapshotPlayerDto p = new SnapshotPlayerDto();
                 p.name = player.getName().getString();
@@ -197,7 +192,7 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
             }
             // No player → snap.player stays null and is omitted on the wire
             // (older code emitted the literal string "not in world" here).
-
+            
             HitResult hit = mc.hitResult;
             if (hit != null && hit.getType() != HitResult.Type.MISS) {
                 SnapshotTargetDto t = new SnapshotTargetDto();
@@ -214,7 +209,7 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
                 }
                 snap.target = t;
             }
-
+            
             if (mc.level != null) {
                 SnapshotWorldDto w = new SnapshotWorldDto();
                 w.dayTime = mc.level.getOverworldClockTime();
@@ -222,7 +217,7 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
                 w.isThundering = mc.level.isThundering();
                 snap.world = w;
             }
-
+            
             snap.fps = mc.getFps();
             snap.version = MC_VERSION;
             return snap;

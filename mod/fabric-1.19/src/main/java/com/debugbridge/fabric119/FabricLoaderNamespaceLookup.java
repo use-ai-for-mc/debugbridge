@@ -14,26 +14,26 @@ import net.fabricmc.loader.api.FabricLoader;
  */
 public final class FabricLoaderNamespaceLookup implements FabricNamespaceLookup {
     private final net.fabricmc.loader.api.MappingResolver fabric =
-        FabricLoader.getInstance().getMappingResolver();
-
+            FabricLoader.getInstance().getMappingResolver();
+    
     @Override
     public String runtimeForObfuscatedClass(String obfClassName) {
         return fabric.mapClassName("official", obfClassName);
     }
-
+    
     @Override
     public String runtimeForObfuscatedMethod(String obfOwner, String obfMethodName, String obfJvmDesc) {
         String mapped = fabric.mapMethodName("official", obfOwner, obfMethodName, obfJvmDesc);
         // Fabric echoes the input on miss; the SPI contract is null-on-miss.
         return mapped.equals(obfMethodName) ? null : mapped;
     }
-
+    
     @Override
     public String runtimeForObfuscatedField(String obfOwner, String obfFieldName, String obfJvmDesc) {
         String mapped = fabric.mapFieldName("official", obfOwner, obfFieldName, obfJvmDesc);
         return mapped.equals(obfFieldName) ? null : mapped;
     }
-
+    
     @Override
     public String obfuscatedForRuntimeClass(String runtimeClassName) {
         return fabric.unmapClassName("official", runtimeClassName);

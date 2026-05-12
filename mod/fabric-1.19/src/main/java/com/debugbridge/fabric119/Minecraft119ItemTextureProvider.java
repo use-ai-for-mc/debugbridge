@@ -58,7 +58,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
     private static volatile Field spritePixelsField;
     // Reflection cache: Minecraft → ItemColors field (private, no accessor in 1.19).
     private static volatile ItemColors cachedItemColors;
-
+    
     private static int mapPixelArgb(byte packedColor) {
         int colorId = (packedColor & 0xFF) >> 2;
         int shade = packedColor & 3;
@@ -72,7 +72,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         int b = (col & 255) * modifier / 255;
         return (0xFF << 24) | (r << 16) | (g << 8) | b;
     }
-
+    
     /**
      * Convert NativeImage's little-endian ABGR packing to standard ARGB.
      */
@@ -83,7 +83,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         int r = abgr & 0xFF;
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
-
+    
     /**
      * Standard "source over" alpha compositing — top pixel drawn over bottom.
      */
@@ -106,7 +106,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         int outB = (tb * ta + bb * ba * invTa / 255) / outA;
         return (outA << 24) | (outR << 16) | (outG << 8) | outB;
     }
-
+    
     /**
      * Look up {@link ItemColors} on the {@link Minecraft} instance via reflection.
      * In 1.19 the field is private with no accessor, so we can't call a getter.
@@ -135,9 +135,9 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         }
         return null;
     }
-
+    
     // ---- Filled-map rendering (bypasses the baked model pipeline) ----
-
+    
     private static Field findNativeImageArrayField(Class<?> cls) {
         Class<?> c = cls;
         while (c != null && c != Object.class) {
@@ -150,7 +150,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         }
         return null;
     }
-
+    
     @Override
     public TextureResult getItemTexture(int slot) throws Exception {
         Minecraft mc = Minecraft.getInstance();
@@ -161,7 +161,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
             return stack;
         });
     }
-
+    
     @Override
     public TextureResult getItemTextureById(String itemId) throws Exception {
         return renderStack(() -> {
@@ -177,13 +177,13 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
             return new ItemStack(item);
         });
     }
-
+    
     @Override
     public TextureResult getEntityItemTexture(int entityId, String slotName) throws Exception {
         Minecraft mc = Minecraft.getInstance();
         return renderStack(() -> {
             if (mc.level == null) throw new Exception("Level not loaded");
-
+            
             Entity target = null;
             for (Entity e : mc.level.entitiesForRendering()) {
                 if (e.getId() == entityId) {
@@ -192,7 +192,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
                 }
             }
             if (target == null) throw new Exception("Entity " + entityId + " not found");
-
+            
             ItemStack stack;
             if ("FRAME".equals(slotName) && target instanceof ItemFrame frame) {
                 stack = frame.getItem();
@@ -207,18 +207,18 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
             } else {
                 throw new Exception("Entity " + entityId + " has no equipment");
             }
-
+            
             if (stack.isEmpty())
                 throw new Exception("Slot " + slotName + " is empty on entity " + entityId);
             return stack;
         });
     }
-
+    
     // ---- Custom-head face from profile NBT ----
-
+    
     private TextureResult renderStack(StackSupplier supplier) throws Exception {
         Minecraft mc = Minecraft.getInstance();
-
+        
         // Phase 1 (render thread): resolve the ItemStack + try the filled-map
         // fast path. Stack resolution must touch level/player state.
         CompletableFuture<StackOrResult> phase1 = new CompletableFuture<>();
@@ -238,12 +238,12 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         StackOrResult p1 = phase1.get(10, TimeUnit.SECONDS);
         if (p1.result != null) return p1.result;
         ItemStack stack = p1.stack;
-
+        
         // Phase 2 (calling/WebSocket thread): custom-head face from NBT profile.
         // May block on HTTP, so it MUST NOT run on the render thread.
         TextureResult headResult = tryRenderHeadFromProfile(stack);
         if (headResult != null) return headResult;
-
+        
         // Phase 3 (render thread): walk the baked model and composite quads.
         CompletableFuture<TextureResult> phase3 = new CompletableFuture<>();
         mc.execute(() -> {
@@ -256,17 +256,17 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         });
         return phase3.get(10, TimeUnit.SECONDS);
     }
-
+    
     private TextureResult tryRenderFilledMap(Minecraft mc, ItemStack stack) throws Exception {
         if (!stack.is(Items.FILLED_MAP)) return null;
         if (mc.level == null) return null;
-
+        
         MapItemSavedData mapData = MapItem.getSavedData(stack, mc.level);
         if (mapData == null || mapData.colors == null
                 || mapData.colors.length < MAP_SIZE * MAP_SIZE) {
             return null;
         }
-
+        
         BufferedImage img = new BufferedImage(MAP_SIZE, MAP_SIZE, BufferedImage.TYPE_INT_ARGB);
         for (int y = 0; y < MAP_SIZE; y++) {
             for (int x = 0; x < MAP_SIZE; x++) {
@@ -278,9 +278,9 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         String base64 = Base64.getEncoder().encodeToString(baos.toByteArray());
         return new TextureResult(base64, MAP_SIZE, MAP_SIZE, "filled_map");
     }
-
+    
     // ---- Baked-model rendering with tint compositing ----
-
+    
     /**
      * For a player head whose NBT carries a texture profile, decode the profile,
      * fetch the skin PNG from the Mojang CDN, and composite the face + hat
@@ -291,7 +291,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
      */
     private TextureResult tryRenderHeadFromProfile(ItemStack stack) {
         if (!stack.is(Items.PLAYER_HEAD)) return null;
-
+        
         try {
             CompoundTag tag = stack.getTag();
             if (tag == null || !tag.contains("SkullOwner", Tag.TAG_COMPOUND)) return null;
@@ -303,7 +303,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
             if (textures.isEmpty()) return null;
             String value = textures.getCompound(0).getString("Value");
             if (value == null || value.isEmpty()) return null;
-
+            
             byte[] decoded = Base64.getDecoder().decode(value);
             JsonObject root = JsonParser.parseString(new String(decoded, StandardCharsets.UTF_8))
                     .getAsJsonObject();
@@ -313,16 +313,16 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
             if (skin == null || !skin.has("url")) return null;
             String url = skin.get("url").getAsString();
             if (url == null || url.isEmpty()) return null;
-
+            
             NativeImage skinImg = fetchSkin(url);
             if (skinImg == null) return null;
-
+            
             int sw = skinImg.getWidth();
             int sh = skinImg.getHeight();
             if (sw < 16 || sh < 16) return null;
-
+            
             boolean hasHat = sw >= 48 && sh >= 16;
-
+            
             // Face lives at (8,8)-(16,16); hat overlay at (40,8)-(48,16).
             // Upscale 2× into a 16×16 output.
             BufferedImage out = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
@@ -342,26 +342,26 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
                     out.setRGB(ox + 1, oy + 1, argb);
                 }
             }
-
+            
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ImageIO.write(out, "png", baos);
             String base64 = Base64.getEncoder().encodeToString(baos.toByteArray());
-
+            
             int lastSlash = url.lastIndexOf('/');
             String hash = (lastSlash >= 0 && lastSlash < url.length() - 1)
                     ? url.substring(lastSlash + 1)
                     : url;
             String shortHash = hash.length() > 16 ? hash.substring(0, 16) : hash;
-
+            
             return new TextureResult(base64, 16, 16, "head[" + shortHash + "]");
         } catch (Exception e) {
             LOG.warning("[DebugBridge] Head profile render failed: " + e.getMessage());
             return null;
         }
     }
-
+    
     // ---- Pixel helpers ----
-
+    
     private NativeImage fetchSkin(String url) throws Exception {
         NativeImage cached = SKIN_CACHE.get(url);
         if (cached != null) return cached;
@@ -375,7 +375,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
             return img;
         }
     }
-
+    
     /**
      * Composite a baked item model's sprites onto a single canvas, applying
      * per-quad tint via {@link ItemColors}. Needed because dyed leather armor,
@@ -391,7 +391,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         if (quads.isEmpty()) {
             quads = model.getQuads(null, null, null);
         }
-
+        
         TextureAtlasSprite[] sprites;
         int[] tintIndices;
         if (quads.isEmpty()) {
@@ -408,7 +408,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
                 tintIndices[i] = q.getTintIndex();
             }
         }
-
+        
         NativeImage[] imgs = new NativeImage[sprites.length];
         int maxW = 0, maxH = 0;
         for (int i = 0; i < sprites.length; i++) {
@@ -421,10 +421,10 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         if (maxW == 0 || maxH == 0) {
             throw new Exception("Sprite has no pixel data");
         }
-
+        
         BufferedImage canvas = new BufferedImage(maxW, maxH, BufferedImage.TYPE_INT_ARGB);
         ItemColors itemColors = resolveItemColors(mc);
-
+        
         for (int i = 0; i < sprites.length; i++) {
             NativeImage img = imgs[i];
             if (img == null) continue;
@@ -434,7 +434,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
             int tr = (tint >> 16) & 0xFF;
             int tg = (tint >> 8) & 0xFF;
             int tb = tint & 0xFF;
-
+            
             int w = img.getWidth();
             int h = img.getHeight();
             for (int y = 0; y < h; y++) {
@@ -451,13 +451,13 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
                 }
             }
         }
-
+        
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ImageIO.write(canvas, "png", baos);
         String base64 = Base64.getEncoder().encodeToString(baos.toByteArray());
         return new TextureResult(base64, maxW, maxH, getSpriteName(sprites[0]));
     }
-
+    
     /**
      * Extract the full-resolution NativeImage from a TextureAtlasSprite using
      * reflection. In 1.19 the pixel data lives in a NativeImage[] field
@@ -476,7 +476,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
                     } catch (NoSuchMethodException ignored) {
                         // Pre-1.19.3: no SpriteContents, pixels live on sprite itself
                     }
-
+                    
                     Class<?> searchClass = (contents != null) ? contents.getClass() : sprite.getClass();
                     Field found = findNativeImageArrayField(searchClass);
                     if (found == null && contents != null) {
@@ -492,7 +492,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
                 }
             }
         }
-
+        
         // Resolve which object holds the field (contents vs sprite itself)
         Object target;
         if (spritePixelsField.getDeclaringClass().isInstance(sprite)) {
@@ -501,12 +501,12 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
             // Must be on contents()
             target = sprite.getClass().getMethod("contents").invoke(sprite);
         }
-
+        
         NativeImage[] mipmaps = (NativeImage[]) spritePixelsField.get(target);
         if (mipmaps == null || mipmaps.length == 0) return null;
         return mipmaps[0];
     }
-
+    
     private String getSpriteName(TextureAtlasSprite sprite) {
         // 1.19.3+: sprite.contents().name()
         try {
@@ -525,12 +525,12 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         }
         return "";
     }
-
+    
     @FunctionalInterface
     private interface StackSupplier {
         ItemStack get() throws Exception;
     }
-
+    
     private record StackOrResult(ItemStack stack, TextureResult result) {
     }
 }

@@ -10,7 +10,7 @@ package com.debugbridge.core.protocol.dto;
  */
 public final class LookedAtEntityDto {
     public Integer entityId;
-
+    
     public LookedAtEntityDto(Integer entityId) {
         this.entityId = entityId;
     }

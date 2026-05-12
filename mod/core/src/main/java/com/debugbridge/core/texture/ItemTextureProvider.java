@@ -9,7 +9,7 @@ package com.debugbridge.core.texture;
  * resolution APIs differ between MC versions.
  */
 public interface ItemTextureProvider {
-
+    
     /**
      * Get the resolved texture for the item in the given inventory slot.
      *
@@ -18,7 +18,7 @@ public interface ItemTextureProvider {
      * @throws Exception if extraction fails
      */
     TextureResult getItemTexture(int slot) throws Exception;
-
+    
     /**
      * Get the resolved texture for an item equipped by a nearby entity.
      * Honors the stack's components (damage, custom_model_data, item_model, etc.)
@@ -30,7 +30,7 @@ public interface ItemTextureProvider {
      * @throws Exception if extraction fails
      */
     TextureResult getEntityItemTexture(int entityId, String slot) throws Exception;
-
+    
     /**
      * Get the resolved texture for a default {@link net.minecraft.world.item.ItemStack}
      * of the given item registry key. Used for thumbnail caching where per-stack
@@ -42,7 +42,7 @@ public interface ItemTextureProvider {
      * @throws Exception if the item is unknown or extraction fails
      */
     TextureResult getItemTextureById(String itemId) throws Exception;
-
+    
     /**
      * Result of a successful texture extraction.
      */

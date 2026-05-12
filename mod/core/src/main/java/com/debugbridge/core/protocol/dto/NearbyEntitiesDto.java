@@ -16,7 +16,7 @@ public final class NearbyEntitiesDto {
     public List<EntitySummaryDto> entities;
     public int count;
     public JsonElement icons;
-
+    
     public NearbyEntitiesDto(List<EntitySummaryDto> entities) {
         this.entities = entities;
         this.count = entities.size();

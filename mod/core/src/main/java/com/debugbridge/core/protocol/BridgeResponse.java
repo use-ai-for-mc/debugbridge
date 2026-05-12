@@ -9,10 +9,10 @@ public class BridgeResponse {
     public JsonElement result;
     public String output;
     public String error;
-
+    
     private BridgeResponse() {
     }
-
+    
     public static BridgeResponse success(String id, JsonElement result, String output) {
         BridgeResponse r = new BridgeResponse();
         r.id = id;
@@ -21,7 +21,7 @@ public class BridgeResponse {
         r.output = output;
         return r;
     }
-
+    
     public static BridgeResponse error(String id, String error) {
         BridgeResponse r = new BridgeResponse();
         r.id = id;
@@ -29,7 +29,7 @@ public class BridgeResponse {
         r.error = error;
         return r;
     }
-
+    
     public JsonObject toJson() {
         JsonObject obj = new JsonObject();
         obj.addProperty("id", id);

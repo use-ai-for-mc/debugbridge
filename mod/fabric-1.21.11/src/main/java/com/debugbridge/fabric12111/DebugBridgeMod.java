@@ -7,12 +7,7 @@ import com.debugbridge.core.entity.LookedAtEntityProvider;
 import com.debugbridge.core.entity.NearbyEntitiesProvider;
 import com.debugbridge.core.lifecycle.AbstractDebugBridgeMod;
 import com.debugbridge.core.mapping.FabricNamespaceLookup;
-import com.debugbridge.core.protocol.dto.SnapshotDto;
-import com.debugbridge.core.protocol.dto.SnapshotPlayerDto;
-import com.debugbridge.core.protocol.dto.SnapshotTargetDto;
-import com.debugbridge.core.protocol.dto.SnapshotVehicleDto;
-import com.debugbridge.core.protocol.dto.SnapshotWorldDto;
-import com.debugbridge.core.protocol.dto.Vec3Dto;
+import com.debugbridge.core.protocol.dto.*;
 import com.debugbridge.core.screen.ScreenInspectProvider;
 import com.debugbridge.core.screenshot.ScreenshotProvider;
 import com.debugbridge.core.snapshot.GameStateProvider;
@@ -36,84 +31,84 @@ import java.util.function.Consumer;
 public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModInitializer {
     private static final String MC_VERSION = "1.21.11";
     private static DebugBridgeMod INSTANCE;
-
+    
     public static void onClientTick(Minecraft mc) {
         if (INSTANCE != null) {
             INSTANCE.handleTick();
         }
     }
-
+    
     @Override
     public void onInitializeClient() {
         INSTANCE = this;
         initialize();
     }
-
+    
     @Override
     protected String mcVersion() {
         return MC_VERSION;
     }
-
+    
     @Override
     protected Path configDir() {
         return FabricLoader.getInstance().getConfigDir();
     }
-
+    
     @Override
     protected Path gameDir() {
         return FabricLoader.getInstance().getGameDir();
     }
-
+    
     @Override
     protected FabricNamespaceLookup createNamespaceLookup() {
         return new FabricLoaderNamespaceLookup();
     }
-
+    
     @Override
     protected void submitToGameThread(Runnable task) {
         Minecraft.getInstance().execute(task);
     }
-
+    
     @Override
     protected GameStateProvider createStateProvider() {
         return new Minecraft12111StateProvider();
     }
-
+    
     @Override
     protected ScreenshotProvider createScreenshotProvider() {
         return new Minecraft12111ScreenshotProvider();
     }
-
+    
     @Override
     protected ItemTextureProvider createTextureProvider() {
         return new Minecraft12111ItemTextureProvider();
     }
-
+    
     @Override
     protected NearbyEntitiesProvider createEntitiesProvider() {
         return new Minecraft12111NearbyEntitiesProvider();
     }
-
+    
     @Override
     protected NearbyBlocksProvider createBlocksProvider() {
         return new Minecraft12111NearbyBlocksProvider();
     }
-
+    
     @Override
     protected LookedAtEntityProvider createLookedAtEntityProvider() {
         return new Minecraft12111LookedAtEntityProvider();
     }
-
+    
     @Override
     protected ChatHistoryProvider createChatHistoryProvider() {
         return new Minecraft12111ChatHistoryProvider();
     }
-
+    
     @Override
     protected ScreenInspectProvider createScreenInspectProvider() {
         return new Minecraft12111ScreenInspectProvider();
     }
-
+    
     @Override
     protected boolean displayPlayerError(String message) {
         Minecraft mc = Minecraft.getInstance();
@@ -123,7 +118,7 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
                 false);
         return true;
     }
-
+    
     @Override
     protected boolean displayPlayerInfo(String message) {
         Minecraft mc = Minecraft.getInstance();
@@ -133,13 +128,13 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
                 false);
         return true;
     }
-
+    
     @Override
     protected boolean canShowWarningScreen() {
         Minecraft mc = Minecraft.getInstance();
         return mc.screen == null && mc.getOverlay() == null;
     }
-
+    
     @Override
     protected void showWarningScreen(Consumer<Boolean> onResult) {
         Minecraft mc = Minecraft.getInstance();
@@ -148,7 +143,7 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
             onResult.accept(accepted);
         }));
     }
-
+    
     @Override
     protected void onPostTick() {
         Minecraft mc = Minecraft.getInstance();
@@ -161,7 +156,7 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
             lr.gameTestBlockHighlightRenderer.highlightPos(pos, pos);
         }
     }
-
+    
     /**
      * Captures game state for the snapshot endpoint.
      */
@@ -171,7 +166,7 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
             Minecraft mc = Minecraft.getInstance();
             LocalPlayer player = mc.player;
             SnapshotDto snap = new SnapshotDto();
-
+            
             if (player != null) {
                 SnapshotPlayerDto p = new SnapshotPlayerDto();
                 p.name = player.getName().getString();
@@ -202,7 +197,7 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
             }
             // No player → snap.player stays null and is omitted on the wire
             // (older code emitted the literal string "not in world" here).
-
+            
             HitResult hit = mc.hitResult;
             if (hit != null && hit.getType() != HitResult.Type.MISS) {
                 SnapshotTargetDto t = new SnapshotTargetDto();
@@ -219,7 +214,7 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
                 }
                 snap.target = t;
             }
-
+            
             if (mc.level != null) {
                 SnapshotWorldDto w = new SnapshotWorldDto();
                 w.dayTime = mc.level.getDayTime();
@@ -227,7 +222,7 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
                 w.isThundering = mc.level.isThundering();
                 snap.world = w;
             }
-
+            
             snap.fps = mc.getFps();
             snap.version = MC_VERSION;
             return snap;

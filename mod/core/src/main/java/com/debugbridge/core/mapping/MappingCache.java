@@ -10,11 +10,11 @@ import java.nio.file.Path;
  */
 public class MappingCache {
     private final Path cacheDir;
-
+    
     public MappingCache() {
         this(Path.of(System.getProperty("user.home"), ".debugbridge", "mappings"));
     }
-
+    
     public MappingCache(Path cacheDir) {
         this.cacheDir = cacheDir;
         try {
@@ -23,19 +23,19 @@ public class MappingCache {
             throw new RuntimeException("Failed to create mapping cache directory: " + cacheDir, e);
         }
     }
-
+    
     public boolean has(String version) {
         return Files.exists(cacheDir.resolve(version + ".txt"));
     }
-
+    
     public String load(String version) throws IOException {
         return Files.readString(cacheDir.resolve(version + ".txt"));
     }
-
+    
     public void save(String version, String content) throws IOException {
         Files.writeString(cacheDir.resolve(version + ".txt"), content);
     }
-
+    
     public Path getCacheDir() {
         return cacheDir;
     }

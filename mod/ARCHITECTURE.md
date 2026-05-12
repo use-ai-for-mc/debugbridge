@@ -18,7 +18,8 @@ Disallowed production edges:
 
 - `BridgeServer` owns the localhost WebSocket protocol.
 - `LuaRuntime` executes scripts through the Java bridge and dispatches Minecraft state access onto the game thread.
-- Provider interfaces in `core` expose native fast paths for snapshots, screenshots, entities, blocks, screen inspection, chat history, and item textures.
+- Provider interfaces in `core` expose native fast paths for snapshots, screenshots, entities, blocks, screen
+  inspection, chat history, and item textures.
 - Each Fabric module registers the providers it can support for its Minecraft version.
 
 ## Verification

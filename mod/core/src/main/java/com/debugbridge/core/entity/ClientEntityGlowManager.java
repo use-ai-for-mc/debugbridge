@@ -13,19 +13,19 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ClientEntityGlowManager {
     private static final Set<Integer> GLOWING =
             Collections.newSetFromMap(new ConcurrentHashMap<>());
-
+    
     private ClientEntityGlowManager() {
     }
-
+    
     public static void setGlow(int entityId, boolean glow) {
         if (glow) GLOWING.add(entityId);
         else GLOWING.remove(entityId);
     }
-
+    
     public static boolean isGlowing(int entityId) {
         return GLOWING.contains(entityId);
     }
-
+    
     public static void clear() {
         GLOWING.clear();
     }

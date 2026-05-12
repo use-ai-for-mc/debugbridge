@@ -24,15 +24,15 @@ import java.time.Duration;
 public class MappingDownloader {
     private static final String MANIFEST_URL =
             "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
-
+    
     private final HttpClient client;
-
+    
     public MappingDownloader() {
         this.client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
     }
-
+    
     /**
      * Download the client mappings for a specific MC version.
      * Returns the raw ProGuard text content.
@@ -42,7 +42,7 @@ public class MappingDownloader {
         String manifestJson = fetchString(MANIFEST_URL);
         JsonObject manifest = JsonParser.parseString(manifestJson).getAsJsonObject();
         JsonArray versions = manifest.getAsJsonArray("versions");
-
+        
         // 2. Find the matching version entry
         String versionUrl = null;
         for (JsonElement v : versions) {
@@ -55,7 +55,7 @@ public class MappingDownloader {
         if (versionUrl == null) {
             throw new IOException("Minecraft version not found in manifest: " + mcVersion);
         }
-
+        
         // 3. Fetch version JSON
         String versionJson = fetchString(versionUrl);
         JsonObject versionData = JsonParser.parseString(versionJson).getAsJsonObject();
@@ -65,11 +65,11 @@ public class MappingDownloader {
         }
         String mappingsUrl = downloads.getAsJsonObject("client_mappings")
                 .get("url").getAsString();
-
+        
         // 4. Download the mappings
         return fetchString(mappingsUrl);
     }
-
+    
     private String fetchString(String url) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))

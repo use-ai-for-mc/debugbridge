@@ -26,25 +26,25 @@ public class JavaBridge {
     private final ObjectRefStore refs;
     private final Map<String, Class<?>> classCache = new ConcurrentHashMap<>();
     private final Map<Class<?>, Map<String, String>> reverseMethodCache = new ConcurrentHashMap<>();
-
+    
     public JavaBridge(MappingResolver resolver, ThreadDispatcher dispatcher, ObjectRefStore refs) {
         this.resolver = resolver;
         this.dispatcher = dispatcher;
         this.refs = refs;
     }
-
+    
     public MappingResolver getResolver() {
         return resolver;
     }
-
+    
     public ThreadDispatcher getDispatcher() {
         return dispatcher;
     }
-
+    
     public ObjectRefStore getRefs() {
         return refs;
     }
-
+    
     /**
      * Create the "java" global table with all bridge functions.
      */
@@ -58,7 +58,7 @@ public class JavaBridge {
         t.set("array", new ArrayFunction());
         t.set("isNull", new IsNullFunction());
         t.set("ref", new RefFunction());
-
+        
         // Reflection helpers for exploring classes and objects
         t.set("describe", new DescribeFunction());
         t.set("methods", new MethodsFunction());
@@ -67,23 +67,23 @@ public class JavaBridge {
         t.set("find", new FindFunction());
         return t;
     }
-
+    
     /**
      * Resolve a Mojang class name to a runtime Class<?>.
      */
     public Class<?> resolveClass(String mojangName) throws ClassNotFoundException {
         Class<?> cached = classCache.get(mojangName);
         if (cached != null) return cached;
-
+        
         if (!SecurityPolicy.isAllowed(mojangName)) {
             throw new LuaError("Access to " + mojangName + " is blocked by security policy");
         }
-
+        
         String runtimeName = resolver.resolveClass(mojangName);
         if (!SecurityPolicy.isAllowed(runtimeName)) {
             throw new LuaError("Access to " + runtimeName + " is blocked by security policy");
         }
-
+        
         try {
             Class<?> cls = Class.forName(runtimeName);
             classCache.put(mojangName, cls);
@@ -102,7 +102,7 @@ public class JavaBridge {
             throw e;
         }
     }
-
+    
     /**
      * Wrap a Java value as an appropriate Lua value.
      */
@@ -117,12 +117,12 @@ public class JavaBridge {
         if (value instanceof Double d) return LuaValue.valueOf(d);
         if (value instanceof String s) return LuaValue.valueOf(s);
         if (value instanceof Character c) return LuaValue.valueOf(String.valueOf(c));
-
+        
         // Wrap any other object
         String mojangType = resolver.unresolveClass(value.getClass().getName());
         return new JavaObjectWrapper(value, value.getClass(), mojangType, this);
     }
-
+    
     /**
      * Unwrap a Lua value to a Java object.
      */
@@ -131,7 +131,7 @@ public class JavaBridge {
         if (value.isboolean()) return value.toboolean();
         if (value instanceof JavaObjectWrapper wrapper) return wrapper.getJavaObject();
         if (value instanceof JavaClassWrapper wrapper) return wrapper.getJavaClass();
-
+        
         if (value.isnumber()) {
             if (targetType != null) {
                 if (targetType == int.class || targetType == Integer.class) return value.toint();
@@ -148,7 +148,7 @@ public class JavaBridge {
             }
             return d;
         }
-
+        
         if (value.isstring()) {
             if (targetType == char.class || targetType == Character.class) {
                 String s = value.tojstring();
@@ -156,7 +156,7 @@ public class JavaBridge {
             }
             return value.tojstring();
         }
-
+        
         if (value.istable()) {
             // Convert Lua table to array if target is array type
             if (targetType != null && targetType.isArray()) {
@@ -164,12 +164,12 @@ public class JavaBridge {
             }
             return value.tojstring(); // fallback
         }
-
+        
         return value.tojstring();
     }
-
+    
     // ==================== Bridge Functions ====================
-
+    
     private Object luaTableToArray(LuaTable table, Class<?> componentType) {
         int len = table.length();
         Object array = Array.newInstance(componentType, len);
@@ -178,7 +178,7 @@ public class JavaBridge {
         }
         return array;
     }
-
+    
     /**
      * Reverse-lookup: given a runtime {@link Method}, find a Mojang method name
      * for it (or fall back to the runtime name).
@@ -194,7 +194,7 @@ public class JavaBridge {
         Map<String, String> reverse = getReverseMethodTable(declaringClass);
         return reverse.getOrDefault(m.getName(), m.getName());
     }
-
+    
     /**
      * Build (and cache) a runtime-method-name → Mojang-method-name table for the
      * full ancestor graph of {@code clazz}. Walks classes + super-interfaces in
@@ -203,7 +203,7 @@ public class JavaBridge {
     private Map<String, String> getReverseMethodTable(Class<?> clazz) {
         Map<String, String> cached = reverseMethodCache.get(clazz);
         if (cached != null) return cached;
-
+        
         Map<String, String> table = new HashMap<>();
         // Walk class hierarchy.
         for (Class<?> c = clazz; c != null && c != Object.class; c = c.getSuperclass()) {
@@ -221,11 +221,11 @@ public class JavaBridge {
             populateReverseFromClass(iface, table);
             Collections.addAll(queue, iface.getInterfaces());
         }
-
+        
         reverseMethodCache.put(clazz, table);
         return table;
     }
-
+    
     private void populateReverseFromClass(Class<?> c, Map<String, String> table) {
         String mojangClassName = resolver.unresolveClass(c.getName());
         for (String sig : resolver.getMethodSignatures(mojangClassName)) {
@@ -238,7 +238,7 @@ public class JavaBridge {
             }
         }
     }
-
+    
     private String getFieldMojangName(Class<?> declaringClass, Field f) {
         String runtimeClassName = declaringClass.getName();
         String mojangClassName = resolver.unresolveClass(runtimeClassName);
@@ -251,7 +251,7 @@ public class JavaBridge {
         }
         return f.getName();
     }
-
+    
     private String buildMethodSignature(Method m, String mojangName) {
         StringBuilder sb = new StringBuilder();
         sb.append(resolver.unresolveClass(m.getReturnType().getName()));
@@ -265,7 +265,7 @@ public class JavaBridge {
         if (Modifier.isStatic(m.getModifiers())) sb.append(" [static]");
         return sb.toString();
     }
-
+    
     private List<Class<?>> getAllInterfaces(Class<?> clazz) {
         // Use BFS to collect ALL interfaces in the hierarchy, no matter how deep.
         // The old code only recursed one level, missing deeply nested interfaces
@@ -273,7 +273,7 @@ public class JavaBridge {
         //   ClientLevel -> Level -> LevelAccessor -> CommonLevelAccessor -> EntityGetter
         Set<Class<?>> seen = new LinkedHashSet<>();
         Deque<Class<?>> queue = new ArrayDeque<>();
-
+        
         // Seed the queue with direct interfaces from all superclasses
         for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
             for (Class<?> iface : c.getInterfaces()) {
@@ -282,7 +282,7 @@ public class JavaBridge {
                 }
             }
         }
-
+        
         // BFS over super-interfaces
         while (!queue.isEmpty()) {
             Class<?> iface = queue.poll();
@@ -292,10 +292,10 @@ public class JavaBridge {
                 }
             }
         }
-
+        
         return new ArrayList<>(seen);
     }
-
+    
     // Import for ParsedMappings.simpleMethodName
     private static class ParsedMappings {
         static String simpleMethodName(String key) {
@@ -303,9 +303,9 @@ public class JavaBridge {
             return paren >= 0 ? key.substring(0, paren) : key;
         }
     }
-
+    
     // ==================== Reflection Helpers ====================
-
+    
     /**
      * java.import(className) -> JavaClassWrapper
      */
@@ -322,7 +322,7 @@ public class JavaBridge {
             }
         }
     }
-
+    
     /**
      * java.new(classWrapper, args...) -> JavaObjectWrapper
      */
@@ -330,18 +330,18 @@ public class JavaBridge {
         @Override
         public Varargs invoke(Varargs args) {
             if (args.narg() < 1) throw new LuaError("java.new requires at least a class argument");
-
+            
             LuaValue classArg = args.arg1();
             Class<?> cls;
             String mojangName;
-
+            
             if (classArg instanceof JavaClassWrapper wrapper) {
                 cls = wrapper.getJavaClass();
                 mojangName = wrapper.getMojangClassName();
             } else {
                 throw new LuaError("java.new: first argument must be a class from java.import()");
             }
-
+            
             // Collect constructor args
             int nargs = args.narg() - 1;
             Object[] javaArgs = new Object[nargs];
@@ -350,7 +350,7 @@ public class JavaBridge {
                 javaArgs[i] = unwrapLuaValue(args.arg(i + 2), null);
                 argTypes[i] = javaArgs[i] == null ? null : javaArgs[i].getClass();
             }
-
+            
             try {
                 Constructor<?> ctor = findConstructor(cls, argTypes, nargs);
                 if (ctor == null) {
@@ -366,7 +366,7 @@ public class JavaBridge {
                 throw new LuaError("Failed to construct " + mojangName + ": " + e.getMessage());
             }
         }
-
+        
         private Constructor<?> findConstructor(Class<?> cls, Class<?>[] argTypes, int nargs) {
             for (Constructor<?> c : cls.getDeclaredConstructors()) {
                 if (c.getParameterCount() == nargs) {
@@ -375,7 +375,7 @@ public class JavaBridge {
             }
             return null;
         }
-
+        
         private Object[] convertConstructorArgs(Object[] args, Class<?>[] paramTypes) {
             Object[] result = new Object[args.length];
             for (int i = 0; i < args.length; i++) {
@@ -383,7 +383,7 @@ public class JavaBridge {
             }
             return result;
         }
-
+        
         private Object convertArg(Object arg, Class<?> target) {
             if (arg == null) return null;
             if (target.isInstance(arg)) return arg;
@@ -398,7 +398,7 @@ public class JavaBridge {
             return arg;
         }
     }
-
+    
     /**
      * java.typeof(wrapper) -> string
      */
@@ -414,7 +414,7 @@ public class JavaBridge {
             return LuaValue.valueOf(arg.typename());
         }
     }
-
+    
     /**
      * java.cast(wrapper, className) -> re-wrapped
      */
@@ -433,7 +433,7 @@ public class JavaBridge {
             }
         }
     }
-
+    
     /**
      * java.iter(javaIterable) -> Lua iterator function
      */
@@ -447,7 +447,7 @@ public class JavaBridge {
             if (!(obj instanceof Iterable<?> iterable)) {
                 throw new LuaError("java.iter: object is not Iterable: " + obj.getClass().getName());
             }
-
+            
             Iterator<?> it = iterable.iterator();
             return new ZeroArgFunction() {
                 @Override
@@ -464,9 +464,9 @@ public class JavaBridge {
             };
         }
     }
-
+    
     // ==================== Helper methods ====================
-
+    
     /**
      * java.array(javaCollection) -> Lua table
      */
@@ -478,7 +478,7 @@ public class JavaBridge {
             }
             Object obj = wrapper.getJavaObject();
             LuaTable table = new LuaTable();
-
+            
             if (obj instanceof Collection<?> coll) {
                 int i = 1;
                 for (Object item : coll) {
@@ -495,7 +495,7 @@ public class JavaBridge {
             return table;
         }
     }
-
+    
     /**
      * java.isNull(wrapper) -> boolean
      */
@@ -509,7 +509,7 @@ public class JavaBridge {
             return LuaValue.FALSE;
         }
     }
-
+    
     /**
      * java.ref(refId) -> stored object
      */
@@ -524,7 +524,7 @@ public class JavaBridge {
             return wrapJavaValue(obj);
         }
     }
-
+    
     /**
      * java.describe(obj) -> table with class info, fields, methods, supers
      * Comprehensive reflection dump for exploring unknown objects.
@@ -534,7 +534,7 @@ public class JavaBridge {
         public LuaValue call(LuaValue arg) {
             Class<?> cls;
             String mojangName;
-
+            
             if (arg instanceof JavaObjectWrapper wrapper) {
                 cls = wrapper.getDeclaredType();
                 mojangName = wrapper.getMojangTypeName();
@@ -544,16 +544,16 @@ public class JavaBridge {
             } else {
                 throw new LuaError("java.describe: argument must be a Java object or class");
             }
-
+            
             LuaTable result = new LuaTable();
             result.set("class", mojangName);
             result.set("runtimeClass", cls.getName());
-
+            
             // Superclass
             if (cls.getSuperclass() != null) {
                 result.set("superclass", resolver.unresolveClass(cls.getSuperclass().getName()));
             }
-
+            
             // Interfaces
             LuaTable interfaces = new LuaTable();
             int idx = 1;
@@ -561,7 +561,7 @@ public class JavaBridge {
                 interfaces.set(idx++, resolver.unresolveClass(iface.getName()));
             }
             result.set("interfaces", interfaces);
-
+            
             // Fields (include inherited, non-private)
             LuaTable fieldsTable = new LuaTable();
             idx = 1;
@@ -581,7 +581,7 @@ public class JavaBridge {
                 }
             }
             result.set("fields", fieldsTable);
-
+            
             // Methods (include inherited, non-private, including interface defaults)
             LuaTable methodsTable = new LuaTable();
             idx = 1;
@@ -592,13 +592,13 @@ public class JavaBridge {
                     String sig = m.getName() + "(" + m.getParameterCount() + ")";
                     if (seen.contains(sig)) continue;
                     seen.add(sig);
-
+                    
                     LuaTable entry = new LuaTable();
                     String methodMojangName = getMethodMojangName(c, m);
                     entry.set("name", methodMojangName);
                     entry.set("returnType", resolver.unresolveClass(m.getReturnType().getName()));
                     entry.set("static", LuaValue.valueOf(Modifier.isStatic(m.getModifiers())));
-
+                    
                     // Parameter types
                     LuaTable params = new LuaTable();
                     int pi = 1;
@@ -606,7 +606,7 @@ public class JavaBridge {
                         params.set(pi++, resolver.unresolveClass(p.getName()));
                     }
                     entry.set("params", params);
-
+                    
                     String declaring = resolver.unresolveClass(c.getName());
                     if (!declaring.equals(mojangName)) {
                         entry.set("declaredIn", declaring);
@@ -620,30 +620,30 @@ public class JavaBridge {
                     String sig = m.getName() + "(" + m.getParameterCount() + ")";
                     if (seen.contains(sig)) continue;
                     seen.add(sig);
-
+                    
                     LuaTable entry = new LuaTable();
                     String methodMojangName = getMethodMojangName(iface, m);
                     entry.set("name", methodMojangName);
                     entry.set("returnType", resolver.unresolveClass(m.getReturnType().getName()));
                     entry.set("static", LuaValue.valueOf(Modifier.isStatic(m.getModifiers())));
-
+                    
                     LuaTable params = new LuaTable();
                     int pi = 1;
                     for (Class<?> p : m.getParameterTypes()) {
                         params.set(pi++, resolver.unresolveClass(p.getName()));
                     }
                     entry.set("params", params);
-
+                    
                     entry.set("declaredIn", resolver.unresolveClass(iface.getName()));
                     methodsTable.set(idx++, entry);
                 }
             }
             result.set("methods", methodsTable);
-
+            
             return result;
         }
     }
-
+    
     /**
      * java.methods(obj, [filter]) -> table of method descriptions
      * Optional string filter to match method names.
@@ -653,7 +653,7 @@ public class JavaBridge {
         public Varargs invoke(Varargs args) {
             LuaValue arg = args.arg1();
             String filter = args.narg() >= 2 ? args.arg(2).optjstring(null) : null;
-
+            
             Class<?> cls;
             if (arg instanceof JavaObjectWrapper wrapper) {
                 cls = wrapper.getDeclaredType();
@@ -662,11 +662,11 @@ public class JavaBridge {
             } else {
                 throw new LuaError("java.methods: argument must be a Java object or class");
             }
-
+            
             LuaTable result = new LuaTable();
             int idx = 1;
             Set<String> seen = new HashSet<>();
-
+            
             for (Class<?> c = cls; c != null; c = c.getSuperclass()) {
                 for (Method m : c.getDeclaredMethods()) {
                     String mojangName = getMethodMojangName(c, m);
@@ -692,11 +692,11 @@ public class JavaBridge {
                     result.set(idx++, LuaValue.valueOf(sig));
                 }
             }
-
+            
             return result;
         }
     }
-
+    
     /**
      * java.fields(obj, [filter]) -> table of field descriptions
      */
@@ -705,7 +705,7 @@ public class JavaBridge {
         public Varargs invoke(Varargs args) {
             LuaValue arg = args.arg1();
             String filter = args.narg() >= 2 ? args.arg(2).optjstring(null) : null;
-
+            
             Class<?> cls;
             if (arg instanceof JavaObjectWrapper wrapper) {
                 cls = wrapper.getDeclaredType();
@@ -714,10 +714,10 @@ public class JavaBridge {
             } else {
                 throw new LuaError("java.fields: argument must be a Java object or class");
             }
-
+            
             LuaTable result = new LuaTable();
             int idx = 1;
-
+            
             for (Class<?> c = cls; c != null && c != Object.class; c = c.getSuperclass()) {
                 for (Field f : c.getDeclaredFields()) {
                     String mojangName = getFieldMojangName(c, f);
@@ -734,7 +734,7 @@ public class JavaBridge {
             return result;
         }
     }
-
+    
     /**
      * java.supers(obj) -> table of superclass chain + interfaces
      */
@@ -749,7 +749,7 @@ public class JavaBridge {
             } else {
                 throw new LuaError("java.supers: argument must be a Java object or class");
             }
-
+            
             LuaTable result = new LuaTable();
             LuaTable chain = new LuaTable();
             int idx = 1;
@@ -757,18 +757,18 @@ public class JavaBridge {
                 chain.set(idx++, resolver.unresolveClass(c.getName()));
             }
             result.set("hierarchy", chain);
-
+            
             LuaTable ifaces = new LuaTable();
             idx = 1;
             for (Class<?> iface : getAllInterfaces(cls)) {
                 ifaces.set(idx++, resolver.unresolveClass(iface.getName()));
             }
             result.set("interfaces", ifaces);
-
+            
             return result;
         }
     }
-
+    
     /**
      * java.find(pattern, [scope]) -> table of matching class/method/field names from mappings
      * Searches the mapping database, not loaded classes.
@@ -778,11 +778,11 @@ public class JavaBridge {
         public Varargs invoke(Varargs args) {
             String pattern = args.arg1().checkjstring().toLowerCase();
             String scope = args.narg() >= 2 ? args.arg(2).optjstring("all") : "all";
-
+            
             LuaTable result = new LuaTable();
             int idx = 1;
             int limit = 50;
-
+            
             if (scope.equals("class") || scope.equals("all")) {
                 for (String name : resolver.getAllClassNames()) {
                     if (name.toLowerCase().contains(pattern)) {
@@ -791,7 +791,7 @@ public class JavaBridge {
                     }
                 }
             }
-
+            
             if (idx <= limit && (scope.equals("method") || scope.equals("all"))) {
                 for (String className : resolver.getAllClassNames()) {
                     for (String methodSig : resolver.getMethodSignatures(className)) {
@@ -804,7 +804,7 @@ public class JavaBridge {
                     if (idx > limit) break;
                 }
             }
-
+            
             if (idx <= limit && (scope.equals("field") || scope.equals("all"))) {
                 for (String className : resolver.getAllClassNames()) {
                     for (String fieldName : resolver.getFieldNames(className)) {
@@ -817,7 +817,7 @@ public class JavaBridge {
                     if (idx > limit) break;
                 }
             }
-
+            
             return result;
         }
     }

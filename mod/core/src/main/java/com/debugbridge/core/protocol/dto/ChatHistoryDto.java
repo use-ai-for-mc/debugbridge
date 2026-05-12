@@ -12,7 +12,7 @@ import java.util.List;
 public final class ChatHistoryDto {
     public List<ChatMessageDto> messages;
     public int count;
-
+    
     public ChatHistoryDto(List<ChatMessageDto> messages) {
         this.messages = messages;
         this.count = messages.size();

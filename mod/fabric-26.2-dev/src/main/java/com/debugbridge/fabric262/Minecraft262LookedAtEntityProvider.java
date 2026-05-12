@@ -16,7 +16,7 @@ public class Minecraft262LookedAtEntityProvider implements LookedAtEntityProvide
     public Integer getLookedAtEntity(double range) throws Exception {
         Minecraft mc = Minecraft.getInstance();
         CompletableFuture<Integer> future = new CompletableFuture<>();
-
+        
         mc.execute(() -> {
             try {
                 LocalPlayer player = mc.player;
@@ -24,14 +24,14 @@ public class Minecraft262LookedAtEntityProvider implements LookedAtEntityProvide
                     future.complete(null);
                     return;
                 }
-
+                
                 Vec3 eye = player.getEyePosition();
                 Vec3 look = player.getLookAngle();
                 Vec3 end = eye.add(look.scale(range));
                 AABB searchBox = player.getBoundingBox()
                         .expandTowards(look.scale(range))
                         .inflate(1.0);
-
+                
                 EntityHitResult hit = ProjectileUtil.getEntityHitResult(
                         player,
                         eye,
@@ -40,13 +40,13 @@ public class Minecraft262LookedAtEntityProvider implements LookedAtEntityProvide
                         entity -> !entity.isSpectator() && entity.isPickable(),
                         ProjectileUtil.DEFAULT_ENTITY_HIT_RESULT_MARGIN
                 );
-
+                
                 future.complete(hit != null ? hit.getEntity().getId() : null);
             } catch (Exception e) {
                 future.completeExceptionally(e);
             }
         });
-
+        
         return future.get(2, TimeUnit.SECONDS);
     }
 }

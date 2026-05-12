@@ -24,7 +24,7 @@ public interface ScreenshotProvider {
      * @throws Exception if the capture fails or times out.
      */
     Capture capture(int downscaleFactor, float quality, long timeoutMs) throws Exception;
-
+    
     /**
      * Result of a successful capture.
      */
@@ -33,7 +33,7 @@ public interface ScreenshotProvider {
         public final int width;
         public final int height;
         public final long sizeBytes;
-
+        
         public Capture(String path, int width, int height, long sizeBytes) {
             this.path = path;
             this.width = width;

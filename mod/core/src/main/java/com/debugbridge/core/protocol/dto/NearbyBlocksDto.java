@@ -9,7 +9,7 @@ import java.util.List;
 public final class NearbyBlocksDto {
     public List<BlockSummaryDto> blocks;
     public int count;
-
+    
     public NearbyBlocksDto(List<BlockSummaryDto> blocks) {
         this.blocks = blocks;
         this.count = blocks.size();

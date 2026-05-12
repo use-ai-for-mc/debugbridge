@@ -13,9 +13,9 @@ import java.util.function.Consumer;
  * The user must click "I Understand" to enable the mod.
  */
 public class DeveloperWarningScreen extends Screen {
-
+    
     private static final Component TITLE = Component.literal("DebugBridge - Developer Tool Warning");
-
+    
     private static final String[] WARNING_LINES = {
             "",
             "DebugBridge is a DEVELOPER TOOL that exposes a WebSocket server",
@@ -40,10 +40,10 @@ public class DeveloperWarningScreen extends Screen {
             "  3. You will not ask for support for non-developer use cases",
             "",
     };
-
+    
     private final BridgeConfig config;
     private final Consumer<Boolean> onComplete;
-
+    
     /**
      * @param config     The config to save acceptance to
      * @param onComplete Callback with true if accepted, false if declined
@@ -53,7 +53,7 @@ public class DeveloperWarningScreen extends Screen {
         this.config = config;
         this.onComplete = onComplete;
     }
-
+    
     @Override
     protected void init() {
         int buttonWidth = 150;
@@ -62,7 +62,7 @@ public class DeveloperWarningScreen extends Screen {
         int totalWidth = buttonWidth * 2 + spacing;
         int startX = (this.width - totalWidth) / 2;
         int buttonY = this.height - 40;
-
+        
         // "I Understand" button
         this.addRenderableWidget(Button.builder(
                 Component.literal("I Understand - Enable Mod"),
@@ -72,23 +72,23 @@ public class DeveloperWarningScreen extends Screen {
                     onComplete.accept(true);
                 }
         ).bounds(startX, buttonY, buttonWidth, buttonHeight).build());
-
+        
         // "Cancel" button
         this.addRenderableWidget(Button.builder(
                 Component.literal("Cancel - Disable Mod"),
                 button -> onComplete.accept(false)
         ).bounds(startX + buttonWidth + spacing, buttonY, buttonWidth, buttonHeight).build());
     }
-
+    
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         // Flat dark background (avoid renderBackground which triggers blur
         // and can crash with "Can only blur once per frame" on some mod setups)
         graphics.fill(0, 0, this.width, this.height, 0xC0000000);
-
+        
         // Draw title
         graphics.drawCenteredString(this.font, this.title, this.width / 2, 15, 0xFFFF5555);
-
+        
         // Draw warning lines (left-aligned with padding)
         int y = 35;
         int leftPadding = 40;
@@ -100,10 +100,10 @@ public class DeveloperWarningScreen extends Screen {
                 y += 11;
             }
         }
-
+        
         super.render(graphics, mouseX, mouseY, partialTick);
     }
-
+    
     @Override
     public boolean shouldCloseOnEsc() {
         return false; // Force user to make a choice

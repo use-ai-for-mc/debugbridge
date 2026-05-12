@@ -23,10 +23,12 @@ public final class ScreenInspectDto {
     public String title;
     public String menuClass;
     public List<SlotDto> slots;
-    /** Pass-through JSON map keyed by itemId; populated by the handler when
+    /**
+     * Pass-through JSON map keyed by itemId; populated by the handler when
      * {@code includeIcons=true}. Shape: {@code {itemId: {base64Png, width,
      * height, spriteName?}}}. Stays as raw JSON (rather than a typed DTO)
      * because the icons sub-shape is owned by {@link
-     * com.debugbridge.core.texture.ItemTextureProvider}, not this provider. */
+     * com.debugbridge.core.texture.ItemTextureProvider}, not this provider.
+     */
     public JsonElement icons;
 }

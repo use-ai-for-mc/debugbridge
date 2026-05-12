@@ -21,11 +21,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(LevelRenderer.class)
 public abstract class BlockGlowMixin {
-
+    
     @Shadow
     @org.spongepowered.asm.mixin.Final
     private RenderBuffers renderBuffers;
-
+    
     @Inject(
             method = "renderLevel(Lcom/mojang/blaze3d/vertex/PoseStack;FJZLnet/minecraft/client/Camera;Lnet/minecraft/client/renderer/GameRenderer;Lnet/minecraft/client/renderer/LightTexture;Lcom/mojang/math/Matrix4f;)V",
             at = @At("TAIL")
@@ -37,19 +37,19 @@ public abstract class BlockGlowMixin {
     ) {
         var glowing = ClientBlockGlowManager.snapshot();
         if (glowing.isEmpty()) return;
-
+        
         Vec3 cam = camera.getPosition();
         MultiBufferSource.BufferSource buffers = renderBuffers.bufferSource();
         VertexConsumer lines = buffers.getBuffer(RenderType.lines());
-
+        
         poseStack.pushPose();
         poseStack.translate(-cam.x, -cam.y, -cam.z);
-
+        
         for (var p : glowing) {
             AABB box = new AABB(p.x(), p.y(), p.z(), p.x() + 1.0, p.y() + 1.0, p.z() + 1.0);
             LevelRenderer.renderLineBox(poseStack, lines, box, 1.0f, 1.0f, 0.0f, 1.0f);
         }
-
+        
         poseStack.popPose();
         buffers.endBatch(RenderType.lines());
     }

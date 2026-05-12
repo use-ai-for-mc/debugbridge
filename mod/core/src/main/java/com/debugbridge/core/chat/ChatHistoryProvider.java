@@ -12,7 +12,7 @@ import java.util.List;
  * per field on each message).
  */
 public interface ChatHistoryProvider {
-
+    
     /**
      * Get the most recent chat messages, newest first.
      *
@@ -28,8 +28,8 @@ public interface ChatHistoryProvider {
      *                    default — adds bytes for callers that only need
      *                    {@code plain}.
      * @return list of {@link ChatMessageDto}, newest first. Wrapped into the
-     *         final {@code chatHistory} response in {@link
-     *         com.debugbridge.core.server.BridgeServer}.
+     * final {@code chatHistory} response in {@link
+     * com.debugbridge.core.server.BridgeServer}.
      * @throws Exception on query failure
      */
     List<ChatMessageDto> getRecentMessages(int limit, MappingResolver resolver, boolean includeJson) throws Exception;

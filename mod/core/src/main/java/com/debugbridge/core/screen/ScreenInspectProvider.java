@@ -9,7 +9,7 @@ import com.debugbridge.core.protocol.dto.ScreenInspectDto;
  * when iterating slots from Lua.
  */
 public interface ScreenInspectProvider {
-
+    
     /**
      * Snapshot the currently-open screen.
      *
@@ -21,7 +21,7 @@ public interface ScreenInspectProvider {
      * Mojang vs intermediary names.
      *
      * @return populated DTO. When no screen is displayed, returns
-     *         {@code new ScreenInspectDto()} with {@code open=false}.
+     * {@code new ScreenInspectDto()} with {@code open=false}.
      * @throws Exception on query failure
      */
     ScreenInspectDto inspectCurrentScreen() throws Exception;

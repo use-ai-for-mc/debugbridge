@@ -16,9 +16,9 @@ import java.util.Collections;
 import java.util.List;
 
 public class Minecraft262ChatHistoryProvider implements ChatHistoryProvider {
-
+    
     private static volatile Field allMessagesField;
-
+    
     private static Field allMessagesField(MappingResolver resolver) throws NoSuchFieldException {
         Field f = allMessagesField;
         if (f != null) return f;
@@ -29,18 +29,18 @@ public class Minecraft262ChatHistoryProvider implements ChatHistoryProvider {
         allMessagesField = f;
         return f;
     }
-
+    
     @Override
     public List<ChatMessageDto> getRecentMessages(int limit, MappingResolver resolver, boolean includeJson) throws Exception {
         Minecraft mc = Minecraft.getInstance();
         if (mc.gui == null) return Collections.emptyList();
         ChatComponent chat = mc.gui.hud.getChat();
         if (chat == null) return Collections.emptyList();
-
+        
         @SuppressWarnings("unchecked")
         List<GuiMessage> messages = (List<GuiMessage>) allMessagesField(resolver).get(chat);
         if (messages == null) return Collections.emptyList();
-
+        
         // ChatComponent stores newest-first; honor that.
         int n = Math.min(limit, messages.size());
         List<ChatMessageDto> out = new ArrayList<>(n);

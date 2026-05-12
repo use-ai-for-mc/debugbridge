@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit;
  * file is fully written.
  */
 public class Minecraft12111ScreenshotProvider implements ScreenshotProvider {
-
+    
     private static int clampDownscale(int requested, int width, int height) {
         if (requested < 1) return 1;
         for (int f = requested; f >= 1; f--) {
@@ -33,12 +33,12 @@ public class Minecraft12111ScreenshotProvider implements ScreenshotProvider {
         }
         return 1;
     }
-
+    
     @Override
     public Capture capture(int requestedDownscale, float quality, long timeoutMs) throws Exception {
         Minecraft mc = Minecraft.getInstance();
         CompletableFuture<Capture> future = new CompletableFuture<>();
-
+        
         mc.execute(() -> {
             try {
                 RenderTarget target = mc.getMainRenderTarget();
@@ -50,7 +50,7 @@ public class Minecraft12111ScreenshotProvider implements ScreenshotProvider {
                 int srcW = target.width;
                 int srcH = target.height;
                 int downscale = clampDownscale(requestedDownscale, srcW, srcH);
-
+                
                 Screenshot.takeScreenshot(target, downscale, image -> {
                     try {
                         int w = image.getWidth();
@@ -59,7 +59,7 @@ public class Minecraft12111ScreenshotProvider implements ScreenshotProvider {
                         // NativeImage no longer needed; release immediately so the
                         // off-heap buffer doesn't outlive the JPEG encode.
                         image.close();
-
+                        
                         Path path = JpegEncoder.writeJpegTempFile(pixels, w, h, quality);
                         long size = Files.size(path);
                         future.complete(new Capture(path.toString(), w, h, size));
@@ -71,7 +71,7 @@ public class Minecraft12111ScreenshotProvider implements ScreenshotProvider {
                 future.completeExceptionally(t);
             }
         });
-
+        
         return future.get(timeoutMs, TimeUnit.MILLISECONDS);
     }
 }

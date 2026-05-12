@@ -13,9 +13,9 @@ import java.util.function.Consumer;
  * The user must click "I Understand" to enable the mod.
  */
 public class DeveloperWarningScreen extends Screen {
-
+    
     private static final Component TITLE = Component.literal("DebugBridge - Developer Tool Warning");
-
+    
     private static final String[] WARNING_LINES = {
             "",
             "DebugBridge is a DEVELOPER TOOL that exposes a WebSocket server",
@@ -40,10 +40,10 @@ public class DeveloperWarningScreen extends Screen {
             "  3. You will not ask for support for non-developer use cases",
             "",
     };
-
+    
     private final BridgeConfig config;
     private final Consumer<Boolean> onComplete;
-
+    
     /**
      * @param config     The config to save acceptance to
      * @param onComplete Callback with true if accepted, false if declined
@@ -53,7 +53,7 @@ public class DeveloperWarningScreen extends Screen {
         this.config = config;
         this.onComplete = onComplete;
     }
-
+    
     @Override
     protected void init() {
         int buttonWidth = 150;
@@ -62,7 +62,7 @@ public class DeveloperWarningScreen extends Screen {
         int totalWidth = buttonWidth * 2 + spacing;
         int startX = (this.width - totalWidth) / 2;
         int buttonY = this.height - 40;
-
+        
         // "I Understand" button (1.19 uses constructor, not builder)
         this.addRenderableWidget(new Button(
                 startX, buttonY, buttonWidth, buttonHeight,
@@ -73,7 +73,7 @@ public class DeveloperWarningScreen extends Screen {
                     onComplete.accept(true);
                 }
         ));
-
+        
         // "Cancel" button
         this.addRenderableWidget(new Button(
                 startX + buttonWidth + spacing, buttonY, buttonWidth, buttonHeight,
@@ -81,15 +81,15 @@ public class DeveloperWarningScreen extends Screen {
                 button -> onComplete.accept(false)
         ));
     }
-
+    
     @Override
     public void render(PoseStack poseStack, int mouseX, int mouseY, float partialTick) {
         // Darken background
         fill(poseStack, 0, 0, this.width, this.height, 0xC0000000);
-
+        
         // Draw title
         drawCenteredString(poseStack, this.font, this.title, this.width / 2, 15, 0xFFFF5555);
-
+        
         // Draw warning lines (left-aligned with padding)
         int y = 35;
         int leftPadding = 40;
@@ -101,10 +101,10 @@ public class DeveloperWarningScreen extends Screen {
                 y += 11;
             }
         }
-
+        
         super.render(poseStack, mouseX, mouseY, partialTick);
     }
-
+    
     @Override
     public boolean shouldCloseOnEsc() {
         return false; // Force user to make a choice

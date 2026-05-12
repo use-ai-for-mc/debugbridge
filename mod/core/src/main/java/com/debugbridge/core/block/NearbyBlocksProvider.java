@@ -18,7 +18,7 @@ import java.util.List;
  * mapping resolver before serialization.
  */
 public interface NearbyBlocksProvider {
-
+    
     /**
      * Get block entities within the given range of the local player, sorted
      * nearest-first.
@@ -29,13 +29,13 @@ public interface NearbyBlocksProvider {
      * @throws Exception on query failure
      */
     List<BlockSummaryDto> getNearbyBlocks(double range, int limit) throws Exception;
-
+    
     /**
      * Get detailed information about a specific block entity at (x, y, z).
      *
      * @return populated DTO, or {@code null} when there is no block entity at
-     *         that position. The handler converts {@code null} to the on-wire
-     *         {@code {"gone": true}} shape.
+     * that position. The handler converts {@code null} to the on-wire
+     * {@code {"gone": true}} shape.
      * @throws Exception on query failure
      */
     BlockDetailsDto getBlockDetails(int x, int y, int z) throws Exception;

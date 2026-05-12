@@ -1,6 +1,3 @@
-import org.gradle.api.tasks.compile.JavaCompile
-import org.gradle.jvm.toolchain.JavaLanguageVersion
-
 plugins {
     id("fabric-loom") version "1.16.1"
 }

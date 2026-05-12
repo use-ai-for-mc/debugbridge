@@ -26,16 +26,16 @@ public final class BlockDetailsDto {
     public Integer z;
     public String type;
     public String blockId;
-
+    
     // Sign-specific (1.21.11 emits signLinesBack + isWaxed; 1.19 omits both).
     public List<String> signLines;
     public List<String> signLinesBack;
     public Boolean isWaxed;
-
+    
     // Container-specific.
     public List<BlockItemDto> items;
     public Integer containerSize;
-
+    
     public static BlockDetailsDto gone() {
         BlockDetailsDto d = new BlockDetailsDto();
         d.gone = true;

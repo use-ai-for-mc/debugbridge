@@ -34,7 +34,7 @@ public class ParsedMappings {
      * Mojang class -> { "methodName(paramTypes)" -> "(paramTypes)returnType" }
      */
     public final Map<String, Map<String, String>> methodDescriptors;
-
+    
     public ParsedMappings(
             Map<String, String> classes,
             Map<String, String> classesReverse,
@@ -49,7 +49,7 @@ public class ParsedMappings {
         this.fieldTypes = Collections.unmodifiableMap(fieldTypes);
         this.methodDescriptors = Collections.unmodifiableMap(methodDescriptors);
     }
-
+    
     /**
      * Get the simple method name from a qualified key like "getName()" -> "getName"
      */
@@ -57,7 +57,7 @@ public class ParsedMappings {
         int paren = key.indexOf('(');
         return paren >= 0 ? key.substring(0, paren) : key;
     }
-
+    
     /**
      * Find all method names (without descriptor) that match a simple name in a class.
      * Returns the obfuscated names for all overloads.
@@ -65,7 +65,7 @@ public class ParsedMappings {
     public List<String> findMethodOverloads(String mojangClass, String methodName) {
         Map<String, String> classMethods = methods.get(mojangClass);
         if (classMethods == null) return Collections.emptyList();
-
+        
         List<String> results = new ArrayList<>();
         String prefix = methodName + "(";
         for (Map.Entry<String, String> entry : classMethods.entrySet()) {

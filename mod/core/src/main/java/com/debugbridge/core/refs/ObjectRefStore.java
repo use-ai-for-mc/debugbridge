@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ObjectRefStore {
     private final Map<String, WeakReference<Object>> refs = new ConcurrentHashMap<>();
     private final AtomicInteger counter = new AtomicInteger(0);
-
+    
     /**
      * Store an object and return its reference ID.
      */
@@ -21,7 +21,7 @@ public class ObjectRefStore {
         refs.put(id, new WeakReference<>(obj));
         return id;
     }
-
+    
     /**
      * Retrieve an object by reference ID. Returns null if GC'd.
      */
@@ -34,7 +34,7 @@ public class ObjectRefStore {
         }
         return obj;
     }
-
+    
     /**
      * Clear all references.
      */
@@ -42,7 +42,7 @@ public class ObjectRefStore {
         refs.clear();
         counter.set(0);
     }
-
+    
     /**
      * Count of live references.
      */

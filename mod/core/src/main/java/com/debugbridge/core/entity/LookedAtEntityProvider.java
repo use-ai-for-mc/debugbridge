@@ -8,7 +8,7 @@ package com.debugbridge.core.entity;
  * revisions.
  */
 public interface LookedAtEntityProvider {
-
+    
     /**
      * @param range maximum raycast distance in blocks
      * @return the runtime ID of the entity being looked at, or {@code null}

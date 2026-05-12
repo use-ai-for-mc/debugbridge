@@ -20,23 +20,23 @@ public class LuaRuntime {
     private final JavaBridge bridge;
     private final StringBuilder printBuffer = new StringBuilder();
     private long maxExecutionTimeMs = 10_000;
-
+    
     // Thread used for Lua execution — we interrupt it on timeout
     private volatile Thread luaThread;
-
+    
     public LuaRuntime(MappingResolver resolver, ThreadDispatcher dispatcher, ObjectRefStore refs) {
         this.globals = JsePlatform.standardGlobals();
         this.bridge = new JavaBridge(resolver, dispatcher, refs);
-
+        
         // Register the "java" global table
         globals.set("java", bridge.createJavaTable());
-
+        
         // Override print() to capture output
         globals.set("print", new PrintFunction());
-
+        
         // Install a Lua debug hook that checks Thread.interrupted() periodically
         installInterruptHook();
-
+        
         // Security: remove dangerous globals.
         // `io` is kept so scripts can read/write scratch files via the standard
         // Lua API; Java-side shell-out is still blocked by SecurityPolicy.
@@ -47,14 +47,14 @@ public class LuaRuntime {
         globals.set("require", LuaValue.NIL);
         globals.set("loadfile", LuaValue.NIL);
         globals.set("dofile", LuaValue.NIL);
-
+        
         // Install Minecraft convenience globals: mc / player / level resolve lazily
         // through _G's __index, so they always reflect the current game state
         // (player and level change across world loads / respawns) without having
         // to re-call Minecraft.getInstance() by hand.
         installMinecraftGlobals();
     }
-
+    
     /**
      * Install a __index metatable on the globals so bare references to
      * {@code mc}, {@code player}, and {@code level} resolve dynamically.
@@ -88,7 +88,7 @@ public class LuaRuntime {
             // Non-fatal: users can still use java.import() directly.
         }
     }
-
+    
     private void installInterruptHook() {
         // Register a function that Lua's debug hook will call
         globals.set("__check_interrupt", new org.luaj.vm2.lib.ZeroArgFunction() {
@@ -100,7 +100,7 @@ public class LuaRuntime {
                 return LuaValue.NONE;
             }
         });
-
+        
         // Set a count-based debug hook: fires every 10000 VM instructions
         try {
             globals.load(
@@ -111,15 +111,15 @@ public class LuaRuntime {
             // debug lib may not be available; timeout won't work but bridge still functions
         }
     }
-
+    
     public JavaBridge getBridge() {
         return bridge;
     }
-
+    
     public void setMaxExecutionTimeMs(long ms) {
         this.maxExecutionTimeMs = ms;
     }
-
+    
     /**
      * Execute Lua code using the runtime's default timeout
      * ({@link #setMaxExecutionTimeMs}). The Lua state persists — variables
@@ -128,7 +128,7 @@ public class LuaRuntime {
     public ExecutionResult execute(String luaCode) {
         return execute(luaCode, maxExecutionTimeMs);
     }
-
+    
     /**
      * Execute Lua code with an explicit per-call timeout. Use this when a
      * caller knows their script needs more headroom than the default
@@ -138,19 +138,19 @@ public class LuaRuntime {
     public ExecutionResult execute(String luaCode, long timeoutMs) {
         final long effectiveTimeoutMs = timeoutMs > 0 ? timeoutMs : maxExecutionTimeMs;
         printBuffer.setLength(0);
-
+        
         ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r, "lua-exec");
             t.setDaemon(true);
             return t;
         });
-
+        
         Future<ExecutionResult> future = executor.submit(() -> {
             luaThread = Thread.currentThread();
             try {
                 LuaValue chunk = globals.load(luaCode, "=script");
                 Varargs result = chunk.invoke();
-
+                
                 LuaValue returnValue = result.arg1();
                 return new ExecutionResult(
                         returnValue.isnil() ? null : returnValue,
@@ -161,8 +161,8 @@ public class LuaRuntime {
                 String msg = e.getMessage();
                 if (msg != null && msg.contains("interrupted")) {
                     return new ExecutionResult(null, printBuffer.toString(),
-                        "Execution timed out after " + effectiveTimeoutMs
-                        + "ms — script may have an infinite loop or infinite recursion");
+                            "Execution timed out after " + effectiveTimeoutMs
+                                    + "ms — script may have an infinite loop or infinite recursion");
                 }
                 return new ExecutionResult(null, printBuffer.toString(), msg);
             } catch (StackOverflowError e) {
@@ -178,7 +178,7 @@ public class LuaRuntime {
                 luaThread = null;
             }
         });
-
+        
         try {
             return future.get(effectiveTimeoutMs, TimeUnit.MILLISECONDS);
         } catch (TimeoutException e) {
@@ -187,8 +187,8 @@ public class LuaRuntime {
             Thread lt = luaThread;
             if (lt != null) lt.interrupt();
             return new ExecutionResult(null, printBuffer.toString(),
-                "Execution timed out after " + effectiveTimeoutMs
-                + "ms — script may have an infinite loop or infinite recursion");
+                    "Execution timed out after " + effectiveTimeoutMs
+                            + "ms — script may have an infinite loop or infinite recursion");
         } catch (Exception e) {
             return new ExecutionResult(null, printBuffer.toString(),
                     e.getClass().getSimpleName() + ": " + e.getMessage());
@@ -196,7 +196,7 @@ public class LuaRuntime {
             executor.shutdownNow();
         }
     }
-
+    
     /**
      * Result of executing Lua code.
      */
@@ -204,18 +204,18 @@ public class LuaRuntime {
         public final LuaValue returnValue;
         public final String output;
         public final String error;
-
+        
         public ExecutionResult(LuaValue returnValue, String output, String error) {
             this.returnValue = returnValue;
             this.output = output;
             this.error = error;
         }
-
+        
         public boolean isSuccess() {
             return error == null;
         }
     }
-
+    
     /**
      * Custom print function that captures output instead of writing to stdout.
      */

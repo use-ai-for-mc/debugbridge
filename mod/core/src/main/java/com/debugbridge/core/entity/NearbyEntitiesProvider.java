@@ -10,7 +10,7 @@ import java.util.List;
  * Each version-specific mod implements this using version-appropriate APIs.
  */
 public interface NearbyEntitiesProvider {
-
+    
     /**
      * Get entities within the given range of the local player, sorted
      * nearest-first.
@@ -26,7 +26,7 @@ public interface NearbyEntitiesProvider {
      * @throws Exception if the query fails (e.g. player not in world)
      */
     List<EntitySummaryDto> getNearbyEntities(double range, int limit) throws Exception;
-
+    
     /**
      * Get detailed information about a specific entity by its runtime ID.
      *
@@ -36,7 +36,7 @@ public interface NearbyEntitiesProvider {
      *
      * @param entityId the entity's runtime ID (from {@code Entity.getId()})
      * @return populated DTO, or {@code null} if the entity is not found. The
-     *         handler converts {@code null} to {@link EntityDetailsDto#gone()}.
+     * handler converts {@code null} to {@link EntityDetailsDto#gone()}.
      * @throws Exception if the query fails
      */
     EntityDetailsDto getEntityDetails(int entityId) throws Exception;

@@ -14,9 +14,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * Uses PassthroughResolver since we're working with real Java class names.
  */
 class LuaBridgeTest {
-
+    
     private LuaRuntime runtime;
-
+    
     @BeforeEach
     void setup() {
         PassthroughResolver resolver = new PassthroughResolver("test");
@@ -24,21 +24,21 @@ class LuaBridgeTest {
         ObjectRefStore refs = new ObjectRefStore();
         runtime = new LuaRuntime(resolver, dispatcher, refs);
     }
-
+    
     @Test
     void testBasicLua() {
         var result = runtime.execute("return 1 + 2");
         assertTrue(result.isSuccess());
         assertEquals(3, result.returnValue.toint());
     }
-
+    
     @Test
     void testPrint() {
         var result = runtime.execute("print('hello', 'world')");
         assertTrue(result.isSuccess());
         assertEquals("hello\tworld\n", result.output);
     }
-
+    
     @Test
     void testPersistentState() {
         runtime.execute("x = 42");
@@ -46,7 +46,7 @@ class LuaBridgeTest {
         assertTrue(result.isSuccess());
         assertEquals(42, result.returnValue.toint());
     }
-
+    
     @Test
     void testImportJavaClass() {
         var result = runtime.execute("""
@@ -56,7 +56,7 @@ class LuaBridgeTest {
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals("java.util.ArrayList", result.returnValue.tojstring());
     }
-
+    
     @Test
     void testCreateInstance() {
         var result = runtime.execute("""
@@ -67,7 +67,7 @@ class LuaBridgeTest {
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals("java.util.ArrayList", result.returnValue.tojstring());
     }
-
+    
     @Test
     void testMethodCall() {
         var result = runtime.execute("""
@@ -80,7 +80,7 @@ class LuaBridgeTest {
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals(2, result.returnValue.toint());
     }
-
+    
     @Test
     void testMethodCallReturnValue() {
         var result = runtime.execute("""
@@ -92,7 +92,7 @@ class LuaBridgeTest {
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals("hello", result.returnValue.tojstring());
     }
-
+    
     @Test
     void testFieldAccess() {
         var result = runtime.execute("""
@@ -102,7 +102,7 @@ class LuaBridgeTest {
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals(Integer.MAX_VALUE, result.returnValue.toint());
     }
-
+    
     @Test
     void testIsNull() {
         var result = runtime.execute("""
@@ -111,7 +111,7 @@ class LuaBridgeTest {
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertTrue(result.returnValue.toboolean());
     }
-
+    
     @Test
     void testIterator() {
         var result = runtime.execute("""
@@ -129,7 +129,7 @@ class LuaBridgeTest {
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals("a,b,c", result.returnValue.tojstring());
     }
-
+    
     @Test
     void testArray() {
         var result = runtime.execute("""
@@ -143,7 +143,7 @@ class LuaBridgeTest {
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals(2, result.returnValue.toint());
     }
-
+    
     @Test
     void testCast() {
         var result = runtime.execute("""
@@ -155,7 +155,7 @@ class LuaBridgeTest {
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals("java.util.Map", result.returnValue.tojstring());
     }
-
+    
     @Test
     void testConstructorWithArgs() {
         var result = runtime.execute("""
@@ -167,7 +167,7 @@ class LuaBridgeTest {
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals("hello world", result.returnValue.tojstring());
     }
-
+    
     @Test
     void testMethodChaining() {
         var result = runtime.execute("""
@@ -181,7 +181,7 @@ class LuaBridgeTest {
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals("abc", result.returnValue.tojstring());
     }
-
+    
     @Test
     void testDescribe() {
         var result = runtime.execute("""
@@ -193,7 +193,7 @@ class LuaBridgeTest {
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals("java.util.ArrayList", result.returnValue.tojstring());
     }
-
+    
     @Test
     void testMethodsReflection() {
         var result = runtime.execute("""
@@ -205,7 +205,7 @@ class LuaBridgeTest {
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertTrue(result.returnValue.toboolean());
     }
-
+    
     @Test
     void testFieldsReflection() {
         var result = runtime.execute("""
@@ -216,7 +216,7 @@ class LuaBridgeTest {
                 """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
     }
-
+    
     @Test
     void testSupers() {
         var result = runtime.execute("""
@@ -229,7 +229,7 @@ class LuaBridgeTest {
                 """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
     }
-
+    
     @Test
     void testErrorMessages() {
         var result = runtime.execute("""
@@ -239,7 +239,7 @@ class LuaBridgeTest {
         assertTrue(result.error.contains("not found") || result.error.contains("Class"),
                 "Expected class not found error, got: " + result.error);
     }
-
+    
     @Test
     void testSecurityBlocking() {
         var result = runtime.execute("""
@@ -249,7 +249,7 @@ class LuaBridgeTest {
         assertTrue(result.error.contains("blocked") || result.error.contains("security"),
                 "Expected security error, got: " + result.error);
     }
-
+    
     @Test
     void testReturnTable() {
         var result = runtime.execute("""
@@ -260,7 +260,7 @@ class LuaBridgeTest {
         assertEquals("test", result.returnValue.get("name").tojstring());
         assertEquals(42, result.returnValue.get("value").toint());
     }
-
+    
     @Test
     void testHashMapOperations() {
         var result = runtime.execute("""
@@ -273,7 +273,7 @@ class LuaBridgeTest {
         assertTrue(result.isSuccess(), "Error: " + result.error);
         assertEquals("value1", result.returnValue.tojstring());
     }
-
+    
     @Test
     void testComplexScenario() {
         var result = runtime.execute("""
@@ -282,12 +282,12 @@ class LuaBridgeTest {
                 list:add("alpha")
                 list:add("beta")
                 list:add("gamma")
-
+                
                 local results = {}
                 for item in java.iter(list) do
                     table.insert(results, string.upper(item))
                 end
-
+                
                 return {
                     count = list:size(),
                     items = table.concat(results, ";"),

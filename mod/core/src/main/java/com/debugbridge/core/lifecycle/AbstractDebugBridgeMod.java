@@ -6,14 +6,7 @@ import com.debugbridge.core.chat.ChatHistoryProvider;
 import com.debugbridge.core.entity.LookedAtEntityProvider;
 import com.debugbridge.core.entity.NearbyEntitiesProvider;
 import com.debugbridge.core.lua.ThreadDispatcher;
-import com.debugbridge.core.mapping.FabricMojangResolver;
-import com.debugbridge.core.mapping.FabricNamespaceLookup;
-import com.debugbridge.core.mapping.MappingCache;
-import com.debugbridge.core.mapping.MappingDownloader;
-import com.debugbridge.core.mapping.MappingResolver;
-import com.debugbridge.core.mapping.ParsedMappings;
-import com.debugbridge.core.mapping.PassthroughResolver;
-import com.debugbridge.core.mapping.ProGuardParser;
+import com.debugbridge.core.mapping.*;
 import com.debugbridge.core.screen.ScreenInspectProvider;
 import com.debugbridge.core.screenshot.ScreenshotProvider;
 import com.debugbridge.core.server.BridgeServer;
@@ -54,11 +47,11 @@ import java.util.logging.Logger;
  * all such references stay on the subclass side of the hooks.
  */
 public abstract class AbstractDebugBridgeMod {
-
+    
     protected static final Logger LOG = Logger.getLogger("DebugBridge");
     protected static final int PORT_RANGE_START = 9876;
     protected static final int PORT_RANGE_END = 9886;
-
+    
     protected final AtomicBoolean warningShown = new AtomicBoolean(false);
     protected final AtomicBoolean serverStarted = new AtomicBoolean(false);
     protected BridgeConfig config;
@@ -66,7 +59,7 @@ public abstract class AbstractDebugBridgeMod {
     protected boolean needsWarning = false;
     protected String startupError = null;
     protected String startupInfo = null;
-
+    
     /**
      * Subclass calls this from its {@code onInitializeClient()} entry point.
      * Loads config and either starts the server immediately (when developer
@@ -83,7 +76,7 @@ public abstract class AbstractDebugBridgeMod {
             needsWarning = true;
         }
     }
-
+    
     /**
      * Subclass calls this from its mixin tick callback. Routes pending
      * startup error/info messages to the player, runs the per-version
@@ -97,9 +90,9 @@ public abstract class AbstractDebugBridgeMod {
         if (startupInfo != null && displayPlayerInfo(startupInfo)) {
             startupInfo = null;
         }
-
+        
         onPostTick();
-
+        
         if (!needsWarning) {
             return;
         }
@@ -116,20 +109,20 @@ public abstract class AbstractDebugBridgeMod {
             });
         }
     }
-
+    
     private void startServer() {
         if (serverStarted.getAndSet(true)) {
             return;
         }
-
+        
         MappingResolver resolver = buildResolver();
         ThreadDispatcher dispatcher = createDispatcher();
         GameStateProvider stateProvider = createStateProvider();
         ScreenshotProvider screenshotProvider = createScreenshotProvider();
-
+        
         int actualPort = startServerOnAvailablePort(
                 config.port, resolver, dispatcher, stateProvider, screenshotProvider);
-
+        
         if (actualPort == -1) {
             String msg = "Could not bind to any port in range "
                     + PORT_RANGE_START + "-" + PORT_RANGE_END;
@@ -137,7 +130,7 @@ public abstract class AbstractDebugBridgeMod {
             startupError = msg;
             return;
         }
-
+        
         server.setEntitiesProvider(createEntitiesProvider());
         server.setBlocksProvider(createBlocksProvider());
         server.setTextureProvider(createTextureProvider());
@@ -145,14 +138,14 @@ public abstract class AbstractDebugBridgeMod {
         server.setChatHistoryProvider(createChatHistoryProvider());
         server.setScreenInspectProvider(createScreenInspectProvider());
         server.setRunCommandEnabled(config.runCommandEnabled);
-
+        
         if (actualPort != config.port) {
             startupInfo = "Server started on port " + actualPort
                     + " (default " + config.port + " was in use)";
         }
         LOG.info("[DebugBridge] Server started on port " + actualPort);
     }
-
+    
     private int startServerOnAvailablePort(int preferredPort, MappingResolver resolver,
                                            ThreadDispatcher dispatcher,
                                            GameStateProvider stateProvider,
@@ -170,7 +163,7 @@ public abstract class AbstractDebugBridgeMod {
         }
         return -1;
     }
-
+    
     /**
      * Probes the port and (on success) creates and starts a {@link BridgeServer}.
      * On success, sets {@link #server} and returns {@code true}; on failure
@@ -197,7 +190,7 @@ public abstract class AbstractDebugBridgeMod {
             return false;
         }
     }
-
+    
     /**
      * Probes whether {@code port} is bind-able by transiently opening a
      * {@link ServerSocket} on 127.0.0.1 with {@code SO_REUSEADDR} set —
@@ -213,18 +206,24 @@ public abstract class AbstractDebugBridgeMod {
             return false;
         }
     }
-
+    
     // ---- Hooks the subclass must implement ----
-
-    /** Minecraft version string (used for log lines + the {@code status} response). */
+    
+    /**
+     * Minecraft version string (used for log lines + the {@code status} response).
+     */
     protected abstract String mcVersion();
-
-    /** Directory that holds {@code debugbridge.json} (typically {@code .minecraft/config/}). */
+    
+    /**
+     * Directory that holds {@code debugbridge.json} (typically {@code .minecraft/config/}).
+     */
     protected abstract Path configDir();
-
-    /** Game run directory — passed through to {@link BridgeServer#setGameDir(Path)}. */
+    
+    /**
+     * Game run directory — passed through to {@link BridgeServer#setGameDir(Path)}.
+     */
     protected abstract Path gameDir();
-
+    
     /**
      * Build the mapping resolver. Default: download (or load cached) ProGuard
      * mappings for {@link #mcVersion()}, parse, and wrap them in a {@link
@@ -259,7 +258,7 @@ public abstract class AbstractDebugBridgeMod {
             return new PassthroughResolver(mcVersion());
         }
     }
-
+    
     /**
      * Subclass hook supplying the Fabric-side namespace adapter for the
      * default {@link #buildResolver()}. Return {@code null} to skip mapping
@@ -267,7 +266,7 @@ public abstract class AbstractDebugBridgeMod {
      * snapshot builds).
      */
     protected abstract FabricNamespaceLookup createNamespaceLookup();
-
+    
     /**
      * Build a thread dispatcher that hops to the game thread. Default impl
      * uses {@link CompletableFuture} + {@link #submitToGameThread(Runnable)};
@@ -290,7 +289,7 @@ public abstract class AbstractDebugBridgeMod {
             }
         };
     }
-
+    
     /**
      * Submit {@code task} for execution on the Minecraft client thread.
      * Subclasses delegate to the version's {@code Minecraft#execute(Runnable)}
@@ -298,29 +297,40 @@ public abstract class AbstractDebugBridgeMod {
      * future / timeout in {@link #createDispatcher()}.
      */
     protected abstract void submitToGameThread(Runnable task);
-
+    
     protected abstract GameStateProvider createStateProvider();
+    
     protected abstract ScreenshotProvider createScreenshotProvider();
+    
     protected abstract ItemTextureProvider createTextureProvider();
+    
     protected abstract NearbyEntitiesProvider createEntitiesProvider();
+    
     protected abstract NearbyBlocksProvider createBlocksProvider();
+    
     protected abstract LookedAtEntityProvider createLookedAtEntityProvider();
+    
     protected abstract ChatHistoryProvider createChatHistoryProvider();
+    
     protected abstract ScreenInspectProvider createScreenInspectProvider();
-
+    
     /**
      * Display an error message to the local player. Returns {@code true} if
      * the message was actually shown; {@code false} when the player isn't yet
      * loaded — caller will keep the message and retry on the next tick.
      */
     protected abstract boolean displayPlayerError(String message);
-
-    /** Display an info message; same semantics as {@link #displayPlayerError}. */
+    
+    /**
+     * Display an info message; same semantics as {@link #displayPlayerError}.
+     */
     protected abstract boolean displayPlayerInfo(String message);
-
-    /** True when the warning screen can be opened (no other screen/overlay active). */
+    
+    /**
+     * True when the warning screen can be opened (no other screen/overlay active).
+     */
     protected abstract boolean canShowWarningScreen();
-
+    
     /**
      * Open the developer-mode warning screen. The supplied callback receives
      * the user's choice ({@code true} = accept, {@code false} = decline) and
@@ -329,7 +339,7 @@ public abstract class AbstractDebugBridgeMod {
      * callback.
      */
     protected abstract void showWarningScreen(Consumer<Boolean> onResult);
-
+    
     /**
      * Per-tick hook between startup-message routing and the warning-screen
      * check. Default no-op; 1.21.11 and 26.2 override to refresh client-side

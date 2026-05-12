@@ -11,7 +11,9 @@ import com.mojang.blaze3d.textures.GpuTexture;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.*;
+import net.minecraft.client.renderer.Projection;
+import net.minecraft.client.renderer.ProjectionMatrixBuffer;
+import net.minecraft.client.renderer.SubmitNodeStorage;
 import net.minecraft.client.renderer.item.ItemModelResolver;
 import net.minecraft.client.renderer.item.TrackingItemStackRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
@@ -46,7 +48,7 @@ public class Minecraft262ItemTextureProvider implements ItemTextureProvider {
     private static final int TEXTURE_SIZE = 32;
     private static final int MAP_SIZE = 128;
     private static final int[] BRIGHTNESS_MOD = {180, 220, 255, 135};
-
+    
     private static int mapPixelArgb(byte packedColor) {
         int colorId = (packedColor & 0xFF) >> 2;
         int shade = packedColor & 3;
@@ -60,7 +62,7 @@ public class Minecraft262ItemTextureProvider implements ItemTextureProvider {
         int b = (col & 255) * modifier / 255;
         return (0xFF << 24) | (r << 16) | (g << 8) | b;
     }
-
+    
     @Override
     public TextureResult getItemTexture(int slot) throws Exception {
         Minecraft mc = Minecraft.getInstance();
@@ -71,7 +73,7 @@ public class Minecraft262ItemTextureProvider implements ItemTextureProvider {
             return stack;
         });
     }
-
+    
     @Override
     public TextureResult getItemTextureById(String itemId) throws Exception {
         return renderSlot(() -> {
@@ -89,13 +91,13 @@ public class Minecraft262ItemTextureProvider implements ItemTextureProvider {
             return new ItemStack(Holder.direct(item, components));
         });
     }
-
+    
     @Override
     public TextureResult getEntityItemTexture(int entityId, String slotName) throws Exception {
         Minecraft mc = Minecraft.getInstance();
         return renderSlot(() -> {
             if (mc.level == null) throw new Exception("Level not loaded");
-
+            
             Entity target = null;
             for (Entity e : mc.level.entitiesForRendering()) {
                 if (e.getId() == entityId) {
@@ -104,7 +106,7 @@ public class Minecraft262ItemTextureProvider implements ItemTextureProvider {
                 }
             }
             if (target == null) throw new Exception("Entity " + entityId + " not found");
-
+            
             ItemStack stack;
             switch (target) {
                 case ItemFrame frame when "FRAME".equals(slotName) -> stack = frame.getItem();
@@ -126,18 +128,18 @@ public class Minecraft262ItemTextureProvider implements ItemTextureProvider {
                 }
                 default -> throw new Exception("Entity " + entityId + " has no equipment");
             }
-
+            
             if (stack.isEmpty()) {
                 throw new Exception("Slot " + slotName + " is empty on entity " + entityId);
             }
             return stack;
         });
     }
-
+    
     private TextureResult renderSlot(StackSupplier supplier) throws Exception {
         Minecraft mc = Minecraft.getInstance();
         CompletableFuture<TextureResult> future = new CompletableFuture<>();
-
+        
         mc.execute(() -> {
             GpuTexture colorTex = null;
             GpuTextureView colorView = null;
@@ -150,26 +152,26 @@ public class Minecraft262ItemTextureProvider implements ItemTextureProvider {
             boolean renderTargetsRedirected = false;
             boolean projectionBackedUp = false;
             boolean scissorEnabled = false;
-
+            
             try {
                 ItemStack stack = supplier.get();
-
+                
                 TextureResult mapResult = tryRenderFilledMap(mc, stack);
                 if (mapResult != null) {
                     future.complete(mapResult);
                     return;
                 }
-
+                
                 TrackingItemStackRenderState renderState = new TrackingItemStackRenderState();
                 ItemModelResolver resolver = mc.getItemModelResolver();
                 resolver.updateForTopItem(renderState, stack, ItemDisplayContext.GUI,
                         mc.level, null, 0);
-
+                
                 if (renderState.isEmpty()) {
                     future.completeExceptionally(new Exception("Empty render state for item"));
                     return;
                 }
-
+                
                 int size = TEXTURE_SIZE;
                 var device = RenderSystem.getDevice();
                 colorTex = device.createTexture(() -> "dbg_item_color",
@@ -183,16 +185,16 @@ public class Minecraft262ItemTextureProvider implements ItemTextureProvider {
                         GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_RENDER_ATTACHMENT,
                         GpuFormat.D32_FLOAT, size, size, 1, 1);
                 depthView = device.createTextureView(depthTex);
-
+                
                 device.createCommandEncoder().clearColorAndDepthTextures(
                         colorTex, new Vector4f(0.0f, 0.0f, 0.0f, 0.0f), depthTex, 0.0);
-
+                
                 savedColor = RenderSystem.outputColorTextureOverride;
                 savedDepth = RenderSystem.outputDepthTextureOverride;
                 RenderSystem.outputColorTextureOverride = colorView;
                 RenderSystem.outputDepthTextureOverride = depthView;
                 renderTargetsRedirected = true;
-
+                
                 RenderSystem.backupProjectionMatrix();
                 projectionBackedUp = true;
                 Projection projection = new Projection();
@@ -200,23 +202,23 @@ public class Minecraft262ItemTextureProvider implements ItemTextureProvider {
                 projectionBuffer = new ProjectionMatrixBuffer("dbg_item");
                 RenderSystem.setProjectionMatrix(
                         projectionBuffer.getBuffer(projection), ProjectionType.ORTHOGRAPHIC);
-
+                
                 boolean flat = !renderState.usesBlockLight();
                 mc.gameRenderer.lighting().setupFor(
                         flat ? Lighting.Entry.ITEMS_FLAT : Lighting.Entry.ITEMS_3D);
-
+                
                 PoseStack poseStack = new PoseStack();
                 poseStack.pushPose();
                 poseStack.translate(size / 2.0f, size / 2.0f, 0.0f);
                 poseStack.scale(size, -size, size);
-
+                
                 RenderSystem.enableScissorForRenderTypeDraws(0, 0, size, size);
                 scissorEnabled = true;
                 renderItemWithIsolatedSubmitState(mc, renderState, poseStack);
                 RenderSystem.disableScissorForRenderTypeDraws();
                 scissorEnabled = false;
                 poseStack.popPose();
-
+                
                 RenderSystem.outputColorTextureOverride = savedColor;
                 RenderSystem.outputDepthTextureOverride = savedDepth;
                 renderTargetsRedirected = false;
@@ -224,24 +226,24 @@ public class Minecraft262ItemTextureProvider implements ItemTextureProvider {
                 projectionBackedUp = false;
                 projectionBuffer.close();
                 projectionBuffer = null;
-
+                
                 long bufferSize = (long) size * size * colorTex.getFormat().pixelSize();
                 readBuffer = device.createBuffer(() -> "dbg_item_read",
                         GpuBuffer.USAGE_MAP_READ | GpuBuffer.USAGE_COPY_DST, bufferSize);
-
+                
                 final GpuBuffer finalReadBuffer = readBuffer;
                 final GpuTexture finalColorTex = colorTex;
                 final GpuTextureView finalColorView = colorView;
                 final GpuTexture finalDepthTex = depthTex;
                 final GpuTextureView finalDepthView = depthView;
-
+                
                 device.createCommandEncoder().copyTextureToBuffer(
                         finalColorTex, finalReadBuffer, 0L, () -> {
                             try (GpuBufferSlice.MappedView view =
                                          finalReadBuffer.map(true, false)) {
                                 BufferedImage image = new BufferedImage(
                                         size, size, BufferedImage.TYPE_INT_ARGB);
-
+                                
                                 for (int y = 0; y < size; y++) {
                                     for (int x = 0; x < size; x++) {
                                         int abgr = view.data().getInt((x + y * size) * 4);
@@ -253,12 +255,12 @@ public class Minecraft262ItemTextureProvider implements ItemTextureProvider {
                                                 (a << 24) | (r << 16) | (g << 8) | b);
                                     }
                                 }
-
+                                
                                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                                 ImageIO.write(image, "png", baos);
                                 String base64 = Base64.getEncoder()
                                         .encodeToString(baos.toByteArray());
-
+                                
                                 future.complete(new TextureResult(base64, size, size, "rendered"));
                             } catch (Exception e) {
                                 future.completeExceptionally(e);
@@ -270,7 +272,7 @@ public class Minecraft262ItemTextureProvider implements ItemTextureProvider {
                                 finalDepthView.close();
                             }
                         }, 0);
-
+                
                 readBuffer = null;
                 colorTex = null;
                 colorView = null;
@@ -292,10 +294,10 @@ public class Minecraft262ItemTextureProvider implements ItemTextureProvider {
                 future.completeExceptionally(e);
             }
         });
-
+        
         return future.get(10, TimeUnit.SECONDS);
     }
-
+    
     private void renderItemWithIsolatedSubmitState(
             Minecraft mc,
             TrackingItemStackRenderState renderState,
@@ -305,33 +307,33 @@ public class Minecraft262ItemTextureProvider implements ItemTextureProvider {
         renderState.submit(poseStack, collector, 15728880, OverlayTexture.NO_OVERLAY, 0);
         mc.gameRenderer.featureRenderDispatcher().renderAllFeatures(collector);
     }
-
+    
     private TextureResult tryRenderFilledMap(Minecraft mc, ItemStack stack) throws Exception {
         if (stack.getItem() != Items.FILLED_MAP) return null;
         if (mc.level == null) return null;
-
+        
         MapItemSavedData mapData = MapItem.getSavedData(stack, mc.level);
         if (mapData == null || mapData.colors == null
                 || mapData.colors.length < MAP_SIZE * MAP_SIZE) {
             return null;
         }
-
+        
         BufferedImage image = new BufferedImage(MAP_SIZE, MAP_SIZE, BufferedImage.TYPE_INT_ARGB);
         for (int y = 0; y < MAP_SIZE; y++) {
             for (int x = 0; x < MAP_SIZE; x++) {
                 image.setRGB(x, y, mapPixelArgb(mapData.colors[x + y * MAP_SIZE]));
             }
         }
-
+        
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ImageIO.write(image, "png", baos);
         String base64 = Base64.getEncoder().encodeToString(baos.toByteArray());
         return new TextureResult(base64, MAP_SIZE, MAP_SIZE, "filled_map");
     }
-
+    
     @FunctionalInterface
     private interface StackSupplier {
         ItemStack get() throws Exception;
     }
-
+    
 }

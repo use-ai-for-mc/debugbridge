@@ -16,7 +16,7 @@ public final class StatusDto {
     public String mappingStatus;     // "mojang" | "passthrough"
     public boolean obfuscated;
     public int refs;
-
+    
     // Optional log-path block. Populated together when gameDir is non-null.
     public String gameDir;
     public String logsDir;
