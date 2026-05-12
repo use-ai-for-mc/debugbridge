@@ -17,7 +17,7 @@ java {
 
 dependencies {
     implementation(project(":core"))
-    implementation("org.java-websocket:Java-WebSocket:1.5.7")
+    implementation("org.java-websocket:Java-WebSocket:1.6.0")
 
     minecraft("com.mojang:minecraft:1.21.11")
     mappings(loom.officialMojangMappings())
@@ -26,8 +26,8 @@ dependencies {
     // Include core's dependencies
     include(project(":core"))
     include("org.luaj:luaj-jse:3.0.1")
-    include("org.java-websocket:Java-WebSocket:1.5.7")
-    include("com.google.code.gson:gson:2.11.0")
+    include("org.java-websocket:Java-WebSocket:1.6.0")
+    include("com.google.code.gson:gson:2.14.0")
 }
 
 tasks.withType<JavaCompile>().configureEach {
