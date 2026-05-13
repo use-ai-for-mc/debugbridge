@@ -111,9 +111,44 @@ jobs:
             ### Installation
             1. Install Fabric Loader for your Minecraft version
             2. Drop the appropriate JAR into your `mods` folder
-            3. Launch the game - you'll see a developer warning on first run
+            3. Launch the game — you'll see a developer warning on first run
+
+            ### What's changed since v1.0.0
+            - **Wire-shape break (heads-up for MCP clients):** every `itemId` on
+              the wire is now the canonical registry-key form (e.g.
+              `minecraft:diamond`). External tooling reading
+              `blockDetails.items[].itemId`,
+              `entityDetails.frameItem.itemId`,
+              `entityDetails.displayItem.itemId`, or
+              `entityDetails.equipment[*].itemId` will see this change. Pre-PR
+              these emitted `item.minecraft.foo` form; the texture-fetch
+              endpoints already required registry keys, so the mismatch was a
+              latent bug — converging is the fix. Same form as
+              `ItemStackDto.itemId` and `EntityPrimaryEquipmentDto.itemId`,
+              which were already canonical.
+            - **26.2-dev jar now targets `26.2-snapshot-7`** (was snapshot-6).
+              The jar gates loading at `26.2-snapshot-7` / `26.2-alpha.7` via
+              `fabric.mod.json` — snapshot-6 users need to update Minecraft.
+            - **`blockDetails.items` client-side visibility documented.**
+              Vanilla MC keeps chest / hopper / dispenser / furnace /
+              brewing-stand contents server-only, so `blockDetails.items` is
+              `[]` for those even when the container is full — use
+              `screenInspect` on the open menu instead. Lecterns, chiseled
+              bookshelves, and jukeboxes (block-entities whose items
+              participate in rendering) populate normally.
+            - **Phase 1 + Phase 2 of the multi-version plan closed.** Wire
+              format is now a single set of DTOs across every version
+              (`mod/core/protocol/dto/`), every endpoint runs through
+              `MappingResolver.unresolveClass` where needed, and 33
+              wire-contract tests pin the shape. Phase 7
+              (`AbstractDebugBridgeMod` kernel extraction) also shipped in
+              this window.
+            - Toolchain alignment: the 26.2-dev module now builds on JDK 25
+              (matches the snapshot's declared runtime); used to over-require
+              JDK 26 EA which kept it from building on a stock dev machine.
 
             ### Supported Versions
             - Minecraft 1.19 (Fabric Loader >= 0.14.0)
             - Minecraft 1.21.11 (Fabric Loader >= 0.16.0)
-            - Minecraft 26.2 development snapshots (Fabric Loader >= 0.19.2)
+            - Minecraft 26.2 development snapshots (Fabric Loader >= 0.19.2;
+              the jar targets `26.2-snapshot-7` specifically)
