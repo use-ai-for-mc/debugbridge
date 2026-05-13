@@ -1,5 +1,8 @@
+import com.diffplug.gradle.spotless.SpotlessExtension
+
 plugins {
     java
+    id("com.diffplug.spotless") version "7.0.2" apply false
 }
 
 allprojects {
@@ -14,6 +17,7 @@ allprojects {
 
 subprojects {
     apply(plugin = "java")
+    apply(plugin = "com.diffplug.spotless")
 
     java {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -22,5 +26,15 @@ subprojects {
 
     tasks.withType<JavaCompile>().configureEach {
         options.release.set(17)
+    }
+
+    configure<SpotlessExtension> {
+        java {
+            target("src/**/*.java")
+            palantirJavaFormat("2.69.0")
+            removeUnusedImports()
+            trimTrailingWhitespace()
+            endWithNewline()
+        }
     }
 }

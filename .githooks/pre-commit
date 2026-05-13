@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# DebugBridge pre-commit hook: enforce Spotless on staged Java files.
+# Install: scripts/install-git-hooks.sh (or `git config core.hooksPath .githooks`).
+# Bypass once: `git commit --no-verify` (use sparingly).
+set -e
+
+STAGED_JAVA=$(git diff --cached --name-only --diff-filter=ACM | grep '^mod/.*\.java$' || true)
+if [ -z "$STAGED_JAVA" ]; then
+    exit 0
+fi
+
+# palantir-java-format crashes on JDK >21 with NoSuchMethodError against
+# com.sun.tools.javac internals. Point at JDK 21 if we can find one,
+# matching the convention in build-and-deploy*.sh.
+for candidate in \
+    "/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home" \
+    "/opt/homebrew/opt/openjdk@21" \
+    "/usr/lib/jvm/java-21-openjdk" \
+    "/usr/lib/jvm/temurin-21-jdk-amd64"; do
+    if [ -d "$candidate" ]; then
+        export JAVA_HOME="$candidate"
+        break
+    fi
+done
+
+ROOT=$(git rev-parse --show-toplevel)
+cd "$ROOT/mod"
+
+if ! ./gradlew spotlessCheck; then
+    cat <<'EOF'
+
+Spotless check failed.
+
+If the failure is "X files need to be formatted", fix with:
+    cd mod && ./gradlew spotlessApply
+    git add -u && git commit
+
+If the failure is a JDK error (palantir-java-format NoSuchMethodError),
+install JDK 21 (`brew install openjdk@21` on macOS) or set
+JAVA_HOME to a JDK 21 install before retrying.
+EOF
+    exit 1
+fi
