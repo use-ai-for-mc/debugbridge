@@ -46,6 +46,5 @@ public interface ItemTextureProvider {
     /**
      * Result of a successful texture extraction.
      */
-    record TextureResult(String base64Png, int width, int height, String spriteName) {
-    }
+    record TextureResult(String base64Png, int width, int height, String spriteName) {}
 }

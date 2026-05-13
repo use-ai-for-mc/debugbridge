@@ -2,7 +2,6 @@ package com.debugbridge.core.entity;
 
 import com.debugbridge.core.protocol.dto.EntityDetailsDto;
 import com.debugbridge.core.protocol.dto.EntitySummaryDto;
-
 import java.util.List;
 
 /**

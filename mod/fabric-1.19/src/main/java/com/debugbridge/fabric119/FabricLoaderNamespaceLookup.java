@@ -14,7 +14,7 @@ import net.fabricmc.loader.api.FabricLoader;
  */
 public final class FabricLoaderNamespaceLookup implements FabricNamespaceLookup {
     private final net.fabricmc.loader.api.MappingResolver fabric =
-        FabricLoader.getInstance().getMappingResolver();
+            FabricLoader.getInstance().getMappingResolver();
 
     @Override
     public String runtimeForObfuscatedClass(String obfClassName) {

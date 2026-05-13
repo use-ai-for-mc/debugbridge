@@ -4,6 +4,8 @@ import com.debugbridge.core.protocol.dto.ItemStackDto;
 import com.debugbridge.core.protocol.dto.ScreenInspectDto;
 import com.debugbridge.core.protocol.dto.SlotDto;
 import com.debugbridge.core.screen.ScreenInspectProvider;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -11,9 +13,6 @@ import net.minecraft.core.Registry;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class Minecraft119ScreenInspectProvider implements ScreenInspectProvider {
 

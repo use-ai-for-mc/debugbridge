@@ -1,15 +1,14 @@
 package com.debugbridge.fabric262;
 
 import com.debugbridge.core.entity.LookedAtEntityProvider;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 public class Minecraft262LookedAtEntityProvider implements LookedAtEntityProvider {
     @Override
@@ -28,9 +27,8 @@ public class Minecraft262LookedAtEntityProvider implements LookedAtEntityProvide
                 Vec3 eye = player.getEyePosition();
                 Vec3 look = player.getLookAngle();
                 Vec3 end = eye.add(look.scale(range));
-                AABB searchBox = player.getBoundingBox()
-                        .expandTowards(look.scale(range))
-                        .inflate(1.0);
+                AABB searchBox =
+                        player.getBoundingBox().expandTowards(look.scale(range)).inflate(1.0);
 
                 EntityHitResult hit = ProjectileUtil.getEntityHitResult(
                         player,
@@ -38,8 +36,7 @@ public class Minecraft262LookedAtEntityProvider implements LookedAtEntityProvide
                         end,
                         searchBox,
                         entity -> !entity.isSpectator() && entity.isPickable(),
-                        ProjectileUtil.DEFAULT_ENTITY_HIT_RESULT_MARGIN
-                );
+                        ProjectileUtil.DEFAULT_ENTITY_HIT_RESULT_MARGIN);
 
                 future.complete(hit != null ? hit.getEntity().getId() : null);
             } catch (Exception e) {

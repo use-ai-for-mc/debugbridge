@@ -1,16 +1,15 @@
 package com.debugbridge.core;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.debugbridge.core.mapping.FabricMojangResolver;
 import com.debugbridge.core.mapping.FabricNamespaceLookup;
 import com.debugbridge.core.mapping.ParsedMappings;
-import org.junit.jupiter.api.Test;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 /**
  * Unit tests for {@link FabricMojangResolver}. These tests were impossible
@@ -35,16 +34,23 @@ class FabricMojangResolverTest {
         final Map<String, String> methods = new HashMap<>();
         final Map<String, String> fields = new HashMap<>();
 
-        @Override public String runtimeForObfuscatedClass(String obf) {
+        @Override
+        public String runtimeForObfuscatedClass(String obf) {
             return classes.getOrDefault(obf, obf);
         }
-        @Override public String runtimeForObfuscatedMethod(String owner, String name, String desc) {
+
+        @Override
+        public String runtimeForObfuscatedMethod(String owner, String name, String desc) {
             return methods.get(owner + "." + name + desc);
         }
-        @Override public String runtimeForObfuscatedField(String owner, String name, String desc) {
+
+        @Override
+        public String runtimeForObfuscatedField(String owner, String name, String desc) {
             return fields.get(owner + "." + name + desc);
         }
-        @Override public String obfuscatedForRuntimeClass(String runtime) {
+
+        @Override
+        public String obfuscatedForRuntimeClass(String runtime) {
             return classesReverse.getOrDefault(runtime, runtime);
         }
     }
@@ -61,10 +67,15 @@ class FabricMojangResolverTest {
         ParsedMappings build() {
             return new ParsedMappings(classes, classesReverse, fields, methods, fieldTypes, methodDescriptors);
         }
+
         ParsedMappings empty() {
-            return new ParsedMappings(Collections.emptyMap(), Collections.emptyMap(),
-                Collections.emptyMap(), Collections.emptyMap(),
-                Collections.emptyMap(), Collections.emptyMap());
+            return new ParsedMappings(
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap(),
+                    Collections.emptyMap());
         }
     }
 
@@ -96,8 +107,7 @@ class FabricMojangResolverTest {
         FabricMojangResolver r = new FabricMojangResolver("test", mb.build(), lookup);
 
         // class_1297 → "ahu" (via SPI) → Entity (via ProGuard reverse map).
-        assertEquals("net.minecraft.world.entity.Entity",
-            r.unresolveClass("net.minecraft.class_1297"));
+        assertEquals("net.minecraft.world.entity.Entity", r.unresolveClass("net.minecraft.class_1297"));
         // Unknown runtime → echoed.
         assertEquals("net.minecraft.class_9999", r.unresolveClass("net.minecraft.class_9999"));
     }
@@ -122,17 +132,14 @@ class FabricMojangResolverTest {
 
         FabricMojangResolver r = new FabricMojangResolver("test", mb.build(), lookup);
 
-        assertEquals("method_5628",
-            r.resolveMethod("net.minecraft.world.entity.Entity", "getId", new String[0]));
+        assertEquals("method_5628", r.resolveMethod("net.minecraft.world.entity.Entity", "getId", new String[0]));
     }
 
     @Test
     void resolveMethodFallsBackToInputWhenNothingMatches() {
         // Class not in mappings → resolver returns the Mojang name unchanged.
-        FabricMojangResolver r = new FabricMojangResolver("test",
-            new MappingsBuilder().empty(), new StubLookup());
-        assertEquals("foo",
-            r.resolveMethod("com.example.UnknownClass", "foo", new String[0]));
+        FabricMojangResolver r = new FabricMojangResolver("test", new MappingsBuilder().empty(), new StubLookup());
+        assertEquals("foo", r.resolveMethod("com.example.UnknownClass", "foo", new String[0]));
     }
 
     @Test
@@ -155,8 +162,7 @@ class FabricMojangResolverTest {
 
         FabricMojangResolver r = new FabricMojangResolver("test", mb.build(), lookup);
 
-        assertEquals("field_6002",
-            r.resolveField("net.minecraft.world.entity.Entity", "level"));
+        assertEquals("field_6002", r.resolveField("net.minecraft.world.entity.Entity", "level"));
     }
 
     @Test
@@ -175,21 +181,23 @@ class FabricMojangResolverTest {
         // would be null → resolveMethod would fall through to "tick".
         int[] hits = {0};
         StubLookup lookup = new StubLookup() {
-            @Override public String runtimeForObfuscatedMethod(String owner, String name, String desc) {
+            @Override
+            public String runtimeForObfuscatedMethod(String owner, String name, String desc) {
                 hits[0]++;
                 // For tick: owner=ahu, name=j, desc=()V.
                 return hits[0] == 1 && "ahu".equals(owner) && "j".equals(name) && "()V".equals(desc)
-                    ? "method_xyz" : null;
+                        ? "method_xyz"
+                        : null;
             }
         };
 
         FabricMojangResolver r = new FabricMojangResolver("test", mb.build(), lookup);
 
-        assertEquals("method_xyz",
-            r.resolveMethod("net.minecraft.world.entity.Entity", "tick", new String[0]));
-        assertEquals("method_xyz",
-            r.resolveMethod("net.minecraft.world.entity.Entity", "tick", new String[0]),
-            "Second call must hit the cache, not the SPI");
+        assertEquals("method_xyz", r.resolveMethod("net.minecraft.world.entity.Entity", "tick", new String[0]));
+        assertEquals(
+                "method_xyz",
+                r.resolveMethod("net.minecraft.world.entity.Entity", "tick", new String[0]),
+                "Second call must hit the cache, not the SPI");
         assertEquals(1, hits[0], "SPI should be queried only once");
     }
 }

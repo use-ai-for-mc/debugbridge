@@ -1,12 +1,11 @@
 package com.debugbridge.core.lua;
 
-import org.luaj.vm2.LuaError;
-import org.luaj.vm2.LuaValue;
-import org.luaj.vm2.Varargs;
-
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
+import org.luaj.vm2.LuaError;
+import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.Varargs;
 
 /**
  * A callable Lua function that invokes a Java method via reflection.
@@ -19,8 +18,8 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
     private final String mojangMethodName;
     private final JavaBridge bridge;
 
-    public MethodCallWrapper(Object target, Class<?> targetClass,
-                             String mojangClass, String mojangMethodName, JavaBridge bridge) {
+    public MethodCallWrapper(
+            Object target, Class<?> targetClass, String mojangClass, String mojangMethodName, JavaBridge bridge) {
         this.target = target;
         this.targetClass = targetClass;
         this.mojangClass = mojangClass;
@@ -89,8 +88,7 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
      */
     private static boolean isReachable(Class<?> cls) {
         Module ours = MethodCallWrapper.class.getModule();
-        return cls.getModule().isExported(cls.getPackageName(), ours)
-                && Modifier.isPublic(cls.getModifiers());
+        return cls.getModule().isExported(cls.getPackageName(), ours) && Modifier.isPublic(cls.getModifiers());
     }
 
     @Override
@@ -135,8 +133,8 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
                 method = findBestMatch(targetClass, mojangMethodName, argTypes, nargs);
             }
             if (method == null) {
-                throw new LuaError("No method '" + mojangMethodName + "' with " + nargs
-                        + " args on " + mojangClass + suggestMethods());
+                throw new LuaError("No method '" + mojangMethodName + "' with " + nargs + " args on " + mojangClass
+                        + suggestMethods());
             }
 
             // If the declaring class is in a JPMS-sealed module (e.g.
@@ -150,15 +148,16 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
             Object[] convertedArgs = convertArgs(javaArgs, method.getParameterTypes());
 
             final Method finalMethod = method;
-            Object result = bridge.getDispatcher().executeOnGameThread(
-                    () -> finalMethod.invoke(target, convertedArgs), 5000);
+            Object result =
+                    bridge.getDispatcher().executeOnGameThread(() -> finalMethod.invoke(target, convertedArgs), 5000);
 
             return bridge.wrapJavaValue(result);
         } catch (LuaError e) {
             throw e;
         } catch (java.lang.reflect.InvocationTargetException e) {
             throw new LuaError("Method '" + mojangMethodName + "' threw: "
-                    + e.getCause().getClass().getSimpleName() + ": " + e.getCause().getMessage());
+                    + e.getCause().getClass().getSimpleName() + ": "
+                    + e.getCause().getMessage());
         } catch (Exception e) {
             throw new LuaError("Failed to call '" + mojangMethodName + "': " + e.getMessage());
         }
@@ -322,8 +321,8 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
                 // their names — controlify$..., handler$..., yumi_$..., etc.).
                 if (displayName.indexOf('$') >= 0) continue;
                 int arity = m.getParameterCount();
-                java.util.Set<Integer> arities = byName.computeIfAbsent(
-                        displayName, k -> new java.util.LinkedHashSet<>());
+                java.util.Set<Integer> arities =
+                        byName.computeIfAbsent(displayName, k -> new java.util.LinkedHashSet<>());
                 if (!arities.add(arity)) continue;
 
                 String entry = displayName + "(" + arity + " args)";
@@ -344,7 +343,9 @@ public class MethodCallWrapper extends org.luaj.vm2.lib.VarArgFunction {
         }
         if (!others.isEmpty()) {
             int n = Math.min(others.size(), 10);
-            sb.append("\n  Other methods (first ").append(n).append("): ")
+            sb.append("\n  Other methods (first ")
+                    .append(n)
+                    .append("): ")
                     .append(String.join(", ", others.subList(0, n)));
             if (others.size() > n) sb.append(", ...");
         }

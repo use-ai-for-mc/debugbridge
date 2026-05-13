@@ -11,11 +11,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * positions to the vanilla GameTestBlockHighlightRenderer each tick.
  */
 public final class ClientBlockGlowManager {
-    private static final Set<Pos> GLOWING =
-            Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private static final Set<Pos> GLOWING = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-    private ClientBlockGlowManager() {
-    }
+    private ClientBlockGlowManager() {}
 
     public static void setGlow(int x, int y, int z, boolean glow) {
         Pos key = new Pos(x, y, z);
@@ -35,6 +33,5 @@ public final class ClientBlockGlowManager {
         GLOWING.clear();
     }
 
-    public record Pos(int x, int y, int z) {
-    }
+    public record Pos(int x, int y, int z) {}
 }

@@ -37,8 +37,7 @@ public class FabricMojangResolver implements MappingResolver {
     private final Map<String, String> methodCache = new HashMap<>();
     private final Map<String, String> fieldCache = new HashMap<>();
 
-    public FabricMojangResolver(String version, ParsedMappings mappings,
-                                FabricNamespaceLookup lookup) {
+    public FabricMojangResolver(String version, ParsedMappings mappings, FabricNamespaceLookup lookup) {
         this.version = version;
         this.mappings = mappings;
         this.lookup = lookup;
@@ -102,7 +101,7 @@ public class FabricMojangResolver implements MappingResolver {
     @Override
     public String resolveMethod(String mojangClassName, String mojangMethodName, String[] mojangParamTypes) {
         String cacheKey = mojangClassName + "." + mojangMethodName
-            + (mojangParamTypes != null ? "(" + String.join(",", mojangParamTypes) + ")" : "");
+                + (mojangParamTypes != null ? "(" + String.join(",", mojangParamTypes) + ")" : "");
         String cached = methodCache.get(cacheKey);
         if (cached != null) return cached;
 
@@ -168,8 +167,7 @@ public class FabricMojangResolver implements MappingResolver {
      * the {@code MethodCallWrapper}'s job (it walks the runtime class+interface
      * graph and calls this resolver once per Mojang ancestor).
      */
-    private String tryFabricMethodMapping(String mojangClassName,
-                                           String obfMethodName, String obfJvmDesc) {
+    private String tryFabricMethodMapping(String mojangClassName, String obfMethodName, String obfJvmDesc) {
         String obfClass = mappings.classes.getOrDefault(mojangClassName, mojangClassName);
         try {
             return lookup.runtimeForObfuscatedMethod(obfClass, obfMethodName, obfJvmDesc);
@@ -178,8 +176,7 @@ public class FabricMojangResolver implements MappingResolver {
         }
     }
 
-    private String tryFabricFieldMapping(String mojangClassName,
-                                          String obfFieldName, String mojangType) {
+    private String tryFabricFieldMapping(String mojangClassName, String obfFieldName, String mojangType) {
         if (mojangType == null) return null;
         String obfClass = mappings.classes.getOrDefault(mojangClassName, mojangClassName);
         String obfDesc = toJvmDescriptor(obfuscateTypeName(mojangType));
@@ -264,10 +261,14 @@ public class FabricMojangResolver implements MappingResolver {
     }
 
     @Override
-    public String getVersion() { return version; }
+    public String getVersion() {
+        return version;
+    }
 
     @Override
-    public boolean isObfuscated() { return true; }
+    public boolean isObfuscated() {
+        return true;
+    }
 
     // ==================== Type resolution helpers ====================
 
@@ -276,8 +277,15 @@ public class FabricMojangResolver implements MappingResolver {
             return resolveTypeName(mojangType.substring(0, mojangType.length() - 2)) + "[]";
         }
         switch (mojangType) {
-            case "void": case "boolean": case "byte": case "char":
-            case "short": case "int": case "long": case "float": case "double":
+            case "void":
+            case "boolean":
+            case "byte":
+            case "char":
+            case "short":
+            case "int":
+            case "long":
+            case "float":
+            case "double":
                 return mojangType;
         }
         return resolveClass(mojangType);

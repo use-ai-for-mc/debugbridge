@@ -1,12 +1,11 @@
 package com.debugbridge.fabric12111;
 
 import com.debugbridge.core.BridgeConfig;
+import java.util.function.Consumer;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-
-import java.util.function.Consumer;
 
 /**
  * Warning screen shown on first launch to confirm this is a developer tool.
@@ -17,28 +16,28 @@ public class DeveloperWarningScreen extends Screen {
     private static final Component TITLE = Component.literal("DebugBridge - Developer Tool Warning");
 
     private static final String[] WARNING_LINES = {
-            "",
-            "DebugBridge is a DEVELOPER TOOL that exposes a WebSocket server",
-            "allowing external programs to execute code inside Minecraft.",
-            "",
-            "This mod is intended for:",
-            "  - Mod developers debugging their mods",
-            "  - AI agent integration (Claude Code, etc.)",
-            "  - Automated testing and scripting",
-            "",
-            "This mod is NOT intended for:",
-            "  - Regular gameplay",
-            "  - Use on public servers (client-side only anyway)",
-            "  - Users who don't understand the security implications",
-            "",
-            "The WebSocket server binds to localhost only (127.0.0.1),",
-            "so only programs on your computer can connect.",
-            "",
-            "By clicking 'I Understand', you acknowledge that:",
-            "  1. You are a developer or advanced user",
-            "  2. You understand this mod can execute arbitrary code",
-            "  3. You will not ask for support for non-developer use cases",
-            "",
+        "",
+        "DebugBridge is a DEVELOPER TOOL that exposes a WebSocket server",
+        "allowing external programs to execute code inside Minecraft.",
+        "",
+        "This mod is intended for:",
+        "  - Mod developers debugging their mods",
+        "  - AI agent integration (Claude Code, etc.)",
+        "  - Automated testing and scripting",
+        "",
+        "This mod is NOT intended for:",
+        "  - Regular gameplay",
+        "  - Use on public servers (client-side only anyway)",
+        "  - Users who don't understand the security implications",
+        "",
+        "The WebSocket server binds to localhost only (127.0.0.1),",
+        "so only programs on your computer can connect.",
+        "",
+        "By clicking 'I Understand', you acknowledge that:",
+        "  1. You are a developer or advanced user",
+        "  2. You understand this mod can execute arbitrary code",
+        "  3. You will not ask for support for non-developer use cases",
+        "",
     };
 
     private final BridgeConfig config;
@@ -64,20 +63,19 @@ public class DeveloperWarningScreen extends Screen {
         int buttonY = this.height - 40;
 
         // "I Understand" button
-        this.addRenderableWidget(Button.builder(
-                Component.literal("I Understand - Enable Mod"),
-                button -> {
+        this.addRenderableWidget(Button.builder(Component.literal("I Understand - Enable Mod"), button -> {
                     config.developerModeAccepted = true;
                     config.save();
                     onComplete.accept(true);
-                }
-        ).bounds(startX, buttonY, buttonWidth, buttonHeight).build());
+                })
+                .bounds(startX, buttonY, buttonWidth, buttonHeight)
+                .build());
 
         // "Cancel" button
-        this.addRenderableWidget(Button.builder(
-                Component.literal("Cancel - Disable Mod"),
-                button -> onComplete.accept(false)
-        ).bounds(startX + buttonWidth + spacing, buttonY, buttonWidth, buttonHeight).build());
+        this.addRenderableWidget(
+                Button.builder(Component.literal("Cancel - Disable Mod"), button -> onComplete.accept(false))
+                        .bounds(startX + buttonWidth + spacing, buttonY, buttonWidth, buttonHeight)
+                        .build());
     }
 
     @Override

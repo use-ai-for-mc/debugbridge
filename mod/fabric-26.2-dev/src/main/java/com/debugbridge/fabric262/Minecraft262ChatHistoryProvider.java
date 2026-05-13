@@ -5,15 +5,14 @@ import com.debugbridge.core.mapping.MappingResolver;
 import com.debugbridge.core.protocol.dto.ChatMessageDto;
 import com.google.gson.JsonElement;
 import com.mojang.serialization.JsonOps;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.ChatComponent;
-import net.minecraft.client.multiplayer.chat.GuiMessage;
-import net.minecraft.network.chat.ComponentSerialization;
-
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.ChatComponent;
+import net.minecraft.client.multiplayer.chat.GuiMessage;
+import net.minecraft.network.chat.ComponentSerialization;
 
 public class Minecraft262ChatHistoryProvider implements ChatHistoryProvider {
 
@@ -22,8 +21,7 @@ public class Minecraft262ChatHistoryProvider implements ChatHistoryProvider {
     private static Field allMessagesField(MappingResolver resolver) throws NoSuchFieldException {
         Field f = allMessagesField;
         if (f != null) return f;
-        String runtime = resolver.resolveField(
-                "net.minecraft.client.gui.components.ChatComponent", "allMessages");
+        String runtime = resolver.resolveField("net.minecraft.client.gui.components.ChatComponent", "allMessages");
         f = ChatComponent.class.getDeclaredField(runtime);
         f.setAccessible(true);
         allMessagesField = f;
@@ -31,14 +29,16 @@ public class Minecraft262ChatHistoryProvider implements ChatHistoryProvider {
     }
 
     @Override
-    public List<ChatMessageDto> getRecentMessages(int limit, MappingResolver resolver, boolean includeJson) throws Exception {
+    public List<ChatMessageDto> getRecentMessages(int limit, MappingResolver resolver, boolean includeJson)
+            throws Exception {
         Minecraft mc = Minecraft.getInstance();
         if (mc.gui == null) return Collections.emptyList();
         ChatComponent chat = mc.gui.hud.getChat();
         if (chat == null) return Collections.emptyList();
 
         @SuppressWarnings("unchecked")
-        List<GuiMessage> messages = (List<GuiMessage>) allMessagesField(resolver).get(chat);
+        List<GuiMessage> messages =
+                (List<GuiMessage>) allMessagesField(resolver).get(chat);
         if (messages == null) return Collections.emptyList();
 
         // ChatComponent stores newest-first; honor that.

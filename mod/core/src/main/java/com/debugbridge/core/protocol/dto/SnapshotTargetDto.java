@@ -15,11 +15,11 @@ package com.debugbridge.core.protocol.dto;
  * via the omit-nulls Gson when the other branch is taken.
  */
 public final class SnapshotTargetDto {
-    public String type;     // "block" or "entity"
-    public Integer x;       // block branch
+    public String type; // "block" or "entity"
+    public Integer x; // block branch
     public Integer y;
     public Integer z;
-    public String face;     // block branch — "north"/"south"/etc.
-    public Integer entityId;  // entity branch
+    public String face; // block branch — "north"/"south"/etc.
+    public Integer entityId; // entity branch
     public String entityType; // entity branch — runtime class, mapped by handler
 }

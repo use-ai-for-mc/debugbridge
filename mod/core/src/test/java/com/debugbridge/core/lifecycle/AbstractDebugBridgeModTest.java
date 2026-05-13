@@ -1,5 +1,7 @@
 package com.debugbridge.core.lifecycle;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.debugbridge.core.BridgeConfig;
 import com.debugbridge.core.block.NearbyBlocksProvider;
 import com.debugbridge.core.chat.ChatHistoryProvider;
@@ -14,16 +16,13 @@ import com.debugbridge.core.screenshot.ScreenshotProvider;
 import com.debugbridge.core.server.BridgeServer;
 import com.debugbridge.core.snapshot.GameStateProvider;
 import com.debugbridge.core.texture.ItemTextureProvider;
-import org.junit.jupiter.api.Test;
-
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 /**
  * Unit tests for the kernel lifecycle in {@link AbstractDebugBridgeMod}.
@@ -83,10 +82,12 @@ class AbstractDebugBridgeModTest {
         }
 
         @Override
-        protected boolean tryStartOnPort(int port, MappingResolver resolver,
-                                         ThreadDispatcher dispatcher,
-                                         GameStateProvider stateProvider,
-                                         ScreenshotProvider screenshotProvider) {
+        protected boolean tryStartOnPort(
+                int port,
+                MappingResolver resolver,
+                ThreadDispatcher dispatcher,
+                GameStateProvider stateProvider,
+                ScreenshotProvider screenshotProvider) {
             portsTried.add(port);
             if (!availablePorts.contains(port)) return false;
             // BridgeServer's constructor doesn't actually bind; binding only
@@ -100,72 +101,139 @@ class AbstractDebugBridgeModTest {
             return server == null ? -1 : server.getPort();
         }
 
-        @Override protected String mcVersion() { return "test"; }
-        @Override protected Path configDir() { return Path.of("/nonexistent-for-test"); }
-        @Override protected Path gameDir() { return Path.of("/nonexistent-for-test"); }
-        @Override protected FabricNamespaceLookup createNamespaceLookup() {
+        @Override
+        protected String mcVersion() {
+            return "test";
+        }
+
+        @Override
+        protected Path configDir() {
+            return Path.of("/nonexistent-for-test");
+        }
+
+        @Override
+        protected Path gameDir() {
+            return Path.of("/nonexistent-for-test");
+        }
+
+        @Override
+        protected FabricNamespaceLookup createNamespaceLookup() {
             // null → kernel falls back to PassthroughResolver, which is what
             // we want for tests (no mapping download).
             return null;
         }
-        @Override protected void submitToGameThread(Runnable task) {
+
+        @Override
+        protected void submitToGameThread(Runnable task) {
             // Run synchronously on the test thread — the kernel's dispatcher
             // wrapper only times-out if the future doesn't complete.
             task.run();
         }
-        @Override protected GameStateProvider createStateProvider() { return SnapshotDto::new; }
-        @Override protected ScreenshotProvider createScreenshotProvider() {
+
+        @Override
+        protected GameStateProvider createStateProvider() {
+            return SnapshotDto::new;
+        }
+
+        @Override
+        protected ScreenshotProvider createScreenshotProvider() {
             return (downscale, quality, timeout) -> new ScreenshotProvider.Capture("/tmp/x.jpg", 0, 0, 0);
         }
-        @Override protected ItemTextureProvider createTextureProvider() {
+
+        @Override
+        protected ItemTextureProvider createTextureProvider() {
             return new ItemTextureProvider() {
-                @Override public TextureResult getItemTexture(int slot) { return null; }
-                @Override public TextureResult getEntityItemTexture(int eid, String s) { return null; }
-                @Override public TextureResult getItemTextureById(String id) { return null; }
+                @Override
+                public TextureResult getItemTexture(int slot) {
+                    return null;
+                }
+
+                @Override
+                public TextureResult getEntityItemTexture(int eid, String s) {
+                    return null;
+                }
+
+                @Override
+                public TextureResult getItemTextureById(String id) {
+                    return null;
+                }
             };
         }
-        @Override protected NearbyEntitiesProvider createEntitiesProvider() {
+
+        @Override
+        protected NearbyEntitiesProvider createEntitiesProvider() {
             return new NearbyEntitiesProvider() {
-                @Override public List<com.debugbridge.core.protocol.dto.EntitySummaryDto>
-                        getNearbyEntities(double r, int l) { return List.of(); }
-                @Override public com.debugbridge.core.protocol.dto.EntityDetailsDto
-                        getEntityDetails(int id) { return null; }
+                @Override
+                public List<com.debugbridge.core.protocol.dto.EntitySummaryDto> getNearbyEntities(double r, int l) {
+                    return List.of();
+                }
+
+                @Override
+                public com.debugbridge.core.protocol.dto.EntityDetailsDto getEntityDetails(int id) {
+                    return null;
+                }
             };
         }
-        @Override protected NearbyBlocksProvider createBlocksProvider() {
+
+        @Override
+        protected NearbyBlocksProvider createBlocksProvider() {
             return new NearbyBlocksProvider() {
-                @Override public List<com.debugbridge.core.protocol.dto.BlockSummaryDto>
-                        getNearbyBlocks(double r, int l) { return List.of(); }
-                @Override public com.debugbridge.core.protocol.dto.BlockDetailsDto
-                        getBlockDetails(int x, int y, int z) { return null; }
+                @Override
+                public List<com.debugbridge.core.protocol.dto.BlockSummaryDto> getNearbyBlocks(double r, int l) {
+                    return List.of();
+                }
+
+                @Override
+                public com.debugbridge.core.protocol.dto.BlockDetailsDto getBlockDetails(int x, int y, int z) {
+                    return null;
+                }
             };
         }
-        @Override protected LookedAtEntityProvider createLookedAtEntityProvider() {
+
+        @Override
+        protected LookedAtEntityProvider createLookedAtEntityProvider() {
             return range -> null;
         }
-        @Override protected ChatHistoryProvider createChatHistoryProvider() {
+
+        @Override
+        protected ChatHistoryProvider createChatHistoryProvider() {
             return (limit, resolver, includeJson) -> List.of();
         }
-        @Override protected ScreenInspectProvider createScreenInspectProvider() {
+
+        @Override
+        protected ScreenInspectProvider createScreenInspectProvider() {
             return () -> new com.debugbridge.core.protocol.dto.ScreenInspectDto();
         }
 
-        @Override protected boolean displayPlayerError(String m) {
+        @Override
+        protected boolean displayPlayerError(String m) {
             if (!playerReady) return false;
             errorsDisplayed.add(m);
             return true;
         }
-        @Override protected boolean displayPlayerInfo(String m) {
+
+        @Override
+        protected boolean displayPlayerInfo(String m) {
             if (!playerReady) return false;
             infosDisplayed.add(m);
             return true;
         }
-        @Override protected boolean canShowWarningScreen() { return canShowWarning; }
-        @Override protected void showWarningScreen(Consumer<Boolean> onResult) {
+
+        @Override
+        protected boolean canShowWarningScreen() {
+            return canShowWarning;
+        }
+
+        @Override
+        protected void showWarningScreen(Consumer<Boolean> onResult) {
             warningScreensOpened++;
             capturedWarningCallback = onResult;
         }
-        @Override protected void onPostTick() { onPostTickCalls++; }
+
+        @Override
+        protected void onPostTick() {
+            onPostTickCalls++;
+        }
     }
 
     /**
@@ -182,8 +250,8 @@ class AbstractDebugBridgeModTest {
         // startServer() from outside the package without touching real config files.
         mod.needsWarning = true;
         mod.handleTick();
-        assertNotNull(mod.capturedWarningCallback,
-            "warning screen should have been opened — kernel pre-conditions broken");
+        assertNotNull(
+                mod.capturedWarningCallback, "warning screen should have been opened — kernel pre-conditions broken");
         mod.capturedWarningCallback.accept(true);
     }
 
@@ -191,12 +259,11 @@ class AbstractDebugBridgeModTest {
     void portProbeFallsThroughWhenFirstPortUnavailable() {
         StubMod mod = new StubMod();
         mod.stubConfig.port = 9876;
-        mod.availablePorts.add(9878);  // first two unavailable
+        mod.availablePorts.add(9878); // first two unavailable
 
         runStartServer(mod);
 
-        assertEquals(List.of(9876, 9877, 9878), mod.portsTried,
-            "kernel should probe in order until success");
+        assertEquals(List.of(9876, 9877, 9878), mod.portsTried, "kernel should probe in order until success");
         assertEquals(9878, mod.boundPort(), "server should bind on the first available port");
     }
 
@@ -204,7 +271,7 @@ class AbstractDebugBridgeModTest {
     void portWraparoundWhenPreferredPortPastFreePorts() {
         StubMod mod = new StubMod();
         mod.stubConfig.port = 9880;
-        mod.availablePorts.add(9876);  // only the first port in range is free
+        mod.availablePorts.add(9876); // only the first port in range is free
 
         runStartServer(mod);
 
@@ -225,20 +292,20 @@ class AbstractDebugBridgeModTest {
         assertEquals(11, mod.portsTried.size(), "all 11 ports in range should have been probed");
         assertEquals(-1, mod.boundPort(), "no server should be bound");
         assertNotNull(mod.startupError, "startupError should be set when all ports fail");
-        assertTrue(mod.startupError.contains("9876-9886"),
-            "error should mention the configured port range; got: " + mod.startupError);
+        assertTrue(
+                mod.startupError.contains("9876-9886"),
+                "error should mention the configured port range; got: " + mod.startupError);
     }
 
     @Test
     void preferredPortClampedIntoRangeBeforeProbing() {
         StubMod mod = new StubMod();
-        mod.stubConfig.port = 1;  // way below the legal range
+        mod.stubConfig.port = 1; // way below the legal range
         mod.availablePorts.add(9876);
 
         runStartServer(mod);
 
-        assertEquals(9876, mod.portsTried.get(0),
-            "preferred port below the range should clamp to PORT_RANGE_START");
+        assertEquals(9876, mod.portsTried.get(0), "preferred port below the range should clamp to PORT_RANGE_START");
         assertEquals(9876, mod.boundPort());
     }
 
@@ -246,16 +313,14 @@ class AbstractDebugBridgeModTest {
     void infoFiresOnNextTickWhenChosenPortDiffersFromPreferred() {
         StubMod mod = new StubMod();
         mod.stubConfig.port = 9876;
-        mod.availablePorts.add(9878);  // preferred unavailable, falls through
+        mod.availablePorts.add(9878); // preferred unavailable, falls through
 
         runStartServer(mod);
 
         // The kernel sets startupInfo at startup time; routing fires on the next tick.
-        assertNotNull(mod.startupInfo,
-            "startupInfo should be queued when chosen port != preferred");
+        assertNotNull(mod.startupInfo, "startupInfo should be queued when chosen port != preferred");
         mod.handleTick();
-        assertEquals(1, mod.infosDisplayed.size(),
-            "queued info should fire on the next tick");
+        assertEquals(1, mod.infosDisplayed.size(), "queued info should fire on the next tick");
     }
 
     @Test
@@ -266,8 +331,7 @@ class AbstractDebugBridgeModTest {
 
         runStartServer(mod);
 
-        assertNull(mod.startupInfo,
-            "startupInfo should stay null when preferred port was successfully bound");
+        assertNull(mod.startupInfo, "startupInfo should stay null when preferred port was successfully bound");
     }
 
     @Test
@@ -277,13 +341,11 @@ class AbstractDebugBridgeModTest {
 
         mod.handleTick();
 
-        assertEquals(List.of("boom"), mod.errorsDisplayed,
-            "error message should be displayed once");
+        assertEquals(List.of("boom"), mod.errorsDisplayed, "error message should be displayed once");
         assertNull(mod.startupError, "after display, error field should be cleared");
 
         mod.handleTick();
-        assertEquals(1, mod.errorsDisplayed.size(),
-            "cleared error field should not re-display on subsequent tick");
+        assertEquals(1, mod.errorsDisplayed.size(), "cleared error field should not re-display on subsequent tick");
     }
 
     @Test
@@ -294,10 +356,8 @@ class AbstractDebugBridgeModTest {
 
         mod.handleTick();
 
-        assertEquals(0, mod.errorsDisplayed.size(),
-            "no message should be sent when player is null");
-        assertEquals("queued", mod.startupError,
-            "error should remain queued for the next tick");
+        assertEquals(0, mod.errorsDisplayed.size(), "no message should be sent when player is null");
+        assertEquals("queued", mod.startupError, "error should remain queued for the next tick");
 
         mod.playerReady = true;
         mod.handleTick();
@@ -324,8 +384,7 @@ class AbstractDebugBridgeModTest {
         mod.handleTick();
         mod.handleTick();
 
-        assertEquals(3, mod.onPostTickCalls,
-            "post-tick hook should fire on every tick regardless of warning state");
+        assertEquals(3, mod.onPostTickCalls, "post-tick hook should fire on every tick regardless of warning state");
     }
 
     @Test
@@ -338,8 +397,8 @@ class AbstractDebugBridgeModTest {
         mod.handleTick();
         mod.handleTick();
 
-        assertEquals(1, mod.warningScreensOpened,
-            "warning screen should be opened exactly once even across multiple ticks");
+        assertEquals(
+                1, mod.warningScreensOpened, "warning screen should be opened exactly once even across multiple ticks");
     }
 
     @Test
@@ -404,7 +463,6 @@ class AbstractDebugBridgeModTest {
         // serverStarted AtomicBoolean should short-circuit the second start.
         mod.capturedWarningCallback.accept(true);
 
-        assertEquals(firstPortsTriedCount, mod.portsTried.size(),
-            "second startup attempt should be a no-op");
+        assertEquals(firstPortsTriedCount, mod.portsTried.size(), "second startup attempt should be a no-op");
     }
 }

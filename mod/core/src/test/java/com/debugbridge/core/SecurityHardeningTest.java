@@ -1,20 +1,19 @@
 package com.debugbridge.core;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.debugbridge.core.lua.DirectDispatcher;
 import com.debugbridge.core.mapping.PassthroughResolver;
 import com.debugbridge.core.server.BridgeServer;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
-import org.junit.jupiter.api.*;
-
 import java.net.URI;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
+import org.junit.jupiter.api.*;
 
 /**
  * Regression tests for the input-validation and injection hardening on
@@ -28,9 +27,7 @@ class SecurityHardeningTest {
 
     @BeforeAll
     static void startServer() throws Exception {
-        server = new BridgeServer(PORT,
-            new PassthroughResolver("test"),
-            new DirectDispatcher());
+        server = new BridgeServer(PORT, new PassthroughResolver("test"), new DirectDispatcher());
         // runCommand is gated off by default; flip it on so we can exercise the
         // injection-hardening path. The validity of the gating itself is
         // covered separately.
@@ -83,17 +80,16 @@ class SecurityHardeningTest {
         // a Lua-side success/error mentioning the injected code.
         if (resp.get("success").getAsBoolean()) {
             String result = resp.has("result") ? resp.get("result").toString() : "";
-            assertFalse(result.contains("os.exit"),
-                "Injection-shaped payload must not have executed: " + result);
+            assertFalse(result.contains("os.exit"), "Injection-shaped payload must not have executed: " + result);
         } else {
             String error = resp.get("error").getAsString();
             // Accept any failure from the Minecraft side. Reject any sign of
             // Lua-syntax errors (would indicate the user input slipped into
             // the source) or `os` execution.
-            assertFalse(error.contains("unfinished string"),
-                "Lua syntax error means user input reached the parser: " + error);
-            assertFalse(error.contains("'<eof>'"),
-                "Lua parse error suggests injection: " + error);
+            assertFalse(
+                    error.contains("unfinished string"),
+                    "Lua syntax error means user input reached the parser: " + error);
+            assertFalse(error.contains("'<eof>'"), "Lua parse error suggests injection: " + error);
         }
     }
 
@@ -102,18 +98,20 @@ class SecurityHardeningTest {
         String tooLong = "a".repeat(2000);
         JsonObject resp = sendRunCommand(tooLong);
         assertFalse(resp.get("success").getAsBoolean());
-        assertTrue(resp.get("error").getAsString().contains("too long"),
-            "Expected 'too long' rejection, got: " + resp.get("error"));
+        assertTrue(
+                resp.get("error").getAsString().contains("too long"),
+                "Expected 'too long' rejection, got: " + resp.get("error"));
     }
 
     @Test
     void testRunCommandRejectsMissingField() throws Exception {
         JsonObject req = baseRequest("runCommand");
-        req.add("payload", new JsonObject());  // no command
+        req.add("payload", new JsonObject()); // no command
         JsonObject resp = roundtrip(req);
         assertFalse(resp.get("success").getAsBoolean());
-        assertTrue(resp.get("error").getAsString().contains("'command'"),
-            "Expected validation error, got: " + resp.get("error"));
+        assertTrue(
+                resp.get("error").getAsString().contains("'command'"),
+                "Expected validation error, got: " + resp.get("error"));
     }
 
     // ==================== search ReDoS hardening ====================
@@ -136,7 +134,7 @@ class SecurityHardeningTest {
     @Test
     void testSearchRejectsMissingField() throws Exception {
         JsonObject req = baseRequest("search");
-        req.add("payload", new JsonObject());  // no pattern
+        req.add("payload", new JsonObject()); // no pattern
         JsonObject resp = roundtrip(req);
         assertFalse(resp.get("success").getAsBoolean());
         assertTrue(resp.get("error").getAsString().contains("'pattern'"));
@@ -196,10 +194,25 @@ class SecurityHardeningTest {
 
     private static class TestClient extends WebSocketClient {
         final LinkedBlockingQueue<String> responses = new LinkedBlockingQueue<>();
-        TestClient(URI uri) { super(uri); }
-        @Override public void onOpen(ServerHandshake h) {}
-        @Override public void onMessage(String msg) { responses.offer(msg); }
-        @Override public void onClose(int c, String r, boolean rem) {}
-        @Override public void onError(Exception e) { e.printStackTrace(); }
+
+        TestClient(URI uri) {
+            super(uri);
+        }
+
+        @Override
+        public void onOpen(ServerHandshake h) {}
+
+        @Override
+        public void onMessage(String msg) {
+            responses.offer(msg);
+        }
+
+        @Override
+        public void onClose(int c, String r, boolean rem) {}
+
+        @Override
+        public void onError(Exception e) {
+            e.printStackTrace();
+        }
     }
 }

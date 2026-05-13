@@ -6,15 +6,6 @@ import com.debugbridge.core.protocol.dto.EntityEquipmentItemDto;
 import com.debugbridge.core.protocol.dto.EntityFrameItemDto;
 import com.debugbridge.core.protocol.dto.EntityPrimaryEquipmentDto;
 import com.debugbridge.core.protocol.dto.EntitySummaryDto;
-import net.minecraft.client.Minecraft;
-import net.minecraft.core.Registry;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.decoration.ItemFrame;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -23,6 +14,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.Registry;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.decoration.ItemFrame;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * Native nearby-entities query for Minecraft 1.19.
@@ -116,7 +115,10 @@ public class Minecraft119NearbyEntitiesProvider implements NearbyEntitiesProvide
 
                 Entity target = null;
                 for (Entity entity : mc.level.entitiesForRendering()) {
-                    if (entity.getId() == entityId) { target = entity; break; }
+                    if (entity.getId() == entityId) {
+                        target = entity;
+                        break;
+                    }
                 }
                 if (target == null) {
                     future.complete(null);
@@ -172,7 +174,8 @@ public class Minecraft119NearbyEntitiesProvider implements NearbyEntitiesProvide
 
                 if (!target.getPassengers().isEmpty()) {
                     List<String> passengers = new ArrayList<>();
-                    for (Entity p : target.getPassengers()) passengers.add(p.getClass().getName());
+                    for (Entity p : target.getPassengers())
+                        passengers.add(p.getClass().getName());
                     dto.passengers = passengers;
                 }
 
@@ -194,8 +197,8 @@ public class Minecraft119NearbyEntitiesProvider implements NearbyEntitiesProvide
         return future.get(5, TimeUnit.SECONDS);
     }
 
-    private void addEquipment(Map<String, EntityEquipmentItemDto> equipment,
-                              String slotName, LivingEntity living, EquipmentSlot slot) {
+    private void addEquipment(
+            Map<String, EntityEquipmentItemDto> equipment, String slotName, LivingEntity living, EquipmentSlot slot) {
         ItemStack stack = living.getItemBySlot(slot);
         if (stack != null && !stack.isEmpty()) {
             EntityEquipmentItemDto item = new EntityEquipmentItemDto();

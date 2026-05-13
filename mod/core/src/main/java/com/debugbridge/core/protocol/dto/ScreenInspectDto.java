@@ -1,7 +1,6 @@
 package com.debugbridge.core.protocol.dto;
 
 import com.google.gson.JsonElement;
-
 import java.util.List;
 
 /**

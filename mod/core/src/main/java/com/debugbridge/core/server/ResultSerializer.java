@@ -8,12 +8,11 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 
 /**
  * Serializes Lua return values to JSON for transmission over WebSocket.
@@ -144,8 +143,9 @@ public class ResultSerializer {
                 } else if (val instanceof String s) {
                     fields.addProperty(name, s);
                 } else {
-                    fields.addProperty(name, val.getClass().getSimpleName() + "@" +
-                            Integer.toHexString(System.identityHashCode(val)));
+                    fields.addProperty(
+                            name,
+                            val.getClass().getSimpleName() + "@" + Integer.toHexString(System.identityHashCode(val)));
                 }
                 count++;
             } catch (Exception e) {

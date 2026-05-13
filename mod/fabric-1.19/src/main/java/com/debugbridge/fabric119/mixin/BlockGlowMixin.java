@@ -27,14 +27,19 @@ public abstract class BlockGlowMixin {
     private RenderBuffers renderBuffers;
 
     @Inject(
-            method = "renderLevel(Lcom/mojang/blaze3d/vertex/PoseStack;FJZLnet/minecraft/client/Camera;Lnet/minecraft/client/renderer/GameRenderer;Lnet/minecraft/client/renderer/LightTexture;Lcom/mojang/math/Matrix4f;)V",
-            at = @At("TAIL")
-    )
+            method =
+                    "renderLevel(Lcom/mojang/blaze3d/vertex/PoseStack;FJZLnet/minecraft/client/Camera;Lnet/minecraft/client/renderer/GameRenderer;Lnet/minecraft/client/renderer/LightTexture;Lcom/mojang/math/Matrix4f;)V",
+            at = @At("TAIL"))
     private void debugbridge$renderBlockGlow(
-            PoseStack poseStack, float partialTicks, long finishTimeNano,
-            boolean renderBlockOutline, Camera camera, GameRenderer gameRenderer,
-            LightTexture lightTexture, Matrix4f projectionMatrix, CallbackInfo ci
-    ) {
+            PoseStack poseStack,
+            float partialTicks,
+            long finishTimeNano,
+            boolean renderBlockOutline,
+            Camera camera,
+            GameRenderer gameRenderer,
+            LightTexture lightTexture,
+            Matrix4f projectionMatrix,
+            CallbackInfo ci) {
         var glowing = ClientBlockGlowManager.snapshot();
         if (glowing.isEmpty()) return;
 

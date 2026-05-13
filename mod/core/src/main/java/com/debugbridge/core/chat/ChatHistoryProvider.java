@@ -2,7 +2,6 @@ package com.debugbridge.core.chat;
 
 import com.debugbridge.core.mapping.MappingResolver;
 import com.debugbridge.core.protocol.dto.ChatMessageDto;
-
 import java.util.List;
 
 /**

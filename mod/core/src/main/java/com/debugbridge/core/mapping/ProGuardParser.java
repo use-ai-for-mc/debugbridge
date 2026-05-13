@@ -67,7 +67,8 @@ public class ProGuardParser {
                     // Key: "name(paramTypes)" for disambiguation
                     String key = name + "(" + params + ")";
                     methods.get(currentMojangClass).put(key, obf);
-                    methodDescriptors.computeIfAbsent(currentMojangClass, k -> new HashMap<>())
+                    methodDescriptors
+                            .computeIfAbsent(currentMojangClass, k -> new HashMap<>())
                             .put(key, "(" + params + ")" + returnType);
                 } else {
                     // Field: "type name -> obf"
@@ -76,7 +77,8 @@ public class ProGuardParser {
                         String type = parts[0];
                         String name = parts[1];
                         fields.get(currentMojangClass).put(name, obf);
-                        fieldTypes.computeIfAbsent(currentMojangClass, k -> new HashMap<>())
+                        fieldTypes
+                                .computeIfAbsent(currentMojangClass, k -> new HashMap<>())
                                 .put(name, type);
                     }
                 }

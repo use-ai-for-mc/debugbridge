@@ -1,15 +1,15 @@
 package com.debugbridge.core.screenshot;
 
-import javax.imageio.IIOImage;
-import javax.imageio.ImageIO;
-import javax.imageio.ImageWriteParam;
-import javax.imageio.ImageWriter;
-import javax.imageio.stream.FileImageOutputStream;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.FileImageOutputStream;
 
 /**
  * JPEG encoder shared by all fabric shims. Takes raw ARGB pixels (alpha is
@@ -19,8 +19,7 @@ import java.util.Iterator;
  * {@code java.desktop} module, which is part of every standard JRE).
  */
 public final class JpegEncoder {
-    private JpegEncoder() {
-    }
+    private JpegEncoder() {}
 
     /**
      * Write the given ARGB pixels as a JPEG to a fresh temp file.
@@ -31,8 +30,7 @@ public final class JpegEncoder {
      * @param quality    JPEG quality in [0.0, 1.0]; clamped to [0.05, 1.0]
      * @return the absolute path of the written file
      */
-    public static Path writeJpegTempFile(int[] argbPixels, int width, int height, float quality)
-            throws IOException {
+    public static Path writeJpegTempFile(int[] argbPixels, int width, int height, float quality) throws IOException {
         if (argbPixels.length != width * height) {
             throw new IllegalArgumentException(
                     "pixel buffer length " + argbPixels.length + " != " + width + "*" + height);

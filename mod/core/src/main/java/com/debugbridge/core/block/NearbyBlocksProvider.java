@@ -2,7 +2,6 @@ package com.debugbridge.core.block;
 
 import com.debugbridge.core.protocol.dto.BlockDetailsDto;
 import com.debugbridge.core.protocol.dto.BlockSummaryDto;
-
 import java.util.List;
 
 /**

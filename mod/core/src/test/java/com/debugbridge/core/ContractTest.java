@@ -1,5 +1,7 @@
 package com.debugbridge.core;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.debugbridge.core.block.NearbyBlocksProvider;
 import com.debugbridge.core.chat.ChatHistoryProvider;
 import com.debugbridge.core.entity.LookedAtEntityProvider;
@@ -31,10 +33,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
-import org.junit.jupiter.api.*;
-
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,8 +40,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
+import org.junit.jupiter.api.*;
 
 /**
  * Wire-contract tests that pin the JSON shape produced by each endpoint.
@@ -92,19 +91,24 @@ class ContractTest {
         //     so the search-endpoint tests can iterate over real data without
         //     needing a live Minecraft mappings dump.
         MappingResolver resolver = new PassthroughResolver("test") {
-            @Override public String unresolveClass(String name) {
+            @Override
+            public String unresolveClass(String name) {
                 if ("net.minecraft.class_1277".equals(name)) {
                     return "net.minecraft.world.SimpleContainer";
                 }
                 return name;
             }
-            @Override public java.util.Collection<String> getAllClassNames() {
+
+            @Override
+            public java.util.Collection<String> getAllClassNames() {
                 return List.of(
-                    "net.minecraft.world.entity.Entity",
-                    "net.minecraft.world.entity.LivingEntity",
-                    "net.minecraft.world.item.ItemStack");
+                        "net.minecraft.world.entity.Entity",
+                        "net.minecraft.world.entity.LivingEntity",
+                        "net.minecraft.world.item.ItemStack");
             }
-            @Override public java.util.Collection<String> getMethodSignatures(String mojang) {
+
+            @Override
+            public java.util.Collection<String> getMethodSignatures(String mojang) {
                 return switch (mojang) {
                     case "net.minecraft.world.entity.Entity" -> List.of("getId", "tick", "getX");
                     case "net.minecraft.world.entity.LivingEntity" -> List.of("getHealth", "getMaxHealth");
@@ -112,7 +116,9 @@ class ContractTest {
                     default -> List.of();
                 };
             }
-            @Override public java.util.Collection<String> getFieldNames(String mojang) {
+
+            @Override
+            public java.util.Collection<String> getFieldNames(String mojang) {
                 return switch (mojang) {
                     case "net.minecraft.world.entity.Entity" -> List.of("id", "level");
                     case "net.minecraft.world.entity.LivingEntity" -> List.of("health");
@@ -121,26 +127,30 @@ class ContractTest {
                 };
             }
         };
-        server = new BridgeServer(PORT, resolver, new DirectDispatcher(),
-            (GameStateProvider) () -> stubSnapshot);
+        server = new BridgeServer(PORT, resolver, new DirectDispatcher(), (GameStateProvider) () -> stubSnapshot);
         // Stub providers — return whatever the test fixtured.
         server.setLookedAtEntityProvider((LookedAtEntityProvider) range -> stubLookedAtId);
-        server.setChatHistoryProvider((ChatHistoryProvider)
-            (limit, r, includeJson) -> stubChatMessages);
+        server.setChatHistoryProvider((ChatHistoryProvider) (limit, r, includeJson) -> stubChatMessages);
         server.setScreenInspectProvider((ScreenInspectProvider) () -> stubScreenInspect);
         server.setBlocksProvider(new NearbyBlocksProvider() {
-            @Override public List<BlockSummaryDto> getNearbyBlocks(double range, int limit) {
+            @Override
+            public List<BlockSummaryDto> getNearbyBlocks(double range, int limit) {
                 return stubNearbyBlocks;
             }
-            @Override public BlockDetailsDto getBlockDetails(int x, int y, int z) {
+
+            @Override
+            public BlockDetailsDto getBlockDetails(int x, int y, int z) {
                 return stubBlockDetails;
             }
         });
         server.setEntitiesProvider(new NearbyEntitiesProvider() {
-            @Override public List<EntitySummaryDto> getNearbyEntities(double range, int limit) {
+            @Override
+            public List<EntitySummaryDto> getNearbyEntities(double range, int limit) {
                 return stubNearbyEntities;
             }
-            @Override public EntityDetailsDto getEntityDetails(int entityId) {
+
+            @Override
+            public EntityDetailsDto getEntityDetails(int entityId) {
                 return stubEntityDetails;
             }
         });
@@ -188,8 +198,12 @@ class ContractTest {
         if (client != null) client.closeBlocking();
         if (tempGameDir != null) {
             // Best-effort cleanup of the temp dir tree.
-            Files.walk(tempGameDir).sorted((a, b) -> b.compareTo(a))
-                .forEach(p -> { try { Files.deleteIfExists(p); } catch (Exception ignore) {} });
+            Files.walk(tempGameDir).sorted((a, b) -> b.compareTo(a)).forEach(p -> {
+                try {
+                    Files.deleteIfExists(p);
+                } catch (Exception ignore) {
+                }
+            });
         }
     }
 
@@ -200,13 +214,16 @@ class ContractTest {
         JsonObject result = call("status").getAsJsonObject("result");
 
         // Always-present fields.
-        assertEquals(Set.of("version", "mappingStatus", "obfuscated", "refs"), result.keySet(),
-            "status without a gameDir should emit exactly the always-present fields, "
-            + "not null log paths. Got: " + result);
+        assertEquals(
+                Set.of("version", "mappingStatus", "obfuscated", "refs"),
+                result.keySet(),
+                "status without a gameDir should emit exactly the always-present fields, " + "not null log paths. Got: "
+                        + result);
         assertEquals("test", result.get("version").getAsString());
         assertEquals("passthrough", result.get("mappingStatus").getAsString());
         assertFalse(result.get("obfuscated").getAsBoolean());
-        assertTrue(result.get("refs").isJsonPrimitive() && result.get("refs").getAsJsonPrimitive().isNumber());
+        assertTrue(result.get("refs").isJsonPrimitive()
+                && result.get("refs").getAsJsonPrimitive().isNumber());
     }
 
     @Test
@@ -219,14 +236,21 @@ class ContractTest {
 
         JsonObject result = call("status").getAsJsonObject("result");
         Set<String> expected = Set.of(
-            "version", "mappingStatus", "obfuscated", "refs",
-            "gameDir", "logsDir", "latestLog", "latestLogExists",
-            "debugLog", "debugLogExists");
-        assertEquals(expected, result.keySet(),
-            "status with gameDir set should emit all 10 fields. Got: " + result);
+                "version",
+                "mappingStatus",
+                "obfuscated",
+                "refs",
+                "gameDir",
+                "logsDir",
+                "latestLog",
+                "latestLogExists",
+                "debugLog",
+                "debugLogExists");
+        assertEquals(expected, result.keySet(), "status with gameDir set should emit all 10 fields. Got: " + result);
         assertTrue(result.get("latestLogExists").getAsBoolean(), "latest.log was created");
         assertFalse(result.get("debugLogExists").getAsBoolean(), "debug.log was not created");
-        assertTrue(result.get("gameDir").getAsString().endsWith(dir.getFileName().toString()));
+        assertTrue(
+                result.get("gameDir").getAsString().endsWith(dir.getFileName().toString()));
     }
 
     // ==================== lookedAtEntity ====================
@@ -239,10 +263,9 @@ class ContractTest {
         // The key MUST be present and the value MUST be JsonNull. Clients
         // distinguish "no target in range" from "malformed response" by this
         // exact shape.
-        assertTrue(result.has("entityId"),
-            "entityId key must be present even when null. Got: " + result);
-        assertTrue(result.get("entityId").isJsonNull(),
-            "entityId must be JsonNull, not omitted, not 0. Got: " + result);
+        assertTrue(result.has("entityId"), "entityId key must be present even when null. Got: " + result);
+        assertTrue(
+                result.get("entityId").isJsonNull(), "entityId must be JsonNull, not omitted, not 0. Got: " + result);
         assertEquals(1, result.size(), "result should contain only entityId. Got: " + result);
     }
 
@@ -271,7 +294,7 @@ class ContractTest {
         m1.plain = "hello";
         m1.addedTime = 1000;
         ChatMessageDto m2 = new ChatMessageDto();
-        m2.plain = "world";  // no addedTime — must be omitted on the wire
+        m2.plain = "world"; // no addedTime — must be omitted on the wire
         stubChatMessages = List.of(m1, m2);
 
         JsonObject result = call("chatHistory").getAsJsonObject("result");
@@ -280,14 +303,18 @@ class ContractTest {
         assertEquals(2, messages.size());
 
         JsonObject first = messages.get(0).getAsJsonObject();
-        assertEquals(Set.of("plain", "addedTime"), first.keySet(),
-            "First message: plain + addedTime, no json. Got: " + first);
+        assertEquals(
+                Set.of("plain", "addedTime"),
+                first.keySet(),
+                "First message: plain + addedTime, no json. Got: " + first);
         assertEquals("hello", first.get("plain").getAsString());
         assertEquals(1000, first.get("addedTime").getAsInt());
 
         JsonObject second = messages.get(1).getAsJsonObject();
-        assertEquals(Set.of("plain"), second.keySet(),
-            "Second message: addedTime is null, must be omitted (not emitted as null). Got: " + second);
+        assertEquals(
+                Set.of("plain"),
+                second.keySet(),
+                "Second message: addedTime is null, must be omitted (not emitted as null). Got: " + second);
     }
 
     @Test
@@ -315,8 +342,7 @@ class ContractTest {
     void testScreenInspectClosedEmitsOnlyOpenFalse() throws Exception {
         // Default stub is a closed-screen DTO; reset by @BeforeEach.
         JsonObject result = call("screenInspect").getAsJsonObject("result");
-        assertEquals(Set.of("open"), result.keySet(),
-            "Closed screen must emit only `open: false`. Got: " + result);
+        assertEquals(Set.of("open"), result.keySet(), "Closed screen must emit only `open: false`. Got: " + result);
         assertFalse(result.get("open").getAsBoolean());
     }
 
@@ -351,8 +377,10 @@ class ContractTest {
         assertEquals(2, result.getAsJsonArray("slots").size());
 
         JsonObject slot0 = result.getAsJsonArray("slots").get(0).getAsJsonObject();
-        assertEquals(Set.of("idx", "container"), slot0.keySet(),
-            "Empty slot has only idx + container, no item. Got: " + slot0);
+        assertEquals(
+                Set.of("idx", "container"),
+                slot0.keySet(),
+                "Empty slot has only idx + container, no item. Got: " + slot0);
 
         JsonObject slot1 = result.getAsJsonArray("slots").get(1).getAsJsonObject();
         assertEquals(Set.of("idx", "container", "item"), slot1.keySet());
@@ -366,21 +394,27 @@ class ContractTest {
         // unresolveClass before the value reaches the wire.
         ScreenInspectDto dto = new ScreenInspectDto();
         dto.open = true;
-        dto.type = "net.minecraft.class_1277";  // resolver maps this
-        dto.menuClass = "net.minecraft.class_1277";  // resolver maps this
+        dto.type = "net.minecraft.class_1277"; // resolver maps this
+        dto.menuClass = "net.minecraft.class_1277"; // resolver maps this
         SlotDto slot = new SlotDto();
         slot.idx = 0;
-        slot.container = "net.minecraft.class_1277";  // <-- the bug location
+        slot.container = "net.minecraft.class_1277"; // <-- the bug location
         dto.slots = List.of(slot);
         stubScreenInspect = dto;
 
         JsonObject result = call("screenInspect").getAsJsonObject("result");
         // All three runtime class-name fields must be remapped to the Mojang name.
         assertEquals("net.minecraft.world.SimpleContainer", result.get("type").getAsString());
-        assertEquals("net.minecraft.world.SimpleContainer", result.get("menuClass").getAsString());
-        assertEquals("net.minecraft.world.SimpleContainer",
-            result.getAsJsonArray("slots").get(0).getAsJsonObject().get("container").getAsString(),
-            "Theme 1 regression: slots[].container must be Mojang-mapped on the wire");
+        assertEquals(
+                "net.minecraft.world.SimpleContainer", result.get("menuClass").getAsString());
+        assertEquals(
+                "net.minecraft.world.SimpleContainer",
+                result.getAsJsonArray("slots")
+                        .get(0)
+                        .getAsJsonObject()
+                        .get("container")
+                        .getAsString(),
+                "Theme 1 regression: slots[].container must be Mojang-mapped on the wire");
     }
 
     @Test
@@ -400,10 +434,12 @@ class ContractTest {
         stubScreenInspect = dto;
 
         JsonObject result = call("screenInspect").getAsJsonObject("result");
-        JsonObject item = result.getAsJsonArray("slots").get(0).getAsJsonObject()
-            .getAsJsonObject("item");
-        assertEquals(Set.of("itemId", "count"), item.keySet(),
-            "Optional damage/name fields must be omitted when null. Got: " + item);
+        JsonObject item =
+                result.getAsJsonArray("slots").get(0).getAsJsonObject().getAsJsonObject("item");
+        assertEquals(
+                Set.of("itemId", "count"),
+                item.keySet(),
+                "Optional damage/name fields must be omitted when null. Got: " + item);
     }
 
     // ==================== nearbyBlocks ====================
@@ -420,19 +456,25 @@ class ContractTest {
     @Test
     void testNearbyBlocksAppliesResolverToType() throws Exception {
         BlockSummaryDto b = new BlockSummaryDto();
-        b.x = 10; b.y = 64; b.z = -5;
+        b.x = 10;
+        b.y = 64;
+        b.z = -5;
         b.distance = 4.2;
-        b.type = "net.minecraft.class_1277";  // resolver maps this
+        b.type = "net.minecraft.class_1277"; // resolver maps this
         b.blockId = "minecraft:chest";
         // preview omitted → must be absent on the wire
         stubNearbyBlocks = List.of(b);
 
         JsonObject result = call("nearbyBlocks").getAsJsonObject("result");
         JsonObject only = result.getAsJsonArray("blocks").get(0).getAsJsonObject();
-        assertEquals(Set.of("x", "y", "z", "distance", "type", "blockId"), only.keySet(),
-            "preview must drop when null. Got: " + only);
-        assertEquals("net.minecraft.world.SimpleContainer", only.get("type").getAsString(),
-            "Resolver must map block-entity type names");
+        assertEquals(
+                Set.of("x", "y", "z", "distance", "type", "blockId"),
+                only.keySet(),
+                "preview must drop when null. Got: " + only);
+        assertEquals(
+                "net.minecraft.world.SimpleContainer",
+                only.get("type").getAsString(),
+                "Resolver must map block-entity type names");
         assertEquals(4.2, only.get("distance").getAsDouble(), 0.0001);
         assertEquals(1, result.get("count").getAsInt());
     }
@@ -443,15 +485,19 @@ class ContractTest {
     void testBlockDetailsGoneWhenNoBlock() throws Exception {
         stubBlockDetails = null;
         JsonObject result = sendBlockDetails(0, 0, 0).getAsJsonObject("result");
-        assertEquals(Set.of("gone"), result.keySet(),
-            "When provider returns null, wire emits exactly {gone: true}. Got: " + result);
+        assertEquals(
+                Set.of("gone"),
+                result.keySet(),
+                "When provider returns null, wire emits exactly {gone: true}. Got: " + result);
         assertTrue(result.get("gone").getAsBoolean());
     }
 
     @Test
     void testBlockDetailsSignShape() throws Exception {
         BlockDetailsDto d = new BlockDetailsDto();
-        d.x = 1; d.y = 2; d.z = 3;
+        d.x = 1;
+        d.y = 2;
+        d.z = 3;
         d.type = "net.minecraft.class_1277";
         d.blockId = "minecraft:oak_sign";
         d.signLines = List.of("hello", "world", "", "");
@@ -459,8 +505,10 @@ class ContractTest {
         stubBlockDetails = d;
 
         JsonObject result = sendBlockDetails(1, 2, 3).getAsJsonObject("result");
-        assertEquals(Set.of("x", "y", "z", "type", "blockId", "signLines"), result.keySet(),
-            "Optional fields must drop when null. Got: " + result);
+        assertEquals(
+                Set.of("x", "y", "z", "type", "blockId", "signLines"),
+                result.keySet(),
+                "Optional fields must drop when null. Got: " + result);
         assertEquals("net.minecraft.world.SimpleContainer", result.get("type").getAsString());
         assertEquals(4, result.getAsJsonArray("signLines").size());
         assertEquals("hello", result.getAsJsonArray("signLines").get(0).getAsString());
@@ -469,7 +517,9 @@ class ContractTest {
     @Test
     void testBlockDetailsContainerShape() throws Exception {
         BlockDetailsDto d = new BlockDetailsDto();
-        d.x = 1; d.y = 2; d.z = 3;
+        d.x = 1;
+        d.y = 2;
+        d.z = 3;
         d.type = "x";
         d.blockId = "minecraft:chest";
         d.containerSize = 27;
@@ -484,8 +534,10 @@ class ContractTest {
         JsonObject result = sendBlockDetails(1, 2, 3).getAsJsonObject("result");
         assertEquals(27, result.get("containerSize").getAsInt());
         JsonObject only = result.getAsJsonArray("items").get(0).getAsJsonObject();
-        assertEquals(Set.of("slot", "itemId", "count"), only.keySet(),
-            "Optional damage/name fields must drop. Got: " + only);
+        assertEquals(
+                Set.of("slot", "itemId", "count"),
+                only.keySet(),
+                "Optional damage/name fields must drop. Got: " + only);
         assertEquals("minecraft:diamond", only.get("itemId").getAsString());
         assertEquals(12, only.get("count").getAsInt());
     }
@@ -496,8 +548,10 @@ class ContractTest {
     void testNearbyEntitiesEmptyShape() throws Exception {
         stubNearbyEntities = List.of();
         JsonObject result = call("nearbyEntities").getAsJsonObject("result");
-        assertEquals(Set.of("entities", "count"), result.keySet(),
-            "Empty list emits exactly entities + count, no icons. Got: " + result);
+        assertEquals(
+                Set.of("entities", "count"),
+                result.keySet(),
+                "Empty list emits exactly entities + count, no icons. Got: " + result);
         assertEquals(0, result.get("count").getAsInt());
     }
 
@@ -505,24 +559,35 @@ class ContractTest {
     void testNearbyEntitiesAppliesResolverToTypeAndOmitsNulls() throws Exception {
         EntitySummaryDto e = new EntitySummaryDto();
         e.id = 42;
-        e.type = "net.minecraft.class_1277";  // resolver maps this
+        e.type = "net.minecraft.class_1277"; // resolver maps this
         e.distance = 3.5;
-        e.x = 10.0; e.y = 64.0; e.z = -7.5;
+        e.x = 10.0;
+        e.y = 64.0;
+        e.z = -7.5;
         // customName, typeId, primaryEquipment all null → must drop on the wire.
         stubNearbyEntities = List.of(e);
 
         JsonObject result = call("nearbyEntities").getAsJsonObject("result");
         JsonObject only = result.getAsJsonArray("entities").get(0).getAsJsonObject();
-        assertEquals(Set.of("id", "type", "distance", "x", "y", "z"), only.keySet(),
-            "Optional fields must drop when null. Got: " + only);
-        assertEquals("net.minecraft.world.SimpleContainer", only.get("type").getAsString(),
-            "Resolver must map runtime entity class names");
+        assertEquals(
+                Set.of("id", "type", "distance", "x", "y", "z"),
+                only.keySet(),
+                "Optional fields must drop when null. Got: " + only);
+        assertEquals(
+                "net.minecraft.world.SimpleContainer",
+                only.get("type").getAsString(),
+                "Resolver must map runtime entity class names");
     }
 
     @Test
     void testNearbyEntitiesPrimaryEquipmentShape() throws Exception {
         EntitySummaryDto e = new EntitySummaryDto();
-        e.id = 1; e.type = "x"; e.distance = 0; e.x = 0; e.y = 0; e.z = 0;
+        e.id = 1;
+        e.type = "x";
+        e.distance = 0;
+        e.x = 0;
+        e.y = 0;
+        e.z = 0;
         EntityPrimaryEquipmentDto eq = new EntityPrimaryEquipmentDto();
         eq.slot = "HEAD";
         eq.itemId = "minecraft:diamond_helmet";
@@ -530,8 +595,8 @@ class ContractTest {
         stubNearbyEntities = List.of(e);
 
         JsonObject result = call("nearbyEntities").getAsJsonObject("result");
-        JsonObject prim = result.getAsJsonArray("entities").get(0).getAsJsonObject()
-            .getAsJsonObject("primaryEquipment");
+        JsonObject prim =
+                result.getAsJsonArray("entities").get(0).getAsJsonObject().getAsJsonObject("primaryEquipment");
         assertEquals(Set.of("slot", "itemId"), prim.keySet());
         assertEquals("HEAD", prim.get("slot").getAsString());
     }
@@ -555,7 +620,9 @@ class ContractTest {
         EntityDetailsDto d = new EntityDetailsDto();
         d.entityId = 7;
         d.type = "net.minecraft.class_1277";
-        d.x = 1.0; d.y = 2.0; d.z = 3.0;
+        d.x = 1.0;
+        d.y = 2.0;
+        d.z = 3.0;
         d.distance = 0.0;
         d.isOnFire = false;
         d.isSprinting = false;
@@ -568,7 +635,8 @@ class ContractTest {
         JsonObject result = call("entityDetails", p).getAsJsonObject("result");
 
         assertEquals("net.minecraft.world.SimpleContainer", result.get("type").getAsString());
-        assertEquals("net.minecraft.world.SimpleContainer", result.get("vehicle").getAsString());
+        assertEquals(
+                "net.minecraft.world.SimpleContainer", result.get("vehicle").getAsString());
         var passengers = result.getAsJsonArray("passengers");
         assertEquals(2, passengers.size());
         assertEquals("net.minecraft.world.SimpleContainer", passengers.get(0).getAsString());
@@ -582,7 +650,9 @@ class ContractTest {
         EntityDetailsDto d = new EntityDetailsDto();
         d.entityId = 1;
         d.type = "x";
-        d.x = 0.0; d.y = 0.0; d.z = 0.0;
+        d.x = 0.0;
+        d.y = 0.0;
+        d.z = 0.0;
         d.distance = 0.0;
         d.isOnFire = false;
         d.isSprinting = false;
@@ -592,11 +662,10 @@ class ContractTest {
         p.addProperty("entityId", 1);
         JsonObject result = call("entityDetails", p).getAsJsonObject("result");
 
-        assertEquals(Set.of("entityId", "type", "x", "y", "z", "distance",
-                            "isOnFire", "isSprinting"),
-            result.keySet(),
-            "Only the always-emitted fields should appear when no living/vehicle/tags/etc. set. Got: "
-                + result);
+        assertEquals(
+                Set.of("entityId", "type", "x", "y", "z", "distance", "isOnFire", "isSprinting"),
+                result.keySet(),
+                "Only the always-emitted fields should appear when no living/vehicle/tags/etc. set. Got: " + result);
     }
 
     // ==================== snapshot ====================
@@ -607,9 +676,10 @@ class ContractTest {
         // The Phase 1 schema-lock removed the "player": "not in world" string;
         // omit-nulls means player is simply absent.
         JsonObject result = call("snapshot").getAsJsonObject("result");
-        assertEquals(Set.of("fps", "version"), result.keySet(),
-            "Snapshot with no player/target/world should emit only fps + version. Got: "
-                + result);
+        assertEquals(
+                Set.of("fps", "version"),
+                result.keySet(),
+                "Snapshot with no player/target/world should emit only fps + version. Got: " + result);
         assertEquals(60, result.get("fps").getAsInt());
         assertEquals("test", result.get("version").getAsString());
     }
@@ -625,8 +695,9 @@ class ContractTest {
         stubSnapshot = s;
         JsonObject result = call("snapshot").getAsJsonObject("result");
         assertTrue(result.get("fps").isJsonPrimitive(), "fps must be a primitive");
-        assertTrue(result.get("fps").getAsJsonPrimitive().isNumber(),
-            "fps must be a number, not a string. Got: " + result.get("fps"));
+        assertTrue(
+                result.get("fps").getAsJsonPrimitive().isNumber(),
+                "fps must be a number, not a string. Got: " + result.get("fps"));
         assertEquals(83, result.get("fps").getAsInt());
     }
 
@@ -636,22 +707,26 @@ class ContractTest {
         SnapshotDto s = baseSnapshot();
         SnapshotPlayerDto p = new SnapshotPlayerDto();
         p.name = "tester";
-        p.x = 100; p.y = 64; p.z = 200;
+        p.x = 100;
+        p.y = 64;
+        p.z = 200;
         p.dimension = "minecraft:overworld";
         p.biome = "";
         p.velocity = new Vec3Dto(0, 0, 0);
         p.look = new Vec3Dto(1, 0, 0);
         SnapshotVehicleDto v = new SnapshotVehicleDto();
         v.entityId = 7;
-        v.type = "net.minecraft.class_1277";  // resolver maps this
+        v.type = "net.minecraft.class_1277"; // resolver maps this
         p.vehicle = v;
         s.player = p;
         stubSnapshot = s;
 
         JsonObject result = call("snapshot").getAsJsonObject("result");
         JsonObject vehicle = result.getAsJsonObject("player").getAsJsonObject("vehicle");
-        assertEquals("net.minecraft.world.SimpleContainer", vehicle.get("type").getAsString(),
-            "vehicle.type must be resolver-mapped");
+        assertEquals(
+                "net.minecraft.world.SimpleContainer",
+                vehicle.get("type").getAsString(),
+                "vehicle.type must be resolver-mapped");
     }
 
     @Test
@@ -660,17 +735,20 @@ class ContractTest {
         SnapshotTargetDto t = new SnapshotTargetDto();
         t.type = "entity";
         t.entityId = 99;
-        t.entityType = "net.minecraft.class_1277";  // resolver maps this
+        t.entityType = "net.minecraft.class_1277"; // resolver maps this
         s.target = t;
         stubSnapshot = s;
 
         JsonObject result = call("snapshot").getAsJsonObject("result");
         JsonObject target = result.getAsJsonObject("target");
-        assertEquals("net.minecraft.world.SimpleContainer", target.get("entityType").getAsString());
+        assertEquals(
+                "net.minecraft.world.SimpleContainer", target.get("entityType").getAsString());
         assertEquals("entity", target.get("type").getAsString());
         // Block-branch fields (x/y/z/face) must be absent on entity branch.
-        assertEquals(Set.of("type", "entityId", "entityType"), target.keySet(),
-            "Block-target fields must drop on entity branch. Got: " + target);
+        assertEquals(
+                Set.of("type", "entityId", "entityType"),
+                target.keySet(),
+                "Block-target fields must drop on entity branch. Got: " + target);
     }
 
     @Test
@@ -678,7 +756,9 @@ class ContractTest {
         SnapshotDto s = baseSnapshot();
         SnapshotTargetDto t = new SnapshotTargetDto();
         t.type = "block";
-        t.x = 10; t.y = 64; t.z = -5;
+        t.x = 10;
+        t.y = 64;
+        t.z = -5;
         t.face = "north";
         s.target = t;
         stubSnapshot = s;
@@ -713,8 +793,7 @@ class ContractTest {
     @Test
     void testSearchEmptyOnNoMatch() throws Exception {
         JsonArray result = callSearch("zzz_no_match_xxx", null).getAsJsonArray("result");
-        assertEquals(0, result.size(),
-            "No-match pattern should yield an empty array, not null. Got: " + result);
+        assertEquals(0, result.size(), "No-match pattern should yield an empty array, not null. Got: " + result);
     }
 
     @Test
@@ -724,8 +803,7 @@ class ContractTest {
         JsonArray result = callSearch("ItemStack", "class").getAsJsonArray("result");
         assertEquals(1, result.size());
         JsonObject hit = result.get(0).getAsJsonObject();
-        assertEquals(Set.of("type", "name"), hit.keySet(),
-            "Class hits must not emit owner. Got: " + hit);
+        assertEquals(Set.of("type", "name"), hit.keySet(), "Class hits must not emit owner. Got: " + hit);
         assertEquals("class", hit.get("type").getAsString());
         assertEquals("net.minecraft.world.item.ItemStack", hit.get("name").getAsString());
     }
@@ -738,8 +816,7 @@ class ContractTest {
         assertEquals(Set.of("type", "name", "owner"), hit.keySet());
         assertEquals("method", hit.get("type").getAsString());
         assertEquals("getHealth", hit.get("name").getAsString());
-        assertEquals("net.minecraft.world.entity.LivingEntity",
-            hit.get("owner").getAsString());
+        assertEquals("net.minecraft.world.entity.LivingEntity", hit.get("owner").getAsString());
     }
 
     @Test
@@ -761,8 +838,7 @@ class ContractTest {
         assertTrue(result.size() >= 3, "Expected ≥3 hits across types. Got: " + result);
         java.util.Set<String> types = new java.util.HashSet<>();
         for (var el : result) types.add(el.getAsJsonObject().get("type").getAsString());
-        assertTrue(types.contains("method"),
-            "Default-scope search must include method hits. Got types: " + types);
+        assertTrue(types.contains("method"), "Default-scope search must include method hits. Got types: " + types);
     }
 
     // ==================== Helpers ====================
@@ -802,10 +878,25 @@ class ContractTest {
 
     private static class TestClient extends WebSocketClient {
         final LinkedBlockingQueue<String> responses = new LinkedBlockingQueue<>();
-        TestClient(URI uri) { super(uri); }
-        @Override public void onOpen(ServerHandshake h) {}
-        @Override public void onMessage(String msg) { responses.offer(msg); }
-        @Override public void onClose(int c, String r, boolean rem) {}
-        @Override public void onError(Exception e) { e.printStackTrace(); }
+
+        TestClient(URI uri) {
+            super(uri);
+        }
+
+        @Override
+        public void onOpen(ServerHandshake h) {}
+
+        @Override
+        public void onMessage(String msg) {
+            responses.offer(msg);
+        }
+
+        @Override
+        public void onClose(int c, String r, boolean rem) {}
+
+        @Override
+        public void onError(Exception e) {
+            e.printStackTrace();
+        }
     }
 }

@@ -4,6 +4,19 @@ import com.debugbridge.core.texture.ItemTextureProvider;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.blaze3d.platform.NativeImage;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
+import javax.imageio.ImageIO;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.color.item.ItemColors;
 import net.minecraft.client.renderer.block.model.BakedQuad;
@@ -25,20 +38,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.MapItem;
 import net.minecraft.world.level.material.MaterialColor;
 import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
-
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.lang.reflect.Field;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
 
 /**
  * Resolves item textures in Minecraft 1.19 by walking the baked item model
@@ -171,8 +170,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
             } catch (Exception e) {
                 throw new Exception("Invalid item id: " + itemId);
             }
-            if (!Registry.ITEM.containsKey(key))
-                throw new Exception("Unknown item: " + itemId);
+            if (!Registry.ITEM.containsKey(key)) throw new Exception("Unknown item: " + itemId);
             Item item = Registry.ITEM.get(key);
             return new ItemStack(item);
         });
@@ -208,8 +206,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
                 throw new Exception("Entity " + entityId + " has no equipment");
             }
 
-            if (stack.isEmpty())
-                throw new Exception("Slot " + slotName + " is empty on entity " + entityId);
+            if (stack.isEmpty()) throw new Exception("Slot " + slotName + " is empty on entity " + entityId);
             return stack;
         });
     }
@@ -262,8 +259,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         if (mc.level == null) return null;
 
         MapItemSavedData mapData = MapItem.getSavedData(stack, mc.level);
-        if (mapData == null || mapData.colors == null
-                || mapData.colors.length < MAP_SIZE * MAP_SIZE) {
+        if (mapData == null || mapData.colors == null || mapData.colors.length < MAP_SIZE * MAP_SIZE) {
             return null;
         }
 
@@ -348,9 +344,7 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
             String base64 = Base64.getEncoder().encodeToString(baos.toByteArray());
 
             int lastSlash = url.lastIndexOf('/');
-            String hash = (lastSlash >= 0 && lastSlash < url.length() - 1)
-                    ? url.substring(lastSlash + 1)
-                    : url;
+            String hash = (lastSlash >= 0 && lastSlash < url.length() - 1) ? url.substring(lastSlash + 1) : url;
             String shortHash = hash.length() > 16 ? hash.substring(0, 16) : hash;
 
             return new TextureResult(base64, 16, 16, "head[" + shortHash + "]");
@@ -397,8 +391,8 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         if (quads.isEmpty()) {
             TextureAtlasSprite particle = model.getParticleIcon();
             if (particle == null) throw new Exception("No sprite found for item");
-            sprites = new TextureAtlasSprite[]{particle};
-            tintIndices = new int[]{-1};
+            sprites = new TextureAtlasSprite[] {particle};
+            tintIndices = new int[] {-1};
         } else {
             sprites = new TextureAtlasSprite[quads.size()];
             tintIndices = new int[quads.size()];
@@ -531,6 +525,5 @@ public class Minecraft119ItemTextureProvider implements ItemTextureProvider {
         ItemStack get() throws Exception;
     }
 
-    private record StackOrResult(ItemStack stack, TextureResult result) {
-    }
+    private record StackOrResult(ItemStack stack, TextureResult result) {}
 }

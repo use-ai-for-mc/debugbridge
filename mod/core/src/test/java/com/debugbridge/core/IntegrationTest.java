@@ -1,20 +1,19 @@
 package com.debugbridge.core;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.debugbridge.core.lua.DirectDispatcher;
 import com.debugbridge.core.mapping.PassthroughResolver;
 import com.debugbridge.core.server.BridgeServer;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
-import org.junit.jupiter.api.*;
-
 import java.net.URI;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
+import org.junit.jupiter.api.*;
 
 /**
  * Full integration test: starts the BridgeServer on a random port,
@@ -86,7 +85,9 @@ class IntegrationTest {
     @Test
     void testExecuteJavaBridge() throws Exception {
         JsonObject payload = new JsonObject();
-        payload.addProperty("code", """
+        payload.addProperty(
+                "code",
+                """
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 list:add("one")
@@ -104,7 +105,9 @@ class IntegrationTest {
     @Test
     void testExecuteReturnJavaObject() throws Exception {
         JsonObject payload = new JsonObject();
-        payload.addProperty("code", """
+        payload.addProperty(
+                "code",
+                """
                 local ArrayList = java.import("java.util.ArrayList")
                 return java.new(ArrayList)
                 """);
@@ -159,7 +162,9 @@ class IntegrationTest {
     @Test
     void testReflectionDescribe() throws Exception {
         JsonObject payload = new JsonObject();
-        payload.addProperty("code", """
+        payload.addProperty(
+                "code",
+                """
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 local info = java.describe(list)
@@ -175,7 +180,9 @@ class IntegrationTest {
     @Test
     void testReflectionMethods() throws Exception {
         JsonObject payload = new JsonObject();
-        payload.addProperty("code", """
+        payload.addProperty(
+                "code",
+                """
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 local methods = java.methods(list, "add")
@@ -196,7 +203,9 @@ class IntegrationTest {
     @Test
     void testReflectionSupers() throws Exception {
         JsonObject payload = new JsonObject();
-        payload.addProperty("code", """
+        payload.addProperty(
+                "code",
+                """
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 local s = java.supers(list)
@@ -211,7 +220,9 @@ class IntegrationTest {
     @Test
     void testReflectionFields() throws Exception {
         JsonObject payload = new JsonObject();
-        payload.addProperty("code", """
+        payload.addProperty(
+                "code",
+                """
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 local f = java.fields(list)
@@ -226,7 +237,9 @@ class IntegrationTest {
     void testComplexReflectionWorkflow() throws Exception {
         // This simulates what an AI agent would do to explore an unknown object
         JsonObject payload = new JsonObject();
-        payload.addProperty("code", """
+        payload.addProperty(
+                "code",
+                """
                 -- Create a HashMap and explore it
                 local HashMap = java.import("java.util.HashMap")
                 local map = java.new(HashMap)
@@ -270,7 +283,9 @@ class IntegrationTest {
     @Test
     void testIteratorOverWebSocket() throws Exception {
         JsonObject payload = new JsonObject();
-        payload.addProperty("code", """
+        payload.addProperty(
+                "code",
+                """
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 list:add("alpha")
@@ -285,7 +300,8 @@ class IntegrationTest {
 
         JsonObject resp = sendRequest("execute", payload);
         assertTrue(resp.get("success").getAsBoolean(), "Error: " + resp.get("error"));
-        assertEquals("alpha,beta,gamma",
+        assertEquals(
+                "alpha,beta,gamma",
                 resp.get("result").getAsJsonObject().get("value").getAsString());
     }
 
@@ -322,8 +338,7 @@ class IntegrationTest {
         }
 
         @Override
-        public void onOpen(ServerHandshake handshake) {
-        }
+        public void onOpen(ServerHandshake handshake) {}
 
         @Override
         public void onMessage(String message) {
@@ -331,8 +346,7 @@ class IntegrationTest {
         }
 
         @Override
-        public void onClose(int code, String reason, boolean remote) {
-        }
+        public void onClose(int code, String reason, boolean remote) {}
 
         @Override
         public void onError(Exception ex) {

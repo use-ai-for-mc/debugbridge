@@ -4,15 +4,6 @@ import com.debugbridge.core.block.NearbyBlocksProvider;
 import com.debugbridge.core.protocol.dto.BlockDetailsDto;
 import com.debugbridge.core.protocol.dto.BlockItemDto;
 import com.debugbridge.core.protocol.dto.BlockSummaryDto;
-import net.minecraft.client.Minecraft;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Registry;
-import net.minecraft.world.Container;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.SignBlockEntity;
-import net.minecraft.world.level.chunk.LevelChunk;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -21,6 +12,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Registry;
+import net.minecraft.world.Container;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.SignBlockEntity;
+import net.minecraft.world.level.chunk.LevelChunk;
 
 /**
  * Native nearby-blocks query for Minecraft 1.19. Walks loaded chunks within
@@ -86,14 +85,13 @@ public class Minecraft119NearbyBlocksProvider implements NearbyBlocksProvider {
                         }
                         if (chunk == null) continue;
 
-                        for (Map.Entry<BlockPos, BlockEntity> e : chunk.getBlockEntities().entrySet()) {
+                        for (Map.Entry<BlockPos, BlockEntity> e :
+                                chunk.getBlockEntities().entrySet()) {
                             BlockPos pos = e.getKey();
                             double bx = pos.getX() + 0.5;
                             double by = pos.getY() + 0.5;
                             double bz = pos.getZ() + 0.5;
-                            double distSq = (bx - px) * (bx - px)
-                                    + (by - py) * (by - py)
-                                    + (bz - pz) * (bz - pz);
+                            double distSq = (bx - px) * (bx - px) + (by - py) * (by - py) + (bz - pz) * (bz - pz);
                             if (distSq <= rangeSq) {
                                 entries.add(new Entry(pos, e.getValue(), Math.sqrt(distSq)));
                             }
@@ -114,7 +112,8 @@ public class Minecraft119NearbyBlocksProvider implements NearbyBlocksProvider {
                     dto.distance = Math.round(en.distance * 10.0) / 10.0;
                     dto.type = en.blockEntity.getClass().getName();
                     dto.blockId = Registry.BLOCK
-                        .getKey(en.blockEntity.getBlockState().getBlock()).toString();
+                            .getKey(en.blockEntity.getBlockState().getBlock())
+                            .toString();
                     dto.preview = previewFor(en.blockEntity);
                     out.add(dto);
                     count++;
@@ -151,7 +150,8 @@ public class Minecraft119NearbyBlocksProvider implements NearbyBlocksProvider {
                 dto.y = y;
                 dto.z = z;
                 dto.type = be.getClass().getName();
-                dto.blockId = Registry.BLOCK.getKey(be.getBlockState().getBlock()).toString();
+                dto.blockId =
+                        Registry.BLOCK.getKey(be.getBlockState().getBlock()).toString();
 
                 if (be instanceof SignBlockEntity sign) {
                     String[] lines = new String[4];
@@ -196,6 +196,5 @@ public class Minecraft119NearbyBlocksProvider implements NearbyBlocksProvider {
         return future.get(5, TimeUnit.SECONDS);
     }
 
-    private record Entry(BlockPos pos, BlockEntity blockEntity, double distance) {
-    }
+    private record Entry(BlockPos pos, BlockEntity blockEntity, double distance) {}
 }

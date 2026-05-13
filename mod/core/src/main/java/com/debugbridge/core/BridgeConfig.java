@@ -3,7 +3,6 @@ package com.debugbridge.core;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -57,9 +56,11 @@ public class BridgeConfig {
             JsonObject obj = GSON.fromJson(json, JsonObject.class);
             if (obj.has("port")) config.port = obj.get("port").getAsInt();
             if (obj.has("timeout_ms")) config.timeoutMs = obj.get("timeout_ms").getAsLong();
-            if (obj.has("max_results")) config.maxResults = obj.get("max_results").getAsInt();
+            if (obj.has("max_results"))
+                config.maxResults = obj.get("max_results").getAsInt();
             if (obj.has("developer_mode_accepted")) {
-                config.developerModeAccepted = obj.get("developer_mode_accepted").getAsBoolean();
+                config.developerModeAccepted =
+                        obj.get("developer_mode_accepted").getAsBoolean();
             }
             if (obj.has("run_command_enabled")) {
                 config.runCommandEnabled = obj.get("run_command_enabled").getAsBoolean();
@@ -67,7 +68,8 @@ public class BridgeConfig {
             if (obj.has("lua")) {
                 JsonObject lua = obj.getAsJsonObject("lua");
                 if (lua.has("max_execution_time_ms"))
-                    config.luaMaxExecutionTimeMs = lua.get("max_execution_time_ms").getAsLong();
+                    config.luaMaxExecutionTimeMs =
+                            lua.get("max_execution_time_ms").getAsLong();
             }
             LOG.info("[DebugBridge] Config loaded from " + file + " (port " + config.port + ")");
             return config;

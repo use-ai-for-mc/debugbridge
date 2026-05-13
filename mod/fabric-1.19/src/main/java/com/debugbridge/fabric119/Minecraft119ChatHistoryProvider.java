@@ -4,15 +4,14 @@ import com.debugbridge.core.chat.ChatHistoryProvider;
 import com.debugbridge.core.mapping.MappingResolver;
 import com.debugbridge.core.protocol.dto.ChatMessageDto;
 import com.google.gson.JsonParser;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.ChatComponent;
-import net.minecraft.network.chat.Component;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.ChatComponent;
+import net.minecraft.network.chat.Component;
 
 public class Minecraft119ChatHistoryProvider implements ChatHistoryProvider {
 
@@ -21,7 +20,8 @@ public class Minecraft119ChatHistoryProvider implements ChatHistoryProvider {
     private static volatile Field addedTimeField;
 
     @Override
-    public List<ChatMessageDto> getRecentMessages(int limit, MappingResolver resolver, boolean includeJson) throws Exception {
+    public List<ChatMessageDto> getRecentMessages(int limit, MappingResolver resolver, boolean includeJson)
+            throws Exception {
         Minecraft mc = Minecraft.getInstance();
         if (mc.gui == null) return Collections.emptyList();
         ChatComponent chat = mc.gui.getChat();
@@ -58,8 +58,7 @@ public class Minecraft119ChatHistoryProvider implements ChatHistoryProvider {
     private static Field allMessagesField(MappingResolver resolver) throws NoSuchFieldException {
         Field f = allMessagesField;
         if (f != null) return f;
-        String runtime = resolver.resolveField(
-                "net.minecraft.client.gui.components.ChatComponent", "allMessages");
+        String runtime = resolver.resolveField("net.minecraft.client.gui.components.ChatComponent", "allMessages");
         f = ChatComponent.class.getDeclaredField(runtime);
         f.setAccessible(true);
         allMessagesField = f;
@@ -70,8 +69,7 @@ public class Minecraft119ChatHistoryProvider implements ChatHistoryProvider {
         Method m = messageGetter;
         if (m != null && m.getDeclaringClass() == cls) return m;
         String mojangCls = resolver.unresolveClass(cls.getName());
-        String runtime = resolver.resolveMethod(mojangCls != null ? mojangCls : cls.getName(),
-                "getMessage", null);
+        String runtime = resolver.resolveMethod(mojangCls != null ? mojangCls : cls.getName(), "getMessage", null);
         m = cls.getMethod(runtime);
         messageGetter = m;
         return m;
@@ -81,8 +79,7 @@ public class Minecraft119ChatHistoryProvider implements ChatHistoryProvider {
         Field f = addedTimeField;
         if (f != null && f.getDeclaringClass() == cls) return f;
         String mojangCls = resolver.unresolveClass(cls.getName());
-        String runtime = resolver.resolveField(mojangCls != null ? mojangCls : cls.getName(),
-                "addedTime");
+        String runtime = resolver.resolveField(mojangCls != null ? mojangCls : cls.getName(), "addedTime");
         try {
             f = cls.getDeclaredField(runtime);
             f.setAccessible(true);

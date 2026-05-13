@@ -13,7 +13,7 @@ package com.debugbridge.core.protocol.dto;
  */
 public final class StatusDto {
     public String version;
-    public String mappingStatus;     // "mojang" | "passthrough"
+    public String mappingStatus; // "mojang" | "passthrough"
     public boolean obfuscated;
     public int refs;
 

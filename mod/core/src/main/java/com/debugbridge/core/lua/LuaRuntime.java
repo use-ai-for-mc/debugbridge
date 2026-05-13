@@ -2,13 +2,12 @@ package com.debugbridge.core.lua;
 
 import com.debugbridge.core.mapping.MappingResolver;
 import com.debugbridge.core.refs.ObjectRefStore;
+import java.util.concurrent.*;
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
 import org.luaj.vm2.lib.jse.JsePlatform;
-
-import java.util.concurrent.*;
 
 /**
  * Manages a persistent Lua execution environment with Java bridge capabilities.
@@ -103,10 +102,7 @@ public class LuaRuntime {
 
         // Set a count-based debug hook: fires every 10000 VM instructions
         try {
-            globals.load(
-                    "debug.sethook(__check_interrupt, '', 10000)",
-                    "=hook"
-            ).invoke();
+            globals.load("debug.sethook(__check_interrupt, '', 10000)", "=hook").invoke();
         } catch (Exception e) {
             // debug lib may not be available; timeout won't work but bridge still functions
         }
@@ -152,28 +148,28 @@ public class LuaRuntime {
                 Varargs result = chunk.invoke();
 
                 LuaValue returnValue = result.arg1();
-                return new ExecutionResult(
-                        returnValue.isnil() ? null : returnValue,
-                        printBuffer.toString(),
-                        null
-                );
+                return new ExecutionResult(returnValue.isnil() ? null : returnValue, printBuffer.toString(), null);
             } catch (LuaError e) {
                 String msg = e.getMessage();
                 if (msg != null && msg.contains("interrupted")) {
-                    return new ExecutionResult(null, printBuffer.toString(),
-                        "Execution timed out after " + effectiveTimeoutMs
-                        + "ms — script may have an infinite loop or infinite recursion");
+                    return new ExecutionResult(
+                            null,
+                            printBuffer.toString(),
+                            "Execution timed out after " + effectiveTimeoutMs
+                                    + "ms — script may have an infinite loop or infinite recursion");
                 }
                 return new ExecutionResult(null, printBuffer.toString(), msg);
             } catch (StackOverflowError e) {
-                return new ExecutionResult(null, printBuffer.toString(),
+                return new ExecutionResult(
+                        null,
+                        printBuffer.toString(),
                         "Stack overflow — script has infinite recursion or is too deeply nested");
             } catch (OutOfMemoryError e) {
-                return new ExecutionResult(null, printBuffer.toString(),
-                        "Out of memory — script allocated too much data");
+                return new ExecutionResult(
+                        null, printBuffer.toString(), "Out of memory — script allocated too much data");
             } catch (Exception e) {
-                return new ExecutionResult(null, printBuffer.toString(),
-                        e.getClass().getSimpleName() + ": " + e.getMessage());
+                return new ExecutionResult(
+                        null, printBuffer.toString(), e.getClass().getSimpleName() + ": " + e.getMessage());
             } finally {
                 luaThread = null;
             }
@@ -186,12 +182,14 @@ public class LuaRuntime {
             // Also interrupt the lua thread directly
             Thread lt = luaThread;
             if (lt != null) lt.interrupt();
-            return new ExecutionResult(null, printBuffer.toString(),
-                "Execution timed out after " + effectiveTimeoutMs
-                + "ms — script may have an infinite loop or infinite recursion");
+            return new ExecutionResult(
+                    null,
+                    printBuffer.toString(),
+                    "Execution timed out after " + effectiveTimeoutMs
+                            + "ms — script may have an infinite loop or infinite recursion");
         } catch (Exception e) {
-            return new ExecutionResult(null, printBuffer.toString(),
-                    e.getClass().getSimpleName() + ": " + e.getMessage());
+            return new ExecutionResult(
+                    null, printBuffer.toString(), e.getClass().getSimpleName() + ": " + e.getMessage());
         } finally {
             executor.shutdownNow();
         }

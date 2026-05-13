@@ -4,13 +4,12 @@ import com.debugbridge.core.screenshot.JpegEncoder;
 import com.debugbridge.core.screenshot.ScreenshotProvider;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.platform.NativeImage;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.Screenshot;
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.Screenshot;
 
 /**
  * 1.21.11 framebuffer capture as JPEG.
@@ -43,8 +42,7 @@ public class Minecraft12111ScreenshotProvider implements ScreenshotProvider {
             try {
                 RenderTarget target = mc.getMainRenderTarget();
                 if (target == null) {
-                    future.completeExceptionally(
-                            new IllegalStateException("Main render target is null"));
+                    future.completeExceptionally(new IllegalStateException("Main render target is null"));
                     return;
                 }
                 int srcW = target.width;
@@ -55,7 +53,7 @@ public class Minecraft12111ScreenshotProvider implements ScreenshotProvider {
                     try {
                         int w = image.getWidth();
                         int h = image.getHeight();
-                        int[] pixels = image.getPixels();   // ARGB
+                        int[] pixels = image.getPixels(); // ARGB
                         // NativeImage no longer needed; release immediately so the
                         // off-heap buffer doesn't outlive the JPEG encode.
                         image.close();

@@ -4,7 +4,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -22,15 +21,13 @@ import java.time.Duration;
  * 4. Download the ProGuard text
  */
 public class MappingDownloader {
-    private static final String MANIFEST_URL =
-            "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
+    private static final String MANIFEST_URL = "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json";
 
     private final HttpClient client;
 
     public MappingDownloader() {
-        this.client = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
-                .build();
+        this.client =
+                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     }
 
     /**
@@ -63,8 +60,8 @@ public class MappingDownloader {
         if (downloads == null || !downloads.has("client_mappings")) {
             throw new IOException("No client_mappings found for version " + mcVersion);
         }
-        String mappingsUrl = downloads.getAsJsonObject("client_mappings")
-                .get("url").getAsString();
+        String mappingsUrl =
+                downloads.getAsJsonObject("client_mappings").get("url").getAsString();
 
         // 4. Download the mappings
         return fetchString(mappingsUrl);

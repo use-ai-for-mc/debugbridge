@@ -1,9 +1,9 @@
 package com.debugbridge.core;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.debugbridge.core.mapping.*;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests downloading and parsing real Mojang mappings.
@@ -34,18 +34,14 @@ class MappingDownloaderTest {
         ParsedMappings mappings = ProGuardParser.parse(proguardContent);
 
         // Verify some well-known classes exist
-        assertTrue(mappings.classes.containsKey("net.minecraft.client.Minecraft"),
-                "Should contain Minecraft class");
-        assertTrue(mappings.classes.containsKey("net.minecraft.world.entity.Entity"),
-                "Should contain Entity class");
+        assertTrue(mappings.classes.containsKey("net.minecraft.client.Minecraft"), "Should contain Minecraft class");
+        assertTrue(mappings.classes.containsKey("net.minecraft.world.entity.Entity"), "Should contain Entity class");
 
         System.out.println("Parsed " + mappings.classes.size() + " classes");
 
         // Check Minecraft class has expected members
-        assertNotNull(mappings.fields.get("net.minecraft.client.Minecraft"),
-                "Minecraft should have fields");
-        assertNotNull(mappings.methods.get("net.minecraft.client.Minecraft"),
-                "Minecraft should have methods");
+        assertNotNull(mappings.fields.get("net.minecraft.client.Minecraft"), "Minecraft should have fields");
+        assertNotNull(mappings.methods.get("net.minecraft.client.Minecraft"), "Minecraft should have methods");
 
         // Print some interesting mappings for verification
         String mcObf = mappings.classes.get("net.minecraft.client.Minecraft");
@@ -74,19 +70,22 @@ class MappingDownloaderTest {
         System.out.println("\nSample Entity fields:");
         var entityFields = mappings.fields.get("net.minecraft.world.entity.Entity");
         if (entityFields != null) {
-            entityFields.entrySet().stream().limit(10).forEach(e ->
-                    System.out.println("  " + e.getKey() + " -> " + e.getValue()));
+            entityFields.entrySet().stream()
+                    .limit(10)
+                    .forEach(e -> System.out.println("  " + e.getKey() + " -> " + e.getValue()));
         }
 
         System.out.println("\nSample Entity methods:");
         var entityMethods = mappings.methods.get("net.minecraft.world.entity.Entity");
         if (entityMethods != null) {
-            entityMethods.entrySet().stream().limit(10).forEach(e ->
-                    System.out.println("  " + e.getKey() + " -> " + e.getValue()));
+            entityMethods.entrySet().stream()
+                    .limit(10)
+                    .forEach(e -> System.out.println("  " + e.getKey() + " -> " + e.getValue()));
         }
 
         // Verify search works
-        assertTrue(resolver.getAllClassNames().size() > 1000,
+        assertTrue(
+                resolver.getAllClassNames().size() > 1000,
                 "Should have many classes, got: " + resolver.getAllClassNames().size());
     }
 }

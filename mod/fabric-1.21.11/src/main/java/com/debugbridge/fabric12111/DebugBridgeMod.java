@@ -17,6 +17,8 @@ import com.debugbridge.core.screen.ScreenInspectProvider;
 import com.debugbridge.core.screenshot.ScreenshotProvider;
 import com.debugbridge.core.snapshot.GameStateProvider;
 import com.debugbridge.core.texture.ItemTextureProvider;
+import java.nio.file.Path;
+import java.util.function.Consumer;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
@@ -29,9 +31,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-
-import java.nio.file.Path;
-import java.util.function.Consumer;
 
 public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModInitializer {
     private static final String MC_VERSION = "1.21.11";
@@ -119,8 +118,7 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return false;
         mc.player.displayClientMessage(
-                Component.literal("[DebugBridge] " + message).withStyle(s -> s.withColor(0xFF5555)),
-                false);
+                Component.literal("[DebugBridge] " + message).withStyle(s -> s.withColor(0xFF5555)), false);
         return true;
     }
 
@@ -129,8 +127,7 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return false;
         mc.player.displayClientMessage(
-                Component.literal("[DebugBridge] " + message).withStyle(s -> s.withColor(0x55FF55)),
-                false);
+                Component.literal("[DebugBridge] " + message).withStyle(s -> s.withColor(0x55FF55)), false);
         return true;
     }
 
@@ -186,7 +183,7 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
                 p.food = player.getFoodData().getFoodLevel();
                 p.saturation = player.getFoodData().getSaturationLevel();
                 p.dimension = player.level().dimension().identifier().toString();
-                p.biome = "";  // Stub — see review queue.
+                p.biome = ""; // Stub — see review queue.
                 Vec3 vel = player.getDeltaMovement();
                 p.velocity = new Vec3Dto(vel.x, vel.y, vel.z);
                 Vec3 look = player.getLookAngle();

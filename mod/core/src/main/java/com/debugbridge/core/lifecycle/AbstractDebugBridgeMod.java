@@ -19,7 +19,6 @@ import com.debugbridge.core.screenshot.ScreenshotProvider;
 import com.debugbridge.core.server.BridgeServer;
 import com.debugbridge.core.snapshot.GameStateProvider;
 import com.debugbridge.core.texture.ItemTextureProvider;
-
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.file.Path;
@@ -127,12 +126,11 @@ public abstract class AbstractDebugBridgeMod {
         GameStateProvider stateProvider = createStateProvider();
         ScreenshotProvider screenshotProvider = createScreenshotProvider();
 
-        int actualPort = startServerOnAvailablePort(
-                config.port, resolver, dispatcher, stateProvider, screenshotProvider);
+        int actualPort =
+                startServerOnAvailablePort(config.port, resolver, dispatcher, stateProvider, screenshotProvider);
 
         if (actualPort == -1) {
-            String msg = "Could not bind to any port in range "
-                    + PORT_RANGE_START + "-" + PORT_RANGE_END;
+            String msg = "Could not bind to any port in range " + PORT_RANGE_START + "-" + PORT_RANGE_END;
             LOG.severe("[DebugBridge] " + msg);
             startupError = msg;
             return;
@@ -147,16 +145,17 @@ public abstract class AbstractDebugBridgeMod {
         server.setRunCommandEnabled(config.runCommandEnabled);
 
         if (actualPort != config.port) {
-            startupInfo = "Server started on port " + actualPort
-                    + " (default " + config.port + " was in use)";
+            startupInfo = "Server started on port " + actualPort + " (default " + config.port + " was in use)";
         }
         LOG.info("[DebugBridge] Server started on port " + actualPort);
     }
 
-    private int startServerOnAvailablePort(int preferredPort, MappingResolver resolver,
-                                           ThreadDispatcher dispatcher,
-                                           GameStateProvider stateProvider,
-                                           ScreenshotProvider screenshotProvider) {
+    private int startServerOnAvailablePort(
+            int preferredPort,
+            MappingResolver resolver,
+            ThreadDispatcher dispatcher,
+            GameStateProvider stateProvider,
+            ScreenshotProvider screenshotProvider) {
         int startPort = Math.max(PORT_RANGE_START, Math.min(preferredPort, PORT_RANGE_END));
         for (int port = startPort; port <= PORT_RANGE_END; port++) {
             if (tryStartOnPort(port, resolver, dispatcher, stateProvider, screenshotProvider)) {
@@ -178,10 +177,12 @@ public abstract class AbstractDebugBridgeMod {
      * the caller advances to the next candidate. Tests override this hook to
      * inject a stub server without touching the network.
      */
-    protected boolean tryStartOnPort(int port, MappingResolver resolver,
-                                     ThreadDispatcher dispatcher,
-                                     GameStateProvider stateProvider,
-                                     ScreenshotProvider screenshotProvider) {
+    protected boolean tryStartOnPort(
+            int port,
+            MappingResolver resolver,
+            ThreadDispatcher dispatcher,
+            GameStateProvider stateProvider,
+            ScreenshotProvider screenshotProvider) {
         if (!isPortAvailable(port)) {
             LOG.info("[DebugBridge] Port " + port + " is not available");
             return false;
@@ -300,12 +301,19 @@ public abstract class AbstractDebugBridgeMod {
     protected abstract void submitToGameThread(Runnable task);
 
     protected abstract GameStateProvider createStateProvider();
+
     protected abstract ScreenshotProvider createScreenshotProvider();
+
     protected abstract ItemTextureProvider createTextureProvider();
+
     protected abstract NearbyEntitiesProvider createEntitiesProvider();
+
     protected abstract NearbyBlocksProvider createBlocksProvider();
+
     protected abstract LookedAtEntityProvider createLookedAtEntityProvider();
+
     protected abstract ChatHistoryProvider createChatHistoryProvider();
+
     protected abstract ScreenInspectProvider createScreenInspectProvider();
 
     /**

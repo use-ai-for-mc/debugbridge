@@ -6,6 +6,16 @@ import com.debugbridge.core.protocol.dto.EntityEquipmentItemDto;
 import com.debugbridge.core.protocol.dto.EntityFrameItemDto;
 import com.debugbridge.core.protocol.dto.EntityPrimaryEquipmentDto;
 import com.debugbridge.core.protocol.dto.EntitySummaryDto;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -17,25 +27,14 @@ import net.minecraft.world.entity.decoration.ItemFrame;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-
 public class Minecraft262NearbyEntitiesProvider implements NearbyEntitiesProvider {
     private static final EquipmentSlot[] PRIMARY_SLOT_ORDER = {
-            EquipmentSlot.HEAD,
-            EquipmentSlot.MAINHAND,
-            EquipmentSlot.OFFHAND,
-            EquipmentSlot.CHEST,
-            EquipmentSlot.LEGS,
-            EquipmentSlot.FEET,
+        EquipmentSlot.HEAD,
+        EquipmentSlot.MAINHAND,
+        EquipmentSlot.OFFHAND,
+        EquipmentSlot.CHEST,
+        EquipmentSlot.LEGS,
+        EquipmentSlot.FEET,
     };
 
     @Override
@@ -98,8 +97,7 @@ public class Minecraft262NearbyEntitiesProvider implements NearbyEntitiesProvide
                                 dto.primaryEquipment = buildPrimary("DISPLAY", renderState.itemStack());
                             }
                         }
-                        default -> {
-                        }
+                        default -> {}
                     }
 
                     out.add(dto);
@@ -129,7 +127,10 @@ public class Minecraft262NearbyEntitiesProvider implements NearbyEntitiesProvide
 
                 Entity target = null;
                 for (Entity entity : mc.level.entitiesForRendering()) {
-                    if (entity.getId() == entityId) { target = entity; break; }
+                    if (entity.getId() == entityId) {
+                        target = entity;
+                        break;
+                    }
                 }
                 if (target == null) {
                     future.complete(null);
@@ -178,7 +179,8 @@ public class Minecraft262NearbyEntitiesProvider implements NearbyEntitiesProvide
 
                 if (!target.getPassengers().isEmpty()) {
                     List<String> passengers = new ArrayList<>();
-                    for (Entity p : target.getPassengers()) passengers.add(p.getClass().getName());
+                    for (Entity p : target.getPassengers())
+                        passengers.add(p.getClass().getName());
                     dto.passengers = passengers;
                 }
 
@@ -209,7 +211,8 @@ public class Minecraft262NearbyEntitiesProvider implements NearbyEntitiesProvide
                     ItemStack stack = renderState.itemStack();
                     if (stack != null && !stack.isEmpty()) {
                         EntityFrameItemDto item = new EntityFrameItemDto();
-                        item.itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+                        item.itemId =
+                                BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
                         item.count = stack.getCount();
                         var hoverName = stack.getHoverName();
                         if (hoverName != null) item.name = hoverName.getString();
@@ -247,8 +250,8 @@ public class Minecraft262NearbyEntitiesProvider implements NearbyEntitiesProvide
         return item;
     }
 
-    private void addEquipment(Map<String, EntityEquipmentItemDto> equipment,
-                              String slotName, LivingEntity living, EquipmentSlot slot) {
+    private void addEquipment(
+            Map<String, EntityEquipmentItemDto> equipment, String slotName, LivingEntity living, EquipmentSlot slot) {
         ItemStack stack = living.getItemBySlot(slot);
         if (stack != null && !stack.isEmpty()) {
             EntityEquipmentItemDto item = new EntityEquipmentItemDto();
@@ -298,6 +301,5 @@ public class Minecraft262NearbyEntitiesProvider implements NearbyEntitiesProvide
         return List.of();
     }
 
-    private record EntityEntry(Entity entity, double distance) {
-    }
+    private record EntityEntry(Entity entity, double distance) {}
 }

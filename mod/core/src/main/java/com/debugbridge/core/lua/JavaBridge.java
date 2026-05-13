@@ -2,6 +2,9 @@ package com.debugbridge.core.lua;
 
 import com.debugbridge.core.mapping.MappingResolver;
 import com.debugbridge.core.refs.ObjectRefStore;
+import java.lang.reflect.*;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
@@ -10,10 +13,6 @@ import org.luaj.vm2.lib.OneArgFunction;
 import org.luaj.vm2.lib.TwoArgFunction;
 import org.luaj.vm2.lib.VarArgFunction;
 import org.luaj.vm2.lib.ZeroArgFunction;
-
-import java.lang.reflect.*;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The bridge between Lua and Java. Provides the "java" global table
@@ -317,8 +316,8 @@ public class JavaBridge {
                 Class<?> cls = resolveClass(mojangName);
                 return new JavaClassWrapper(cls, mojangName, JavaBridge.this);
             } catch (ClassNotFoundException e) {
-                throw new LuaError("Class not found: " + mojangName
-                        + " (resolved to: " + resolver.resolveClass(mojangName) + ")");
+                throw new LuaError(
+                        "Class not found: " + mojangName + " (resolved to: " + resolver.resolveClass(mojangName) + ")");
             }
         }
     }
@@ -445,7 +444,8 @@ public class JavaBridge {
             }
             Object obj = wrapper.getJavaObject();
             if (!(obj instanceof Iterable<?> iterable)) {
-                throw new LuaError("java.iter: object is not Iterable: " + obj.getClass().getName());
+                throw new LuaError(
+                        "java.iter: object is not Iterable: " + obj.getClass().getName());
             }
 
             Iterator<?> it = iterable.iterator();
@@ -551,7 +551,9 @@ public class JavaBridge {
 
             // Superclass
             if (cls.getSuperclass() != null) {
-                result.set("superclass", resolver.unresolveClass(cls.getSuperclass().getName()));
+                result.set(
+                        "superclass",
+                        resolver.unresolveClass(cls.getSuperclass().getName()));
             }
 
             // Interfaces
@@ -596,7 +598,9 @@ public class JavaBridge {
                     LuaTable entry = new LuaTable();
                     String methodMojangName = getMethodMojangName(c, m);
                     entry.set("name", methodMojangName);
-                    entry.set("returnType", resolver.unresolveClass(m.getReturnType().getName()));
+                    entry.set(
+                            "returnType",
+                            resolver.unresolveClass(m.getReturnType().getName()));
                     entry.set("static", LuaValue.valueOf(Modifier.isStatic(m.getModifiers())));
 
                     // Parameter types
@@ -624,7 +628,9 @@ public class JavaBridge {
                     LuaTable entry = new LuaTable();
                     String methodMojangName = getMethodMojangName(iface, m);
                     entry.set("name", methodMojangName);
-                    entry.set("returnType", resolver.unresolveClass(m.getReturnType().getName()));
+                    entry.set(
+                            "returnType",
+                            resolver.unresolveClass(m.getReturnType().getName()));
                     entry.set("static", LuaValue.valueOf(Modifier.isStatic(m.getModifiers())));
 
                     LuaTable params = new LuaTable();
@@ -727,8 +733,9 @@ public class JavaBridge {
                     String modifiers = Modifier.isStatic(f.getModifiers()) ? "static " : "";
                     String typeName = resolver.unresolveClass(f.getType().getName());
                     String declaring = resolver.unresolveClass(c.getName());
-                    result.set(idx++, LuaValue.valueOf(
-                            modifiers + typeName + " " + mojangName + "  [from " + declaring + "]"));
+                    result.set(
+                            idx++,
+                            LuaValue.valueOf(modifiers + typeName + " " + mojangName + "  [from " + declaring + "]"));
                 }
             }
             return result;

@@ -16,7 +16,8 @@ class DebugTest {
         LuaRuntime runtime = new LuaRuntime(resolver, dispatcher, refs);
 
         // Step by step
-        var r1 = runtime.execute("""
+        var r1 = runtime.execute(
+                """
                 local ArrayList = java.import("java.util.ArrayList")
                 print("typeof ArrayList: " .. type(ArrayList))
                 print("tostring: " .. tostring(ArrayList))
@@ -26,7 +27,8 @@ class DebugTest {
         System.out.println("Step 1 error: " + r1.error);
         System.out.println("Step 1 result: " + r1.returnValue);
 
-        var r2 = runtime.execute("""
+        var r2 = runtime.execute(
+                """
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 print("typeof list: " .. type(list))
@@ -36,7 +38,8 @@ class DebugTest {
         System.out.println("Step 2 output: " + r2.output);
         System.out.println("Step 2 error: " + r2.error);
 
-        var r3 = runtime.execute("""
+        var r3 = runtime.execute(
+                """
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 print("list type: " .. type(list))
@@ -47,7 +50,8 @@ class DebugTest {
         System.out.println("Step 3 output: " + r3.output);
         System.out.println("Step 3 error: " + r3.error);
 
-        var r4 = runtime.execute("""
+        var r4 = runtime.execute(
+                """
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 local addFn = list.add

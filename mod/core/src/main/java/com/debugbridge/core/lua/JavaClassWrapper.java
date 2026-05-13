@@ -1,13 +1,12 @@
 package com.debugbridge.core.lua;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import org.luaj.vm2.LuaError;
 import org.luaj.vm2.LuaUserdata;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 
 /*
  * Note: this class intentionally overrides the invoke/call family so that
@@ -69,8 +68,7 @@ public class JavaClassWrapper extends LuaUserdata {
             try {
                 field.setAccessible(true);
                 final Field f = field;
-                Object value = bridge.getDispatcher().executeOnGameThread(
-                        () -> f.get(null), 5000);
+                Object value = bridge.getDispatcher().executeOnGameThread(() -> f.get(null), 5000);
                 return bridge.wrapJavaValue(value);
             } catch (Exception e) {
                 // Fall through to method wrapper
@@ -147,13 +145,13 @@ public class JavaClassWrapper extends LuaUserdata {
 
     @Override
     public LuaValue call(LuaValue a, LuaValue b) {
-        invoke(LuaValue.varargsOf(new LuaValue[]{a, b}));
+        invoke(LuaValue.varargsOf(new LuaValue[] {a, b}));
         return LuaValue.NIL;
     }
 
     @Override
     public LuaValue call(LuaValue a, LuaValue b, LuaValue c) {
-        invoke(LuaValue.varargsOf(new LuaValue[]{a, b, c}));
+        invoke(LuaValue.varargsOf(new LuaValue[] {a, b, c}));
         return LuaValue.NIL;
     }
 

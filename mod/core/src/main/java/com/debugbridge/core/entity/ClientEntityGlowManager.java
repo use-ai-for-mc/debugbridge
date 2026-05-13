@@ -11,11 +11,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * these IDs.
  */
 public final class ClientEntityGlowManager {
-    private static final Set<Integer> GLOWING =
-            Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private static final Set<Integer> GLOWING = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-    private ClientEntityGlowManager() {
-    }
+    private ClientEntityGlowManager() {}
 
     public static void setGlow(int entityId, boolean glow) {
         if (glow) GLOWING.add(entityId);

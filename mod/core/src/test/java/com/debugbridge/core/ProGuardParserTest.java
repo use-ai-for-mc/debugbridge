@@ -1,16 +1,17 @@
 package com.debugbridge.core;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.debugbridge.core.mapping.ParsedMappings;
 import com.debugbridge.core.mapping.PassthroughResolver;
 import com.debugbridge.core.mapping.ProGuardParser;
 import com.debugbridge.core.mapping.StandaloneMojangResolver;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 class ProGuardParserTest {
 
-    private static final String SAMPLE_MAPPINGS = """
+    private static final String SAMPLE_MAPPINGS =
+            """
             # This is a comment
             net.minecraft.client.Minecraft -> eev:
                 net.minecraft.client.player.LocalPlayer player -> s
@@ -49,7 +50,8 @@ class ProGuardParserTest {
 
         assertEquals("s", m.fields.get("net.minecraft.client.Minecraft").get("player"));
         assertEquals("a", m.fields.get("net.minecraft.client.Minecraft").get("fps"));
-        assertEquals("r", m.fields.get("net.minecraft.client.player.LocalPlayer").get("health"));
+        assertEquals(
+                "r", m.fields.get("net.minecraft.client.player.LocalPlayer").get("health"));
         assertEquals("aM", m.fields.get("net.minecraft.world.entity.Entity").get("x"));
     }
 
@@ -58,20 +60,21 @@ class ProGuardParserTest {
         ParsedMappings m = ProGuardParser.parse(SAMPLE_MAPPINGS);
 
         // Method with params
-        assertEquals("a", m.methods.get("net.minecraft.client.Minecraft")
-                .get("setScreen(net.minecraft.client.gui.screens.Screen)"));
+        assertEquals(
+                "a",
+                m.methods
+                        .get("net.minecraft.client.Minecraft")
+                        .get("setScreen(net.minecraft.client.gui.screens.Screen)"));
 
         // Static method no params
-        assertEquals("D", m.methods.get("net.minecraft.client.Minecraft")
-                .get("getInstance()"));
+        assertEquals("D", m.methods.get("net.minecraft.client.Minecraft").get("getInstance()"));
 
         // Method with line numbers stripped
-        assertEquals("b", m.methods.get("net.minecraft.client.Minecraft")
-                .get("tick()"));
+        assertEquals("b", m.methods.get("net.minecraft.client.Minecraft").get("tick()"));
 
         // Method on LocalPlayer
-        assertEquals("bF", m.methods.get("net.minecraft.client.player.LocalPlayer")
-                .get("getHealth()"));
+        assertEquals(
+                "bF", m.methods.get("net.minecraft.client.player.LocalPlayer").get("getHealth()"));
     }
 
     @Test
