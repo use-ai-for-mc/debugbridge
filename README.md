@@ -126,7 +126,7 @@ web-ui/          — Vue 3 + Pinia + Tailwind inspection app
 
 ## Building
 
-Requires **JDK 21+** for the stable Fabric modules, **JDK 26** for `fabric-26.2-dev`, and **Node ≥20.19** for the web UI.
+Requires **JDK 21+** for the stable Fabric modules, **JDK 25** for `fabric-26.2-dev` (matches the runtime declared by the snapshot's own version manifest), and **Node ≥20.19** for the web UI.
 
 ```bash
 # Fabric mods
@@ -136,7 +136,7 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ./gradl
 
 # 26.2 development snapshot bridge
 cd mod
-./gradlew :core:test :fabric-26.2-dev:jar
+JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home ./gradlew :core:test :fabric-26.2-dev:jar
 
 # Web UI
 cd web-ui
@@ -210,8 +210,8 @@ Each request gets a matching `{id, type, payload}` response.
 ## Dependencies Bundled in JAR
 
 - **LuaJ 3.0.1** — Pure Java Lua 5.2 (MIT)
-- **Java-WebSocket 1.5.7** — WebSocket server (MIT)
-- **Gson 2.11.0** — JSON parsing (Apache 2.0)
+- **Java-WebSocket 1.6.0** — WebSocket server (MIT)
+- **Gson 2.14.0** — JSON parsing (Apache 2.0)
 
 ## License
 
