@@ -31,7 +31,7 @@ subprojects {
     configure<SpotlessExtension> {
         java {
             target("src/**/*.java")
-            palantirJavaFormat("2.69.0")
+            palantirJavaFormat("2.90.0")
             removeUnusedImports()
             trimTrailingWhitespace()
             endWithNewline()

@@ -49,8 +49,7 @@ class LuaBridgeTest {
 
     @Test
     void testImportJavaClass() {
-        var result = runtime.execute(
-                """
+        var result = runtime.execute("""
                 local ArrayList = java.import("java.util.ArrayList")
                 return java.typeof(ArrayList)
                 """);
@@ -60,8 +59,7 @@ class LuaBridgeTest {
 
     @Test
     void testCreateInstance() {
-        var result = runtime.execute(
-                """
+        var result = runtime.execute("""
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 return java.typeof(list)
@@ -72,8 +70,7 @@ class LuaBridgeTest {
 
     @Test
     void testMethodCall() {
-        var result = runtime.execute(
-                """
+        var result = runtime.execute("""
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 list:add("hello")
@@ -86,8 +83,7 @@ class LuaBridgeTest {
 
     @Test
     void testMethodCallReturnValue() {
-        var result = runtime.execute(
-                """
+        var result = runtime.execute("""
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 list:add("hello")
@@ -99,8 +95,7 @@ class LuaBridgeTest {
 
     @Test
     void testFieldAccess() {
-        var result = runtime.execute(
-                """
+        var result = runtime.execute("""
                 local Integer = java.import("java.lang.Integer")
                 return Integer.MAX_VALUE
                 """);
@@ -119,8 +114,7 @@ class LuaBridgeTest {
 
     @Test
     void testIterator() {
-        var result = runtime.execute(
-                """
+        var result = runtime.execute("""
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 list:add("a")
@@ -138,8 +132,7 @@ class LuaBridgeTest {
 
     @Test
     void testArray() {
-        var result = runtime.execute(
-                """
+        var result = runtime.execute("""
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 list:add("x")
@@ -153,8 +146,7 @@ class LuaBridgeTest {
 
     @Test
     void testCast() {
-        var result = runtime.execute(
-                """
+        var result = runtime.execute("""
                 local HashMap = java.import("java.util.HashMap")
                 local map = java.new(HashMap)
                 local asMap = java.cast(map, "java.util.Map")
@@ -166,8 +158,7 @@ class LuaBridgeTest {
 
     @Test
     void testConstructorWithArgs() {
-        var result = runtime.execute(
-                """
+        var result = runtime.execute("""
                 local StringBuilder = java.import("java.lang.StringBuilder")
                 local sb = java.new(StringBuilder, "hello")
                 sb:append(" world")
@@ -179,8 +170,7 @@ class LuaBridgeTest {
 
     @Test
     void testMethodChaining() {
-        var result = runtime.execute(
-                """
+        var result = runtime.execute("""
                 local StringBuilder = java.import("java.lang.StringBuilder")
                 local sb = java.new(StringBuilder)
                 sb:append("a")
@@ -194,8 +184,7 @@ class LuaBridgeTest {
 
     @Test
     void testDescribe() {
-        var result = runtime.execute(
-                """
+        var result = runtime.execute("""
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 local info = java.describe(list)
@@ -207,8 +196,7 @@ class LuaBridgeTest {
 
     @Test
     void testMethodsReflection() {
-        var result = runtime.execute(
-                """
+        var result = runtime.execute("""
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 local methods = java.methods(list, "add")
@@ -220,8 +208,7 @@ class LuaBridgeTest {
 
     @Test
     void testFieldsReflection() {
-        var result = runtime.execute(
-                """
+        var result = runtime.execute("""
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 local fields = java.fields(list)
@@ -232,8 +219,7 @@ class LuaBridgeTest {
 
     @Test
     void testSupers() {
-        var result = runtime.execute(
-                """
+        var result = runtime.execute("""
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 local s = java.supers(list)
@@ -246,8 +232,7 @@ class LuaBridgeTest {
 
     @Test
     void testErrorMessages() {
-        var result =
-                runtime.execute("""
+        var result = runtime.execute("""
                 local Foo = java.import("nonexistent.Foo")
                 """);
         assertFalse(result.isSuccess());
@@ -258,8 +243,7 @@ class LuaBridgeTest {
 
     @Test
     void testSecurityBlocking() {
-        var result =
-                runtime.execute("""
+        var result = runtime.execute("""
                 local rt = java.import("java.lang.Runtime")
                 """);
         assertFalse(result.isSuccess());
@@ -270,8 +254,7 @@ class LuaBridgeTest {
 
     @Test
     void testReturnTable() {
-        var result = runtime.execute(
-                """
+        var result = runtime.execute("""
                 return {name = "test", value = 42, active = true}
                 """);
         assertTrue(result.isSuccess(), "Error: " + result.error);
@@ -282,8 +265,7 @@ class LuaBridgeTest {
 
     @Test
     void testHashMapOperations() {
-        var result = runtime.execute(
-                """
+        var result = runtime.execute("""
                 local HashMap = java.import("java.util.HashMap")
                 local map = java.new(HashMap)
                 map:put("key1", "value1")
@@ -296,8 +278,7 @@ class LuaBridgeTest {
 
     @Test
     void testComplexScenario() {
-        var result = runtime.execute(
-                """
+        var result = runtime.execute("""
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 list:add("alpha")

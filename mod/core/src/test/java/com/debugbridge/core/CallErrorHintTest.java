@@ -91,8 +91,7 @@ class CallErrorHintTest {
     void testCallingFieldAsMethodGivesActionableError() throws Exception {
         // `only` is field-only (no shadowing method), so calling it as a method
         // takes the field-then-call path that produces the actionable error.
-        JsonObject resp = execute(
-                """
+        JsonObject resp = execute("""
             local Outer = java.import("com.debugbridge.core.CallErrorHintTest$Outer")
             local o = java.new(Outer)
             o:only()
@@ -118,8 +117,7 @@ class CallErrorHintTest {
 
     @Test
     void testCallingFieldAsMethodDetectsColonCall() throws Exception {
-        JsonObject resp = execute(
-                """
+        JsonObject resp = execute("""
             local Outer = java.import("com.debugbridge.core.CallErrorHintTest$Outer")
             local o = java.new(Outer)
             o:only()
@@ -136,8 +134,7 @@ class CallErrorHintTest {
     void testFieldChainAfterFieldAccessStillWorks() throws Exception {
         // Field chaining (the suggested fix) should still work normally on a
         // non-shadowed field.
-        JsonObject resp = execute(
-                """
+        JsonObject resp = execute("""
             local Outer = java.import("com.debugbridge.core.CallErrorHintTest$Outer")
             local o = java.new(Outer)
             return o.only.value
@@ -154,8 +151,7 @@ class CallErrorHintTest {
         // the same-name method on the parent (Outer.inner()) instead of
         // failing. This is the Mojang `Entity.level()` /
         // `ClientPacketListener.registryAccess()` pattern.
-        JsonObject resp = execute(
-                """
+        JsonObject resp = execute("""
             local Outer = java.import("com.debugbridge.core.CallErrorHintTest$Outer")
             local o = java.new(Outer)
             return o:inner().value
@@ -171,8 +167,7 @@ class CallErrorHintTest {
         // through a stashed reference (`local f = o.inner; f()`) should also
         // recover, since invoke() can still see the origin and reach the
         // parent through the weak ref.
-        JsonObject resp = execute(
-                """
+        JsonObject resp = execute("""
             local Outer = java.import("com.debugbridge.core.CallErrorHintTest$Outer")
             local o = java.new(Outer)
             return o.inner().value
@@ -186,8 +181,7 @@ class CallErrorHintTest {
     void testShadowedFieldChainStillResolvesField() throws Exception {
         // The disambiguation form should keep working on a shadowed field too:
         // `o.inner.value` reads the field, no method call involved.
-        JsonObject resp = execute(
-                """
+        JsonObject resp = execute("""
             local Outer = java.import("com.debugbridge.core.CallErrorHintTest$Outer")
             local o = java.new(Outer)
             return o.inner.value
@@ -200,8 +194,7 @@ class CallErrorHintTest {
 
     @Test
     void testCallingClassWrapperAsConstructorGivesActionableError() throws Exception {
-        JsonObject resp = execute(
-                """
+        JsonObject resp = execute("""
             local ArrayList = java.import("java.util.ArrayList")
             local list = ArrayList()
             """);
@@ -215,8 +208,7 @@ class CallErrorHintTest {
 
     @Test
     void testCallingClassWrapperWithArgsGivesActionableError() throws Exception {
-        JsonObject resp = execute(
-                """
+        JsonObject resp = execute("""
             local ArrayList = java.import("java.util.ArrayList")
             local list = ArrayList(10)
             """);

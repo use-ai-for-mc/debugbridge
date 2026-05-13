@@ -112,8 +112,7 @@ class ErrorHandlingTest {
 
     @Test
     void testMethodNotFound() throws Exception {
-        JsonObject resp = execute(
-                """
+        JsonObject resp = execute("""
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 list:nonExistentMethod()
@@ -126,8 +125,7 @@ class ErrorHandlingTest {
 
     @Test
     void testMethodWrongArgCount() throws Exception {
-        JsonObject resp = execute(
-                """
+        JsonObject resp = execute("""
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 list:add("a", "b", "c", "d", "e")
@@ -141,8 +139,7 @@ class ErrorHandlingTest {
     void testFieldNotFound() throws Exception {
         // Accessing a non-existent field returns a MethodCallWrapper (which is then not callable)
         // This is by design — we try field first, then assume it's a method
-        JsonObject resp = execute(
-                """
+        JsonObject resp = execute("""
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 return list.nonExistentField
@@ -152,8 +149,7 @@ class ErrorHandlingTest {
                 + resp.get("success").getAsBoolean());
 
         // Now try calling it
-        JsonObject resp2 = execute(
-                """
+        JsonObject resp2 = execute("""
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 list.nonExistentField()
@@ -165,8 +161,7 @@ class ErrorHandlingTest {
 
     @Test
     void testNullObjectAccess() throws Exception {
-        JsonObject resp = execute(
-                """
+        JsonObject resp = execute("""
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 local item = list:get(0)
@@ -245,8 +240,7 @@ class ErrorHandlingTest {
 
     @Test
     void testBadCast() throws Exception {
-        JsonObject resp = execute(
-                """
+        JsonObject resp = execute("""
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 java.cast(list, "com.nonexistent.Type")
@@ -258,8 +252,7 @@ class ErrorHandlingTest {
     @Test
     void testIterOnNonIterable() throws Exception {
         // Use a HashMap (which is not Iterable — its entrySet() is, but the map itself isn't)
-        JsonObject resp = execute(
-                """
+        JsonObject resp = execute("""
                 local HashMap = java.import("java.util.HashMap")
                 local map = java.new(HashMap)
                 for x in java.iter(map) do end
@@ -272,8 +265,7 @@ class ErrorHandlingTest {
 
     @Test
     void testArrayOnNonCollection() throws Exception {
-        JsonObject resp = execute(
-                """
+        JsonObject resp = execute("""
                 local Integer = java.import("java.lang.Integer")
                 local num = Integer:valueOf(42)
                 java.array(num)
@@ -325,8 +317,7 @@ class ErrorHandlingTest {
     @Test
     void testJavaExceptionInMethod() throws Exception {
         // ArrayList.get(0) on empty list throws IndexOutOfBoundsException
-        JsonObject resp = execute(
-                """
+        JsonObject resp = execute("""
                 local ArrayList = java.import("java.util.ArrayList")
                 local list = java.new(ArrayList)
                 return list:get(0)

@@ -61,8 +61,7 @@ public class LuaRuntime {
      * swallowed so the rest of the Lua environment stays usable.
      */
     private void installMinecraftGlobals() {
-        String bootstrap =
-                """
+        String bootstrap = """
                         do
                           local ok, Minecraft = pcall(java.import, 'net.minecraft.client.Minecraft')
                           if not ok then return end
