@@ -1,5 +1,5 @@
 plugins {
-    id("fabric-loom") version "1.14.10"
+    id("fabric-loom") version "1.16.2"
 }
 
 base {
@@ -12,7 +12,7 @@ dependencies {
 
     minecraft("com.mojang:minecraft:1.19")
     mappings(loom.officialMojangMappings())
-    modImplementation("net.fabricmc:fabric-loader:0.14.21")
+    modImplementation("net.fabricmc:fabric-loader:0.19.2")
 
     // Include core's dependencies
     include(project(":core"))
