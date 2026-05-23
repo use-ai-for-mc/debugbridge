@@ -7,10 +7,8 @@ base {
 }
 
 java {
-    // 26.2 snapshots (verified against snapshot-6 and snapshot-7) declare a
-    // Java 25 runtime in their version metadata; Modrinth launches them with
-    // Zulu 25. JDK 25 is therefore sufficient to both compile and run; the
-    // toolchain spec used to over-require JDK 26 (EA at the time of writing).
+    // 26.2 snapshots (targeting snapshot-8) declare a Java 25 runtime.
+    // JDK 25 is sufficient for compile and run.
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(25))
     }
@@ -21,7 +19,7 @@ dependencies {
     implementation("org.luaj:luaj-jse:3.0.1")
     implementation("org.java-websocket:Java-WebSocket:1.6.0")
     implementation("com.google.code.gson:gson:2.14.0")
-    minecraft("com.mojang:minecraft:26.2-snapshot-7")
+    minecraft("com.mojang:minecraft:26.2-snapshot-8")
     implementation("net.fabricmc:fabric-loader:0.19.2")
 
     include(project(":core"))
@@ -31,7 +29,7 @@ dependencies {
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    // The current 26.2 snapshot metadata declares Java runtime 25.
+    // The 26.2-snapshot-8 metadata declares Java runtime 25.
     options.release.set(25)
 }
 
