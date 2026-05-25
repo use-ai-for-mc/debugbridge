@@ -126,9 +126,9 @@ jobs:
               latent bug — converging is the fix. Same form as
               `ItemStackDto.itemId` and `EntityPrimaryEquipmentDto.itemId`,
               which were already canonical.
-            - **26.2-dev jar now targets `26.2-snapshot-7`** (was snapshot-6).
-              The jar gates loading at `26.2-snapshot-7` / `26.2-alpha.7` via
-              `fabric.mod.json` — snapshot-6 users need to update Minecraft.
+            - **26.2-dev jar now targets `26.2-snapshot-8`** (was snapshot-7).
+              The jar gates loading at `26.2-snapshot-8` / `26.2-alpha.8` via
+              `fabric.mod.json` — snapshot-7 users need to update Minecraft.
             - **`blockDetails.items` client-side visibility documented.**
               Vanilla MC keeps chest / hopper / dispenser / furnace /
               brewing-stand contents server-only, so `blockDetails.items` is
@@ -151,4 +151,4 @@ jobs:
             - Minecraft 1.19 (Fabric Loader >= 0.14.0)
             - Minecraft 1.21.11 (Fabric Loader >= 0.16.0)
             - Minecraft 26.2 development snapshots (Fabric Loader >= 0.19.2;
-              the jar targets `26.2-snapshot-7` specifically)
+              the jar targets `26.2-snapshot-8` specifically)

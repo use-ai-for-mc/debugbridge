@@ -33,7 +33,7 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModInitializer {
-    private static final String MC_VERSION = "26.2-snapshot-7";
+    private static final String MC_VERSION = "26.2-snapshot-8";
     private static DebugBridgeMod INSTANCE;
 
     public static void onClientTick(Minecraft mc) {
