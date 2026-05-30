@@ -2,8 +2,8 @@ package com.debugbridge.core;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.debugbridge.core.lua.DirectDispatcher;
 import com.debugbridge.core.mapping.PassthroughResolver;
+import com.debugbridge.core.script.DirectDispatcher;
 import com.debugbridge.core.server.BridgeServer;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -17,7 +17,8 @@ import org.junit.jupiter.api.*;
 
 /**
  * Verifies that all error scenarios return useful JSON errors to the MCP caller
- * without crashing the game/server.
+ * without crashing the game/server. Exercised through the Groovy {@code execute}
+ * endpoint over a live WebSocket.
  */
 class ErrorHandlingTest {
     private static final int PORT = 19877;
@@ -47,46 +48,43 @@ class ErrorHandlingTest {
         if (client != null) client.closeBlocking();
     }
 
-    // ==================== Lua syntax errors ====================
+    // ==================== Groovy compile / runtime errors ====================
 
     @Test
     void testSyntaxError() throws Exception {
-        JsonObject resp = execute("this is not valid lua !!!");
+        JsonObject resp = execute("return 1 +");
         assertFalse(resp.get("success").getAsBoolean());
-        String error = resp.get("error").getAsString();
-        assertTrue(error.contains("script"), "Should mention script location: " + error);
-        System.out.println("Syntax error: " + error);
+        assertFalse(resp.get("error").getAsString().isEmpty());
+        System.out.println("Syntax error: " + resp.get("error").getAsString());
     }
 
     @Test
     void testUnterminatedString() throws Exception {
-        JsonObject resp = execute("local x = 'unterminated");
+        JsonObject resp = execute("def x = 'unterminated");
         assertFalse(resp.get("success").getAsBoolean());
         System.out.println("Unterminated string: " + resp.get("error").getAsString());
     }
 
     @Test
-    void testRuntimeErrorInLua() throws Exception {
-        JsonObject resp = execute("error('something went wrong')");
+    void testRuntimeError() throws Exception {
+        JsonObject resp = execute("throw new RuntimeException('something went wrong')");
         assertFalse(resp.get("success").getAsBoolean());
         assertTrue(resp.get("error").getAsString().contains("something went wrong"));
-        System.out.println("Runtime error: " + resp.get("error").getAsString());
     }
 
     @Test
-    void testNilIndexing() throws Exception {
-        JsonObject resp = execute("local x = nil\nreturn x.foo");
+    void testNullIndexing() throws Exception {
+        JsonObject resp = execute("def x = null\nreturn x.foo");
         assertFalse(resp.get("success").getAsBoolean());
-        System.out.println("Nil index: " + resp.get("error").getAsString());
+        System.out.println("Null access: " + resp.get("error").getAsString());
     }
 
     @Test
     void testInfiniteLoopTimesOut() throws Exception {
-        // Configure a short timeout on the server's Lua runtime
-        server.getLuaRuntime().setMaxExecutionTimeMs(3000);
+        server.getScriptRuntime().setMaxExecutionTimeMs(3000);
         try {
             long start = System.currentTimeMillis();
-            JsonObject resp = execute("while true do end");
+            JsonObject resp = execute("while (true) {}");
             long elapsed = System.currentTimeMillis() - start;
             assertFalse(resp.get("success").getAsBoolean());
             String error = resp.get("error").getAsString();
@@ -95,7 +93,7 @@ class ErrorHandlingTest {
                     error.contains("timed out") || error.contains("interrupted") || error.contains("Timeout"),
                     "Should mention timeout: " + error);
         } finally {
-            server.getLuaRuntime().setMaxExecutionTimeMs(10000);
+            server.getScriptRuntime().setMaxExecutionTimeMs(10000);
         }
     }
 
@@ -103,124 +101,79 @@ class ErrorHandlingTest {
 
     @Test
     void testClassNotFound() throws Exception {
-        JsonObject resp = execute("java.import('com.nonexistent.FooBar')");
+        JsonObject resp = execute("java.type('com.nonexistent.FooBar')");
         assertFalse(resp.get("success").getAsBoolean());
         String error = resp.get("error").getAsString();
         assertTrue(error.contains("not found") || error.contains("FooBar"), "Should mention missing class: " + error);
-        System.out.println("Class not found: " + error);
     }
 
     @Test
     void testMethodNotFound() throws Exception {
         JsonObject resp = execute("""
-                local ArrayList = java.import("java.util.ArrayList")
-                local list = java.new(ArrayList)
-                list:nonExistentMethod()
+                def list = java.type("java.util.ArrayList").create()
+                list.nonExistentMethod()
                 """);
         assertFalse(resp.get("success").getAsBoolean());
         String error = resp.get("error").getAsString();
         assertTrue(error.contains("nonExistentMethod"), "Should mention method name: " + error);
-        System.out.println("Method not found: " + error);
     }
 
     @Test
     void testMethodWrongArgCount() throws Exception {
         JsonObject resp = execute("""
-                local ArrayList = java.import("java.util.ArrayList")
-                local list = java.new(ArrayList)
-                list:add("a", "b", "c", "d", "e")
+                def list = java.type("java.util.ArrayList").create()
+                list.add("a", "b", "c", "d", "e")
                 """);
         assertFalse(resp.get("success").getAsBoolean());
-        String error = resp.get("error").getAsString();
-        System.out.println("Wrong arg count: " + error);
-    }
-
-    @Test
-    void testFieldNotFound() throws Exception {
-        // Accessing a non-existent field returns a MethodCallWrapper (which is then not callable)
-        // This is by design — we try field first, then assume it's a method
-        JsonObject resp = execute("""
-                local ArrayList = java.import("java.util.ArrayList")
-                local list = java.new(ArrayList)
-                return list.nonExistentField
-                """);
-        // This returns a method wrapper, not an error — but calling it would fail
-        System.out.println("Non-existent field access result: success="
-                + resp.get("success").getAsBoolean());
-
-        // Now try calling it
-        JsonObject resp2 = execute("""
-                local ArrayList = java.import("java.util.ArrayList")
-                local list = java.new(ArrayList)
-                list.nonExistentField()
-                """);
-        assertFalse(resp2.get("success").getAsBoolean());
-        System.out.println(
-                "Calling non-existent as method: " + resp2.get("error").getAsString());
-    }
-
-    @Test
-    void testNullObjectAccess() throws Exception {
-        JsonObject resp = execute("""
-                local ArrayList = java.import("java.util.ArrayList")
-                local list = java.new(ArrayList)
-                local item = list:get(0)
-                """);
-        assertFalse(resp.get("success").getAsBoolean());
-        String error = resp.get("error").getAsString();
-        System.out.println("Null/OOB access: " + error);
+        System.out.println("Wrong arg count: " + resp.get("error").getAsString());
     }
 
     @Test
     void testSecurityBlocked() throws Exception {
-        JsonObject resp = execute("java.import('java.lang.Runtime')");
+        JsonObject resp = execute("java.type('java.lang.Runtime')");
         assertFalse(resp.get("success").getAsBoolean());
         String error = resp.get("error").getAsString();
         assertTrue(error.contains("blocked") || error.contains("security"), "Should mention security: " + error);
-        System.out.println("Security block: " + error);
     }
 
     @Test
     void testSecurityBlockedProcessBuilder() throws Exception {
-        JsonObject resp = execute("java.import('java.lang.ProcessBuilder')");
+        JsonObject resp = execute("java.type('java.lang.ProcessBuilder')");
         assertFalse(resp.get("success").getAsBoolean());
-        System.out.println("ProcessBuilder block: " + resp.get("error").getAsString());
+    }
+
+    @Test
+    void testNativeRuntimeBlockedBySandbox() throws Exception {
+        // Groovy auto-imports java.lang.*, so `Runtime` is reachable inline; the
+        // SecureASTCustomizer import blacklist must reject it at compile time.
+        JsonObject resp = execute("Runtime.getRuntime()");
+        assertFalse(resp.get("success").getAsBoolean());
+        System.out.println("Native Runtime block: " + resp.get("error").getAsString());
     }
 
     @Test
     void testFileIOAllowed() throws Exception {
-        // java.io.* / java.nio.file.* are intentionally allowed so scripts can
-        // write scratch files; only shell-out classes (Runtime, ProcessBuilder)
-        // and network classes stay blocked.
-        JsonObject resp = execute("local F = java.import('java.io.File'); return F ~= nil");
+        JsonObject resp = execute("return java.type('java.io.File') != null");
         assertTrue(resp.get("success").getAsBoolean(), "java.io.File should be importable: " + resp.get("error"));
     }
 
     @Test
     void testSystemClassAllowed() throws Exception {
-        // java.lang.System is allowed so scripts can read the wall clock
-        // (System:currentTimeMillis(), nanoTime()).
-        JsonObject resp = execute("return java.import('java.lang.System'):currentTimeMillis()");
+        JsonObject resp = execute("return java.type('java.lang.System').currentTimeMillis()");
         assertTrue(resp.get("success").getAsBoolean(), "java.lang.System should be importable: " + resp.get("error"));
     }
 
     @Test
-    void testLuaIoLibraryAvailable() throws Exception {
-        // Lua's built-in io library is intentionally kept available so scripts
-        // can write scratch files via io.open(...). os is still nil because it
-        // exposes os.execute / os.exit.
+    void testFileIoRoundTripAllowed() throws Exception {
+        // java.io / java.nio are intentionally allowed so scripts can write scratch files.
         java.nio.file.Path tmp = java.nio.file.Files.createTempFile("debugbridge-iotest", ".txt");
-        String luaPath = tmp.toAbsolutePath().toString().replace("\\", "\\\\");
+        String path = tmp.toAbsolutePath().toString().replace("\\", "\\\\");
         try {
-            JsonObject resp = execute("local f = io.open('" + luaPath + "', 'w')\n" + "f:write('hello from lua')\n"
-                    + "f:close()\n"
-                    + "local g = io.open('"
-                    + luaPath + "', 'r')\n" + "local data = g:read('*a')\n"
-                    + "g:close()\n"
-                    + "return data\n");
-            assertTrue(resp.get("success").getAsBoolean(), "io.open round-trip should succeed: " + resp.get("error"));
+            JsonObject resp =
+                    execute("def f = new File('" + path + "')\n" + "f.text = 'hello from groovy'\n" + "return f.text");
+            assertTrue(resp.get("success").getAsBoolean(), "file round-trip should succeed: " + resp.get("error"));
             assertEquals(
-                    "hello from lua",
+                    "hello from groovy",
                     resp.get("result").getAsJsonObject().get("value").getAsString());
         } finally {
             java.nio.file.Files.deleteIfExists(tmp);
@@ -228,50 +181,14 @@ class ErrorHandlingTest {
     }
 
     @Test
-    void testOsLibraryStillBlocked() throws Exception {
-        // Sanity: os.* (esp. os.execute) is still nil — the relaxation only
-        // covers file I/O, not shell-out.
-        JsonObject resp = execute("return os == nil");
-        assertTrue(resp.get("success").getAsBoolean(), "os comparison should evaluate: " + resp.get("error"));
-        assertEquals(true, resp.get("result").getAsJsonObject().get("value").getAsBoolean());
-    }
-
-    // ==================== Type conversion errors ====================
-
-    @Test
-    void testBadCast() throws Exception {
+    void testListOnNonCollection() throws Exception {
         JsonObject resp = execute("""
-                local ArrayList = java.import("java.util.ArrayList")
-                local list = java.new(ArrayList)
-                java.cast(list, "com.nonexistent.Type")
-                """);
-        assertFalse(resp.get("success").getAsBoolean());
-        System.out.println("Bad cast: " + resp.get("error").getAsString());
-    }
-
-    @Test
-    void testIterOnNonIterable() throws Exception {
-        // Use a HashMap (which is not Iterable — its entrySet() is, but the map itself isn't)
-        JsonObject resp = execute("""
-                local HashMap = java.import("java.util.HashMap")
-                local map = java.new(HashMap)
-                for x in java.iter(map) do end
+                def map = java.type("java.util.HashMap").create()
+                java.list(map)
                 """);
         assertFalse(resp.get("success").getAsBoolean());
         String error = resp.get("error").getAsString();
-        assertTrue(error.contains("Iterable") || error.contains("iter"), "Should mention Iterable: " + error);
-        System.out.println("Iter on non-iterable: " + error);
-    }
-
-    @Test
-    void testArrayOnNonCollection() throws Exception {
-        JsonObject resp = execute("""
-                local Integer = java.import("java.lang.Integer")
-                local num = Integer:valueOf(42)
-                java.array(num)
-                """);
-        assertFalse(resp.get("success").getAsBoolean());
-        System.out.println("Array on non-collection: " + resp.get("error").getAsString());
+        assertTrue(error.contains("Collection") || error.contains("array"), "Should mention Collection: " + error);
     }
 
     // ==================== Edge cases ====================
@@ -280,23 +197,20 @@ class ErrorHandlingTest {
     void testEmptyScript() throws Exception {
         JsonObject resp = execute("");
         assertTrue(resp.get("success").getAsBoolean());
-        System.out.println("Empty script: success (no output)");
     }
 
     @Test
     void testJustComments() throws Exception {
-        JsonObject resp = execute("-- just a comment\n-- another comment");
+        JsonObject resp = execute("// just a comment\n// another comment");
         assertTrue(resp.get("success").getAsBoolean());
     }
 
     @Test
     void testMultipleErrorsInSequence() throws Exception {
-        // Verify the server stays alive after multiple errors
         for (int i = 0; i < 5; i++) {
-            JsonObject resp = execute("error('error " + i + "')");
+            JsonObject resp = execute("throw new RuntimeException('error " + i + "')");
             assertFalse(resp.get("success").getAsBoolean());
         }
-        // Should still work after errors
         JsonObject resp = execute("return 'still alive'");
         assertTrue(resp.get("success").getAsBoolean());
         assertEquals(
@@ -305,9 +219,8 @@ class ErrorHandlingTest {
 
     @Test
     void testErrorPreservesState() throws Exception {
-        // Set a variable, then error, then check variable survives
         execute("survivor = 'I made it'");
-        execute("error('kaboom')"); // This errors
+        execute("throw new RuntimeException('kaboom')");
         JsonObject resp = execute("return survivor");
         assertTrue(resp.get("success").getAsBoolean());
         assertEquals(
@@ -316,16 +229,12 @@ class ErrorHandlingTest {
 
     @Test
     void testJavaExceptionInMethod() throws Exception {
-        // ArrayList.get(0) on empty list throws IndexOutOfBoundsException
         JsonObject resp = execute("""
-                local ArrayList = java.import("java.util.ArrayList")
-                local list = java.new(ArrayList)
-                return list:get(0)
+                def list = java.type("java.util.ArrayList").create()
+                return list.get(0)
                 """);
         assertFalse(resp.get("success").getAsBoolean());
         String error = resp.get("error").getAsString();
-        System.out.println("Java exception: " + error);
-        // Should contain the Java exception info, not just "invoke failed"
         assertTrue(
                 error.contains("IndexOutOfBounds") || error.contains("threw") || error.contains("range"),
                 "Should contain meaningful Java exception info: " + error);

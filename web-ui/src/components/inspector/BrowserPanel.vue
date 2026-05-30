@@ -6,14 +6,14 @@ import BrowserTree from './BrowserTree.vue'
 
 const browser = useBrowserStore()
 const connection = useConnectionStore()
-const showLuaInput = ref(false)
-const luaInput = ref('')
+const showCodeInput = ref(false)
+const codeInput = ref('')
 
-async function handleLoadLua() {
-  if (!luaInput.value.trim()) return
-  await browser.loadFromLua(luaInput.value)
-  luaInput.value = ''
-  showLuaInput.value = false
+async function handleLoadCode() {
+  if (!codeInput.value.trim()) return
+  await browser.loadFromGroovy(codeInput.value)
+  codeInput.value = ''
+  showCodeInput.value = false
 }
 </script>
 
@@ -36,13 +36,13 @@ async function handleLoadLua() {
         </button>
       </div>
 
-      <!-- Custom Lua input -->
+      <!-- Custom Groovy input -->
       <div class="flex gap-2">
         <button
-          @click="showLuaInput = !showLuaInput"
+          @click="showCodeInput = !showCodeInput"
           class="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-md text-sm"
         >
-          {{ showLuaInput ? '− Lua' : '+ Lua' }}
+          {{ showCodeInput ? '− Groovy' : '+ Groovy' }}
         </button>
 
         <button
@@ -74,17 +74,17 @@ async function handleLoadLua() {
         </div>
       </div>
 
-      <!-- Lua input field -->
-      <div v-if="showLuaInput" class="flex gap-2">
+      <!-- Groovy input field -->
+      <div v-if="showCodeInput" class="flex gap-2">
         <input
-          v-model="luaInput"
-          placeholder="Enter Lua expression (e.g., return mc.player)"
+          v-model="codeInput"
+          placeholder="Enter Groovy expression (e.g., return mc.player)"
           class="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-sm font-mono placeholder-zinc-500 focus:outline-none focus:border-zinc-500"
-          @keyup.enter="handleLoadLua"
+          @keyup.enter="handleLoadCode"
         />
         <button
-          @click="handleLoadLua"
-          :disabled="!connection.isConnected || !luaInput.trim()"
+          @click="handleLoadCode"
+          :disabled="!connection.isConnected || !codeInput.trim()"
           class="btn btn-primary"
         >
           Load
@@ -111,7 +111,7 @@ async function handleLoadLua() {
 
       <div v-else-if="browser.roots.length === 0" class="text-zinc-500 text-center py-8">
         <p>Click an entry point above to start browsing.</p>
-        <p class="text-xs mt-2">Or use "+ Lua" to evaluate a custom expression.</p>
+        <p class="text-xs mt-2">Or use "+ Groovy" to evaluate a custom expression.</p>
       </div>
 
       <div v-else class="space-y-2">

@@ -1,17 +1,17 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import * as lua from '../services/lua-helpers';
+import * as groovy from '../services/groovy-helpers';
 import type { PinnedObject } from '../types';
 
 /**
- * Tree node for the Lua Inspector. Mirrors the Object Browser's BrowserNode so
- * Java fields are drillable: each node carries a Lua `path` and is lazily
- * re-evaluated via `lua.evaluateAndDescribe` on expand.
+ * Tree node for the Groovy Inspector. Mirrors the Object Browser's BrowserNode so
+ * Java fields are drillable: each node carries a Groovy `path` and is lazily
+ * re-evaluated via `groovy.evaluateAndDescribe` on expand.
  */
 export interface InspectorNode {
   id: string;
   name: string;
-  path: string;            // Lua expression that produces this value
+  path: string;            // Groovy expression that produces this value
   className?: string;
   shortName?: string;
   value?: unknown;
@@ -86,7 +86,7 @@ export const useInspectorStore = defineStore('inspector', () => {
     return `pin_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
   }
 
-  function createChildNodes(info: lua.ObjectInfo, parentPath: string): InspectorNode[] {
+  function createChildNodes(info: groovy.ObjectInfo, parentPath: string): InspectorNode[] {
     const children: InspectorNode[] = [];
 
     for (const field of info.fields) {
@@ -118,7 +118,7 @@ export const useInspectorStore = defineStore('inspector', () => {
   }
 
   /**
-   * Evaluate a Lua expression and produce a drillable tree. The root is
+   * Evaluate a Groovy expression and produce a drillable tree. The root is
    * auto-expanded (its direct fields are fetched); deeper levels are expanded
    * lazily on click via expandNode().
    */
@@ -128,10 +128,10 @@ export const useInspectorStore = defineStore('inspector', () => {
     lastCode.value = code;
 
     try {
-      const info = await lua.evaluateAndDescribe(code);
+      const info = await groovy.evaluateAndDescribe(code);
       const nodeName = name || info.shortName || 'result';
       // Wrap the user's code so child paths can reference it as a single value.
-      const path = `(function() ${code} end)()`;
+      const path = `{ -> ${code} }()`;
 
       const node: InspectorNode = {
         id: generateNodeId(),
@@ -159,7 +159,7 @@ export const useInspectorStore = defineStore('inspector', () => {
 
   /**
    * Toggle expansion, fetching children on the first expand. Re-evaluates the
-   * node's Lua path so the view reflects the current runtime state.
+   * node's Groovy path so the view reflects the current runtime state.
    */
   async function expandNode(node: InspectorNode): Promise<void> {
     if (!node.expandable) return;
@@ -173,7 +173,7 @@ export const useInspectorStore = defineStore('inspector', () => {
     node.error = undefined;
 
     try {
-      const info = await lua.evaluateAndDescribe(`return ${node.path}`);
+      const info = await groovy.evaluateAndDescribe(`return ${node.path}`);
 
       if (info.isNull) {
         node.children = [];

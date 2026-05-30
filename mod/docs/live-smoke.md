@@ -26,16 +26,16 @@ To start the render mod client from the script:
 1. Confirm the bridge is reachable with `mc_snapshot` or `mc_execute`.
 2. Open or enter a world with `mc_execute`.
 
-   The known-good Lua shape is:
+   The known-good Groovy shape is:
 
-   ```lua
-   local Minecraft = java.import('net.minecraft.client.Minecraft')
-   local Thread = java.import('java.lang.Thread')
-   local mc = Minecraft.getInstance()
+   ```groovy
+   def Minecraft = java.type('net.minecraft.client.Minecraft')
+   def Thread = java.type('java.lang.Thread')
+   def mc = Minecraft.getInstance()
    mc.options.pauseOnLostFocus = false
-   local flows = mc:createWorldOpenFlows()
-   flows:openWorld('New World', java.new(Thread))
-   return 'opening world from ' .. Thread:currentThread():getName()
+   def flows = mc.createWorldOpenFlows()
+   flows.openWorld('New World', Thread())
+   return 'opening world from ' + Thread.currentThread().getName()
    ```
 
 3. Exercise native runtime tools: `mc_snapshot`, `mc_screenshot`,

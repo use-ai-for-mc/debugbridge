@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import BrowserPanel from './BrowserPanel.vue'
-import LuaInspector from './LuaInspector.vue'
+import GroovyInspector from './GroovyInspector.vue'
 import InventoryPanel from './InventoryPanel.vue'
 import EntitiesPanel from './EntitiesPanel.vue'
 import BlocksPanel from './BlocksPanel.vue'
 
-type Mode = 'browser' | 'lua' | 'inventory' | 'entities' | 'blocks'
+type Mode = 'browser' | 'groovy' | 'inventory' | 'entities' | 'blocks'
 const mode = ref<Mode>('browser')
 
 const tabs: { id: Mode; label: string }[] = [
@@ -14,7 +14,7 @@ const tabs: { id: Mode; label: string }[] = [
   { id: 'entities', label: '👁 Entities' },
   { id: 'blocks', label: '🧱 Blocks' },
   { id: 'browser', label: '🌳 Object Browser' },
-  { id: 'lua', label: '📝 Lua Inspector' },
+  { id: 'groovy', label: '📝 Groovy Inspector' },
 ]
 </script>
 
@@ -41,7 +41,7 @@ const tabs: { id: Mode; label: string }[] = [
       <EntitiesPanel v-else-if="mode === 'entities'" />
       <BlocksPanel v-else-if="mode === 'blocks'" />
       <BrowserPanel v-else-if="mode === 'browser'" />
-      <LuaInspector v-else />
+      <GroovyInspector v-else />
     </div>
   </div>
 </template>

@@ -30,7 +30,7 @@ function handlePin() {
         <input
           v-model="codeInput"
           :disabled="!connection.isConnected"
-          placeholder="Enter Lua expression to inspect (e.g., return mc.player)"
+          placeholder="Enter Groovy expression to inspect (e.g., return mc.player)"
           class="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md font-mono text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
           @keyup.enter="handleInspect"
         />
@@ -88,7 +88,7 @@ function handlePin() {
       </div>
 
       <div v-else-if="!inspector.isLoading" class="text-zinc-500 text-center py-8">
-        <p>Enter a Lua expression to inspect an object.</p>
+        <p>Enter a Groovy expression to inspect an object.</p>
         <p class="text-xs mt-2">
           Convenience globals: <code class="text-blue-300">mc</code>,
           <code class="text-blue-300">player</code>,
@@ -98,12 +98,12 @@ function handlePin() {
         <p class="text-xs mt-2">Examples:</p>
         <ul class="text-xs mt-1 space-y-1">
           <li><code class="text-blue-300">return mc</code></li>
-          <li><code class="text-blue-300">return player:blockPosition()</code></li>
-          <li><code class="text-blue-300">return level:entitiesForRendering()</code></li>
-          <li><code class="text-blue-300">return java.import("net.minecraft.client.Minecraft")</code></li>
+          <li><code class="text-blue-300">return player.blockPosition()</code></li>
+          <li><code class="text-blue-300">return level.entitiesForRendering()</code></li>
+          <li><code class="text-blue-300">return java.type("net.minecraft.client.Minecraft")</code></li>
         </ul>
         <p class="text-xs mt-3 text-zinc-600">
-          Click ▶ to drill into Java objects. Double-click a row to copy its Lua path.
+          Click ▶ to drill into Java objects. Double-click a row to copy its Groovy path.
         </p>
       </div>
     </div>

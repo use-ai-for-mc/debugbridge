@@ -6,7 +6,7 @@ A Fabric client mod (Minecraft 1.19 and 1.21.11) that exposes a local WebSocket 
 
 ## Repo layout
 
-- `mod/core/` — shared Java: WebSocket server (`BridgeServer`), Lua runtime, mapping resolver, provider interfaces (`NearbyEntitiesProvider`, `ScreenshotProvider`, `ItemTextureProvider`, `GameStateProvider`).
+- `mod/core/` — shared Java: WebSocket server (`BridgeServer`), Groovy runtime, mapping resolver, provider interfaces (`NearbyEntitiesProvider`, `ScreenshotProvider`, `ItemTextureProvider`, `GameStateProvider`).
 - `mod/fabric-1.19/` and `mod/fabric-1.21.11/` — version-specific Fabric mods. Each has its own provider impls + mixins.
 - `web-ui/` — Vue 3 + Pinia + Tailwind app.
 - `build-and-deploy.sh` (1.19) and `build-and-deploy-1.21.11.sh` — build the jar and copy into `~/Library/Application Support/ModrinthApp/profiles/ImagineFun/mods/`.
@@ -37,7 +37,7 @@ A Fabric client mod (Minecraft 1.19 and 1.21.11) that exposes a local WebSocket 
 
 ## Refs / Object Browser
 
-`java.ref(obj)` in Lua returns a stable ref ID backed by `ObjectRefStore` (WeakReferences). MCP clients learn to use refs through tool descriptions — no runtime registration needed.
+`java.ref(id)` in Groovy resolves a stable ref ID backed by `ObjectRefStore` (WeakReferences). MCP clients learn to use refs through tool descriptions — no runtime registration needed.
 
 ## Mixins
 
@@ -48,7 +48,7 @@ Each version module has a mixin package + `debugbridge.mixins.json` listing the 
 
 ## Native entity/texture endpoints
 
-Do NOT iterate entities or resolve textures via Lua — the per-call Java↔Lua bridge overhead causes 10s timeouts with ~100+ entities. Native Java endpoints:
+Do NOT iterate entities or resolve textures via Groovy — the per-call Java↔script bridge overhead causes 10s timeouts with ~100+ entities. Native Java endpoints:
 
 - `nearbyEntities` / `entityDetails` via `NearbyEntitiesProvider` (both versions).
 - `getItemTexture` / `getEntityItemTexture` via `ItemTextureProvider`:

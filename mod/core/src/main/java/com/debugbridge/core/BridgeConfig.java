@@ -19,7 +19,7 @@ public class BridgeConfig {
     public int port = 9876;
     public long timeoutMs = 5000;
     public int maxResults = 100;
-    public long luaMaxExecutionTimeMs = 5000;
+    public long scriptMaxExecutionTimeMs = 5000;
 
     /**
      * Whether the user has acknowledged this is a developer tool.
@@ -29,7 +29,7 @@ public class BridgeConfig {
 
     /**
      * Slash-command execution via the bridge. Off by default — the runtime
-     * still runs whatever Lua a connected client sends, so flipping this on
+     * still runs whatever Groovy a connected client sends, so flipping this on
      * only widens the surface for anyone authorized to drive the bridge.
      */
     public boolean runCommandEnabled = false;
@@ -65,11 +65,13 @@ public class BridgeConfig {
             if (obj.has("run_command_enabled")) {
                 config.runCommandEnabled = obj.get("run_command_enabled").getAsBoolean();
             }
-            if (obj.has("lua")) {
-                JsonObject lua = obj.getAsJsonObject("lua");
-                if (lua.has("max_execution_time_ms"))
-                    config.luaMaxExecutionTimeMs =
-                            lua.get("max_execution_time_ms").getAsLong();
+            // Prefer the "script" block; accept the legacy "lua" key for back-compat.
+            JsonObject scriptCfg = null;
+            if (obj.has("script")) scriptCfg = obj.getAsJsonObject("script");
+            else if (obj.has("lua")) scriptCfg = obj.getAsJsonObject("lua");
+            if (scriptCfg != null && scriptCfg.has("max_execution_time_ms")) {
+                config.scriptMaxExecutionTimeMs =
+                        scriptCfg.get("max_execution_time_ms").getAsLong();
             }
             LOG.info("[DebugBridge] Config loaded from " + file + " (port " + config.port + ")");
             return config;
@@ -94,9 +96,9 @@ public class BridgeConfig {
             obj.addProperty("max_results", maxResults);
             obj.addProperty("developer_mode_accepted", developerModeAccepted);
             obj.addProperty("run_command_enabled", runCommandEnabled);
-            JsonObject lua = new JsonObject();
-            lua.addProperty("max_execution_time_ms", luaMaxExecutionTimeMs);
-            obj.add("lua", lua);
+            JsonObject scriptCfg = new JsonObject();
+            scriptCfg.addProperty("max_execution_time_ms", scriptMaxExecutionTimeMs);
+            obj.add("script", scriptCfg);
 
             Files.writeString(configFile, GSON.toJson(obj));
             LOG.info("[DebugBridge] Config saved to " + configFile);

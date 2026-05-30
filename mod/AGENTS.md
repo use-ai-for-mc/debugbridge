@@ -4,7 +4,7 @@ This directory contains the Java/Fabric side of DebugBridge.
 
 ## Project Shape
 
-- `core`: protocol, server, Lua bridge, mapping, snapshots, screenshots, textures, and provider interfaces. It must stay independent of Fabric implementation packages.
+- `core`: protocol, server, Groovy bridge, mapping, snapshots, screenshots, textures, and provider interfaces. It must stay independent of Fabric implementation packages.
 - `fabric-*`: Minecraft-version-specific adapters. Version APIs stay inside their own Fabric module.
 
 ## Verification

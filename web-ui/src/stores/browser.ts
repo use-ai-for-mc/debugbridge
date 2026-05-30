@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import * as lua from '../services/lua-helpers';
+import * as inspect from '../services/groovy-helpers';
 
 export interface BrowserNode {
   id: string;
   name: string;
-  path: string;           // Lua expression to get this value
+  path: string;           // Groovy expression to get this value
   type: 'class' | 'instance' | 'field' | 'method' | 'collection-item';
   className?: string;
   shortName?: string;
@@ -34,37 +34,37 @@ export const ENTRY_POINTS: EntryPoint[] = [
   {
     name: 'Minecraft',
     description: 'Main game client instance',
-    path: 'java.import("net.minecraft.client.Minecraft"):getInstance()',
+    path: 'mc',
     icon: '🎮'
   },
   {
     name: 'Player',
     description: 'Local player entity',
-    path: 'java.import("net.minecraft.client.Minecraft"):getInstance().player',
+    path: 'mc.player',
     icon: '🧑'
   },
   {
     name: 'Level/World',
     description: 'Current world/level',
-    path: 'java.import("net.minecraft.client.Minecraft"):getInstance().level',
+    path: 'mc.level',
     icon: '🌍'
   },
   {
     name: 'Player Inventory',
     description: 'Player inventory contents',
-    path: 'java.import("net.minecraft.client.Minecraft"):getInstance().player:getInventory()',
+    path: 'mc.player.getInventory()',
     icon: '🎒'
   },
   {
     name: 'Held Item',
     description: 'Item in main hand',
-    path: 'java.import("net.minecraft.client.Minecraft"):getInstance().player:getMainHandItem()',
+    path: 'mc.player.getMainHandItem()',
     icon: '🗡️'
   },
   {
     name: 'Game Options',
     description: 'Game settings',
-    path: 'java.import("net.minecraft.client.Minecraft"):getInstance().options',
+    path: 'mc.options',
     icon: '⚙️'
   },
 ];
@@ -79,7 +79,7 @@ export const useBrowserStore = defineStore('browser', () => {
   const selectedNode = ref<BrowserNode | null>(null);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
-  const customLuaInput = ref('');
+  const customCodeInput = ref('');
 
   // History for back navigation
   const history = ref<BrowserNode[]>([]);
@@ -93,7 +93,7 @@ export const useBrowserStore = defineStore('browser', () => {
     error.value = null;
 
     try {
-      const info = await lua.evaluateAndDescribe(`return ${entry.path}`);
+      const info = await inspect.evaluateAndDescribe(`return ${entry.path}`);
 
       const node: BrowserNode = {
         id: generateNodeId(),
@@ -120,15 +120,15 @@ export const useBrowserStore = defineStore('browser', () => {
     }
   }
 
-  async function loadFromLua(luaCode: string, name?: string): Promise<void> {
+  async function loadFromGroovy(groovyCode: string, name?: string): Promise<void> {
     isLoading.value = true;
     error.value = null;
 
     try {
-      const info = await lua.evaluateAndDescribe(luaCode);
+      const info = await inspect.evaluateAndDescribe(groovyCode);
 
       const nodeName = name || 'Result';
-      const path = `(function() ${luaCode} end)()`;
+      const path = `{ -> ${groovyCode} }()`;
 
       const node: BrowserNode = {
         id: generateNodeId(),
@@ -153,7 +153,7 @@ export const useBrowserStore = defineStore('browser', () => {
     }
   }
 
-  function createChildNodes(info: lua.ObjectInfo, parentPath: string): BrowserNode[] {
+  function createChildNodes(info: inspect.ObjectInfo, parentPath: string): BrowserNode[] {
     const children: BrowserNode[] = [];
 
     for (const field of info.fields) {
@@ -195,7 +195,7 @@ export const useBrowserStore = defineStore('browser', () => {
     node.error = undefined;
 
     try {
-      const info = await lua.evaluateAndDescribe(`return ${node.path}`);
+      const info = await inspect.evaluateAndDescribe(`return ${node.path}`);
 
       if (info.isNull) {
         node.children = [];
@@ -223,8 +223,8 @@ export const useBrowserStore = defineStore('browser', () => {
 
     try {
       const argsStr = args.join(', ');
-      const methodPath = `${node.path}:${methodName}(${argsStr})`;
-      const info = await lua.evaluateAndDescribe(`return ${methodPath}`);
+      const methodPath = `${node.path}.${methodName}(${argsStr})`;
+      const info = await inspect.evaluateAndDescribe(`return ${methodPath}`);
 
       const resultNode: BrowserNode = {
         id: generateNodeId(),
@@ -294,11 +294,11 @@ export const useBrowserStore = defineStore('browser', () => {
     selectedNode,
     isLoading,
     error,
-    customLuaInput,
+    customCodeInput,
     canGoBack,
     canGoForward,
     loadEntryPoint,
-    loadFromLua,
+    loadFromGroovy,
     expandNode,
     callMethodOnNode,
     selectNode,

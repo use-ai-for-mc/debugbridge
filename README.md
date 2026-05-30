@@ -8,7 +8,7 @@ DebugBridge runs a localhost-only WebSocket server (default port 9876, scans 987
 
 ### Native endpoints (fast, high-level)
 
-Purpose-built Java endpoints that return structured JSON in a single round-trip — no Lua overhead:
+Purpose-built Java endpoints that return structured JSON in a single round-trip — no scripting overhead:
 
 | Endpoint | What it returns |
 |---|---|
@@ -26,24 +26,27 @@ Purpose-built Java endpoints that return structured JSON in a single round-trip 
 | `search` | Search loaded classes by name pattern |
 | `status` | Server health and connection info |
 
-### Lua execution (`execute` endpoint)
+### Groovy execution (`execute` endpoint)
 
-Run Lua 5.2 scripts inside the Minecraft JVM with full access to Minecraft APIs via a Java reflection bridge. Convenience globals `mc`, `player`, and `level` are pre-bound. The sandbox allows file I/O for reading/writing data. Each request has a configurable timeout (default 10s, max 5 min).
+Run Groovy scripts inside the Minecraft JVM with full access to Minecraft APIs via a mapping-aware Java bridge — write Mojang names and they resolve to the runtime (intermediary) names automatically, even on obfuscated builds. Convenience globals `mc`, `player`, and `level` are pre-bound. The sandbox allows file I/O for reading/writing data. Each request has a configurable timeout (default 10s, max 5 min).
 
-```lua
--- Convenience globals already available
-print("Player at: " .. player:blockPosition():toShortString())
-print("Dimension: " .. mc.level:dimension().location())
+```groovy
+// Convenience globals already available
+println "Player at: " + player.blockPosition().toShortString()
+println "Dimension: " + mc.level.dimension().location()
 
--- Import anything else you need
-local Vec3 = java.import("net.minecraft.world.phys.Vec3")
+// Load anything else by Mojang name (works on obfuscated builds too)
+def Vec3 = java.type("net.minecraft.world.phys.Vec3")
 
--- Iterate Java collections
-for entity in java.iter(level:entitiesForRendering()) do
-    if entity:distanceTo(player) < 10 then
-        print("Nearby: " .. java.typeof(entity))
-    end
-end
+// Iterate Java collections. Wrap a bulk loop in sync { } so the per-call
+// reflective dispatch batches into a single game-thread hop.
+sync {
+    java.list(level.entitiesForRendering()).each { entity ->
+        if (entity.distanceTo(player) < 10) {
+            println "Nearby: " + java.typeName(entity)
+        }
+    }
+}
 ```
 
 ## Vue Web UI
@@ -54,8 +57,8 @@ The `web-ui/` directory contains a Vue 3 + Pinia + Tailwind app for visual inspe
 - **Entities panel** — Nearby entity list with detail drill-down, equipment icons, glow toggling
 - **Blocks panel** — Nearby block-entity browser (signs, chests, etc.)
 - **Screen inspector** — Current GUI/inventory slot viewer
-- **Lua inspector** — Drill-down object browser for Lua values and Java objects
-- **Console** — Interactive Lua REPL connected to the running client
+- **Groovy inspector** — Drill-down object browser for Java objects
+- **Console** — Interactive Groovy REPL connected to the running client
 - **Chat history** — Recent client-side messages
 
 Start it with:
@@ -84,7 +87,7 @@ The web UI connects directly to the WebSocket server — no MCP layer required.
 |  +-----------------------------+  |
 |  | BridgeServer (WebSocket)    |  |
 |  | Native endpoints + execute  |  |
-|  | Lua runtime + Java bridge   |  |
+|  | Groovy runtime + Java bridge |  |
 |  | Mojang mapping resolver     |  |
 |  +-----------------------------+  |
 +-----------------------------------+
@@ -117,7 +120,7 @@ This is a **development and debugging tool**, not a remote administration system
 
 ```
 mod/
-  core/          — Shared Java: BridgeServer, Lua runtime, mapping resolver, provider interfaces
+  core/          — Shared Java: BridgeServer, Groovy runtime, mapping resolver, provider interfaces
   fabric-1.19/   — Fabric mod for Minecraft 1.19.x (provider impls + mixins)
   fabric-1.21.11/— Fabric mod for Minecraft 1.21.11 (provider impls + mixins)
   fabric-26.2-dev/— Fabric mod for Minecraft 26.2 development snapshots
@@ -156,7 +159,7 @@ cd mod
 JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ./gradlew :core:test
 ```
 
-Covers the Lua bridge runtime, mapping resolver kernel (with stubbed Fabric SPI), and wire-contract tests for every endpoint (using stub providers).
+Covers the Groovy bridge runtime, mapping resolver kernel (with stubbed Fabric SPI), and wire-contract tests for every endpoint (using stub providers).
 
 **2. Smoke test against a live mod** — `tools/smoke-test.mjs`. Connects via WebSocket, hits each kernel-candidate endpoint, validates the response. ~30 seconds. Requires Node 22+ for the built-in `WebSocket` global.
 
@@ -209,7 +212,7 @@ Each request gets a matching `{id, type, payload}` response.
 
 ## Dependencies Bundled in JAR
 
-- **LuaJ 3.0.1** — Pure Java Lua 5.2 (MIT)
+- **Apache Groovy 4.0.24** — JVM scripting runtime (Apache-2.0)
 - **Java-WebSocket 1.6.0** — WebSocket server (MIT)
 - **Gson 2.14.0** — JSON parsing (Apache 2.0)
 

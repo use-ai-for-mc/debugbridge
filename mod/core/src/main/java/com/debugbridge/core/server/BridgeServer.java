@@ -6,8 +6,6 @@ import com.debugbridge.core.chat.ChatHistoryProvider;
 import com.debugbridge.core.entity.ClientEntityGlowManager;
 import com.debugbridge.core.entity.LookedAtEntityProvider;
 import com.debugbridge.core.entity.NearbyEntitiesProvider;
-import com.debugbridge.core.lua.LuaRuntime;
-import com.debugbridge.core.lua.ThreadDispatcher;
 import com.debugbridge.core.mapping.MappingResolver;
 import com.debugbridge.core.protocol.BridgeRequest;
 import com.debugbridge.core.protocol.BridgeResponse;
@@ -32,6 +30,8 @@ import com.debugbridge.core.recording.RecordingResult;
 import com.debugbridge.core.refs.ObjectRefStore;
 import com.debugbridge.core.screen.ScreenInspectProvider;
 import com.debugbridge.core.screenshot.ScreenshotProvider;
+import com.debugbridge.core.script.ScriptRuntime;
+import com.debugbridge.core.script.ThreadDispatcher;
 import com.debugbridge.core.snapshot.GameStateProvider;
 import com.debugbridge.core.texture.ItemTextureProvider;
 import com.google.gson.*;
@@ -51,7 +51,7 @@ import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 
 /**
- * WebSocket server that accepts Lua script execution requests and other commands.
+ * WebSocket server that accepts Groovy script execution requests and other commands.
  * Runs inside the Minecraft JVM. Accepts one client (the MCP server) at a time.
  */
 public class BridgeServer extends WebSocketServer {
@@ -66,7 +66,7 @@ public class BridgeServer extends WebSocketServer {
      * game directory). */
     private static final Gson GSON_OMIT_NULLS = new Gson();
 
-    private final LuaRuntime lua;
+    private final ScriptRuntime script;
     private final MappingResolver resolver;
     private final ObjectRefStore refs;
     private final ResultSerializer serializer;
@@ -149,15 +149,15 @@ public class BridgeServer extends WebSocketServer {
         super(new InetSocketAddress("127.0.0.1", port));
         this.resolver = resolver;
         this.refs = new ObjectRefStore();
-        this.lua = new LuaRuntime(resolver, dispatcher, refs);
+        this.script = new ScriptRuntime(resolver, dispatcher, refs);
         this.serializer = new ResultSerializer(resolver, refs);
         this.stateProvider = stateProvider;
         this.screenshotProvider = screenshotProvider;
         setReuseAddr(true);
     }
 
-    public LuaRuntime getLuaRuntime() {
-        return lua;
+    public ScriptRuntime getScriptRuntime() {
+        return script;
     }
 
     /**
@@ -327,7 +327,7 @@ public class BridgeServer extends WebSocketServer {
         }
     }
 
-    // Hard ceiling on per-request Lua timeouts. Even if a caller asks for
+    // Hard ceiling on per-request script timeouts. Even if a caller asks for
     // more, we cap here so a runaway script can't hang the bridge forever.
     private static final long MAX_EXECUTE_TIMEOUT_MS = 300_000L;
 
@@ -343,7 +343,7 @@ public class BridgeServer extends WebSocketServer {
             timeoutMs = Math.min(MAX_EXECUTE_TIMEOUT_MS, Math.max(0, requested));
         }
 
-        LuaRuntime.ExecutionResult result = lua.execute(code, timeoutMs);
+        ScriptRuntime.ExecutionResult result = script.execute(code, timeoutMs);
 
         if (!result.isSuccess()) {
             return BridgeResponse.error(req.id, result.error);
@@ -691,7 +691,8 @@ public class BridgeServer extends WebSocketServer {
 
     private BridgeResponse handleSnapshot(BridgeRequest req) {
         if (stateProvider == null) {
-            return BridgeResponse.error(req.id, "No game state provider configured. Use mc_execute with Lua instead.");
+            return BridgeResponse.error(
+                    req.id, "No game state provider configured. Use mc_execute with Groovy instead.");
         }
         try {
             SnapshotDto snapshot = stateProvider.captureSnapshot();
@@ -753,25 +754,23 @@ public class BridgeServer extends WebSocketServer {
         if (command.length() > MAX_COMMAND_LEN) {
             return BridgeResponse.error(req.id, "runCommand: command too long (max " + MAX_COMMAND_LEN + " chars)");
         }
-        // SECURITY: encode the command as `string.char(b1, b2, ...)` so the
-        // generated Lua source contains no user-controlled bytes. Earlier
-        // single-quote escaping ('"' -> "\\'") was bypassable via backslash +
-        // quote, newlines, and null bytes. This formulation is unconditionally
+        // SECURITY: encode the command as a `new String(byte[], "UTF-8")` built
+        // from numeric literals, so the generated Groovy source contains no
+        // user-controlled bytes. This formulation is unconditionally
         // injection-proof: every byte of the user's command lands as a numeric
-        // literal, and Lua reassembles the string at runtime.
+        // literal, and Groovy reassembles the string at runtime.
         // This is a temporary measure — the long-term fix is a native
-        // CommandProvider that bypasses Lua entirely (see review queue).
+        // CommandProvider that bypasses the script runtime entirely (see review queue).
         byte[] cmdBytes = command.getBytes(StandardCharsets.UTF_8);
         StringBuilder bytes = new StringBuilder(cmdBytes.length * 4);
         for (int i = 0; i < cmdBytes.length; i++) {
             if (i > 0) bytes.append(',');
             bytes.append(cmdBytes[i] & 0xFF);
         }
-        String luaCode = "local cmd = string.char(" + bytes + ")\n"
-                + "local mc = java.import('net.minecraft.client.Minecraft'):getInstance()\n"
-                + "mc.player:connection():sendCommand(cmd)\n"
-                + "return 'Command sent: ' .. cmd";
-        return handleExecute(new BridgeRequest(req.id, "execute", createPayload("code", luaCode)));
+        String groovyCode = "def cmd = new String([" + bytes + "] as byte[], 'UTF-8')\n"
+                + "mc.player.connection().sendCommand(cmd)\n"
+                + "return 'Command sent: ' + cmd";
+        return handleExecute(new BridgeRequest(req.id, "execute", createPayload("code", groovyCode)));
     }
 
     /** Hard cap on `runCommand` input length. */

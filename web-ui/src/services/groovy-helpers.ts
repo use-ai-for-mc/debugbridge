@@ -1,7 +1,11 @@
 import { bridge } from './bridge';
 
 /**
- * Helper functions that generate Lua code for object inspection
+ * Helper functions that generate Groovy code for object inspection.
+ *
+ * The mod's `execute` endpoint runs Groovy; these helpers build small Groovy
+ * snippets that return plain Maps/Lists, which the server serializes into the
+ * `{type, value}` envelope that {@link unwrapBridgeValue} unwraps.
  */
 
 export interface FieldInfo {
@@ -30,13 +34,7 @@ export interface ObjectInfo {
  * Import a class and get its static fields/methods
  */
 export async function inspectClass(className: string): Promise<ObjectInfo> {
-  const code = `
-    local class = java.import("${className}")
-    if class == nil then
-      return { isNull = true, className = "${className}" }
-    end
-    return java.describe(class)
-  `;
+  const code = `return java.describe(java.type("${className}"))`;
 
   const result = await bridge.execute(code);
   if (!result.success) {
@@ -52,11 +50,9 @@ export async function inspectClass(className: string): Promise<ObjectInfo> {
 export async function callStaticMethod(className: string, methodName: string, args: string[] = []): Promise<ObjectInfo> {
   const argsStr = args.join(', ');
   const code = `
-    local class = java.import("${className}")
-    local result = class:${methodName}(${argsStr})
-    if result == nil then
-      return { isNull = true }
-    end
+    def cls = java.type("${className}")
+    def result = cls.${methodName}(${argsStr})
+    if (result == null) return [isNull: true]
     return java.describe(result)
   `;
 
@@ -73,14 +69,10 @@ export async function callStaticMethod(className: string, methodName: string, ar
  */
 export async function getFieldValue(basePath: string, fieldName: string): Promise<ObjectInfo> {
   const code = `
-    local obj = ${basePath}
-    if obj == nil then
-      return { isNull = true }
-    end
-    local value = obj.${fieldName}
-    if value == nil then
-      return { isNull = true }
-    end
+    def obj = ${basePath}
+    if (obj == null) return [isNull: true]
+    def value = obj.${fieldName}
+    if (value == null) return [isNull: true]
     return java.describe(value)
   `;
 
@@ -98,14 +90,10 @@ export async function getFieldValue(basePath: string, fieldName: string): Promis
 export async function callMethod(basePath: string, methodName: string, args: string[] = []): Promise<ObjectInfo> {
   const argsStr = args.join(', ');
   const code = `
-    local obj = ${basePath}
-    if obj == nil then
-      return { isNull = true }
-    end
-    local result = obj:${methodName}(${argsStr})
-    if result == nil then
-      return { isNull = true }
-    end
+    def obj = ${basePath}
+    if (obj == null) return [isNull: true]
+    def result = obj.${methodName}(${argsStr})
+    if (result == null) return [isNull: true]
     return java.describe(result)
   `;
 
@@ -118,91 +106,80 @@ export async function callMethod(basePath: string, methodName: string, args: str
 }
 
 /**
- * Evaluate arbitrary Lua and describe the result.
+ * Evaluate arbitrary Groovy and describe the result.
  *
  * java.describe(obj) returns { class, runtimeClass, superclass, interfaces,
  * fields = [ {name, type, static, final}, ... ] } — metadata only, no values.
- * We read each field's value from the object and package everything into the
- * format parseObjectInfo expects.
+ * We read each field's value off the object and package everything into the
+ * shape parseObjectInfo expects. The whole walk runs inside `sync { }` so the
+ * per-field reflective reads batch into a single game-thread hop.
  */
-export async function evaluateAndDescribe(luaCode: string): Promise<ObjectInfo> {
+export async function evaluateAndDescribe(groovyCode: string): Promise<ObjectInfo> {
   const code = `
-    local __obj = (function()
-      ${luaCode}
-    end)()
-    if __obj == nil then
-      return {isNull = true}
-    end
+    return sync {
+      def __obj = { -> ${groovyCode} }()
+      if (__obj == null) return [isNull: true]
 
-    local __result = {}
+      def __result = [:]
 
-    local __dok, __desc = pcall(java.describe, __obj)
-    if __dok and __desc then
-      __result.__class = tostring(__desc.class)
-      __result.superClass = tostring(__desc.superclass or "")
-
-      __result.fields = {}
-      local __fc = 0
-      for _, __f in ipairs(__desc.fields or {}) do
-        __fc = __fc + 1
-        if __fc > 200 then break end
-        local __fi = {
-          type = tostring(__f.type or "unknown"),
-          modifiers = (__f.static and "static " or "") .. (__f.final and "final" or "")
-        }
-        local __vok, __val = pcall(function() return __obj[__f.name] end)
-        if __vok and __val ~= nil then
-          local __vt = type(__val)
-          if __vt == "string" then
-            __fi.value = #__val > 100 and __val:sub(1, 100) .. "..." or __val
-            __fi.valueClass = "java.lang.String"
-          elseif __vt == "number" then
-            __fi.value = __val
-          elseif __vt == "boolean" then
-            __fi.value = __val
-          elseif __vt == "userdata" then
-            local __tcok, __vc = pcall(java.typeof, __val)
-            __fi.valueClass = __tcok and tostring(__vc) or "Object"
-            local __tsok, __ts = pcall(tostring, __val)
-            __fi.value = {__class = __fi.valueClass}
-            if __tsok and __ts then
-              __fi.value.__toString = #__ts > 80 and __ts:sub(1, 80) .. "..." or __ts
-            end
-          elseif __vt == "table" then
-            __fi.value = {__class = "table"}
-            __fi.valueClass = "table"
-          end
-        end
-        __result.fields[__f.name] = __fi
-      end
-    else
-      -- Fallback for non-Java objects (plain Lua tables etc.)
-      __result.__class = type(__obj)
-      __result.fields = {}
-      if type(__obj) == "table" then
-        local __fc = 0
-        for __k, __v in pairs(__obj) do
-          __fc = __fc + 1
-          if __fc > 200 then break end
-          local __fi = {type = type(__v)}
-          if type(__v) == "string" then
-            __fi.value = #__v > 100 and __v:sub(1, 100) .. "..." or __v
-          elseif type(__v) == "number" or type(__v) == "boolean" then
+      if (__obj instanceof Map) {
+        // Plain map: surface its entries as fields.
+        __result.__class = __obj.getClass().getName()
+        def __fields = [:]
+        int __fc = 0
+        for (__e in __obj.entrySet()) {
+          __fc++; if (__fc > 200) break
+          def __v = __e.value
+          def __fi = [type: (__v == null ? 'null' : __v.getClass().getSimpleName())]
+          if (__v instanceof CharSequence) {
+            def __s = __v.toString()
+            __fi.value = __s.length() > 100 ? __s.substring(0, 100) + '...' : __s
+          } else if (__v instanceof Number || __v instanceof Boolean) {
             __fi.value = __v
-          elseif type(__v) == "table" or type(__v) == "userdata" then
-            __fi.value = {__class = type(__v)}
-          end
-          __result.fields[tostring(__k)] = __fi
-        end
-      end
-    end
+          } else if (__v != null) {
+            __fi.value = [__class: __v.getClass().getName()]
+          }
+          __fields[String.valueOf(__e.key)] = __fi
+        }
+        __result.fields = __fields
+      } else {
+        def __desc = java.describe(__obj)
+        __result.__class = String.valueOf(__desc['class'])
+        __result.superClass = String.valueOf(__desc.superclass ?: '')
+        def __fields = [:]
+        int __fc = 0
+        for (__f in (__desc.fields ?: [])) {
+          __fc++; if (__fc > 200) break
+          def __fi = [
+            type: String.valueOf(__f.type ?: 'unknown'),
+            modifiers: ((__f['static'] ? 'static ' : '') + (__f['final'] ? 'final' : ''))
+          ]
+          try {
+            def __val = __obj."\${__f.name}"
+            if (__val != null) {
+              if (__val instanceof CharSequence) {
+                def __s = __val.toString()
+                __fi.value = __s.length() > 100 ? __s.substring(0, 100) + '...' : __s
+                __fi.valueClass = 'java.lang.String'
+              } else if (__val instanceof Number || __val instanceof Boolean) {
+                __fi.value = __val
+              } else {
+                def __vc = java.typeName(__val)
+                def __ts = String.valueOf(__val)
+                __fi.valueClass = __vc
+                __fi.value = [__class: __vc, __toString: (__ts.length() > 80 ? __ts.substring(0, 80) + '...' : __ts)]
+              }
+            }
+          } catch (ignored) {}
+          __fields[String.valueOf(__f.name)] = __fi
+        }
+        __result.fields = __fields
+      }
 
-    local __tok, __tstr = pcall(tostring, __obj)
-    if __tok and __tstr then
-      __result.__toString = #__tstr > 80 and __tstr:sub(1, 80) .. "..." or __tstr
-    end
-
-    return __result
+      def __tstr = String.valueOf(__obj)
+      __result.__toString = __tstr.length() > 80 ? __tstr.substring(0, 80) + '...' : __tstr
+      return __result
+    }
   `;
 
   const result = await bridge.execute(code);
@@ -218,48 +195,28 @@ export async function evaluateAndDescribe(luaCode: string): Promise<ObjectInfo> 
  */
 export async function getCollectionElements(basePath: string, start: number = 0, limit: number = 50): Promise<{ items: ObjectInfo[], total: number }> {
   const code = `
-    local obj = ${basePath}
-    if obj == nil then
-      return { items = {}, total = 0 }
-    end
+    return sync {
+      def obj = ${basePath}
+      if (obj == null) return [items: [], total: 0]
 
-    local items = {}
-    local total = 0
-    local idx = 0
-
-    -- Try as Java iterable
-    local ok, iter = pcall(java.iter, obj)
-    if ok then
-      for item in iter do
-        if idx >= ${start} and idx < ${start + limit} then
-          if item == nil then
-            table.insert(items, { isNull = true, index = idx })
-          else
-            local desc = java.describe(item)
+      def all = java.list(obj)
+      def total = all.size()
+      def items = []
+      int idx = 0
+      for (el in all) {
+        if (idx >= ${start} && idx < ${start + limit}) {
+          if (el == null) {
+            items << [isNull: true, index: idx]
+          } else {
+            def desc = java.describe(el)
             desc.index = idx
-            table.insert(items, desc)
-          end
-        end
-        idx = idx + 1
-        total = total + 1
-      end
-    else
-      -- Try as array with length
-      local len = obj.length or obj.size and obj:size() or 0
-      total = len
-      for i = ${start}, math.min(${start + limit - 1}, len - 1) do
-        local item = obj[i]
-        if item == nil then
-          table.insert(items, { isNull = true, index = i })
-        else
-          local desc = java.describe(item)
-          desc.index = i
-          table.insert(items, desc)
-        end
-      end
-    end
-
-    return { items = items, total = total }
+            items << desc
+          }
+        }
+        idx++
+      }
+      return [items: items, total: total]
+    }
   `;
 
   const result = await bridge.execute(code);
@@ -291,9 +248,14 @@ function unwrapBridgeValue(data: unknown): unknown {
     if (t === 'table') {
       return unwrapBridgeValue(obj.value);
     }
-    if (t === 'string' || t === 'number' || t === 'boolean' || t === 'nil' || t === 'userdata') {
+    if (t === 'string' || t === 'number' || t === 'boolean' || t === 'nil') {
       return obj.value;
     }
+  }
+
+  // A wrapped Java object that slipped through: keep a light summary.
+  if (obj.type === 'object' && typeof obj.className === 'string') {
+    return { __class: obj.className, __toString: obj.toString };
   }
 
   // Recursively unwrap object properties

@@ -6,7 +6,7 @@ A local web frontend for inspecting and interacting with Minecraft through the D
 
 ### Phase 1 (Current)
 - **Connection Panel** - Connect to running Minecraft instances
-- **Lua Console** - Execute Lua scripts with syntax highlighting and history
+- **Groovy Console** - Execute Groovy scripts with history
 - **Object Inspector** - Explore Java objects as expandable trees
 - **Dashboard** - View player stats, position, world info
 - **Quick Actions** - One-click access to common objects (Minecraft, Player, World)
@@ -53,12 +53,12 @@ npm run preview
 src/
 ├── components/
 │   ├── layout/          # Header, Sidebar
-│   ├── console/         # Lua console + editor
+│   ├── console/         # Groovy console + editor
 │   ├── inspector/       # Entities, blocks, inventory, browser, JSON/SNBT trees
 │   └── dashboard/       # Player snapshot
 ├── services/
 │   ├── bridge.ts        # WebSocket client
-│   ├── lua-helpers.ts   # Lua code generation helpers
+│   ├── groovy-helpers.ts # Groovy code generation helpers
 │   └── snbt.ts          # SNBT parsing
 ├── stores/              # Pinia: connection, console, inspector, entities,
 │                        # blocks, inventory, browser

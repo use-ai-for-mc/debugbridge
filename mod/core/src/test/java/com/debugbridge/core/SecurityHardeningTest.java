@@ -2,8 +2,8 @@ package com.debugbridge.core;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import com.debugbridge.core.lua.DirectDispatcher;
 import com.debugbridge.core.mapping.PassthroughResolver;
+import com.debugbridge.core.script.DirectDispatcher;
 import com.debugbridge.core.server.BridgeServer;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -55,41 +55,34 @@ class SecurityHardeningTest {
     // ==================== runCommand injection hardening ====================
 
     /**
-     * The previous implementation built a Lua source string by replacing only
-     * single-quotes in the user's command. A backslash-then-quote sequence
-     * escaped the escape, broke out of the Lua string literal, and let the
-     * client run arbitrary Lua. The current implementation encodes every byte
-     * of the command via {@code string.char(...)}, so user-controlled bytes
-     * never appear in the Lua source. This test pins that property: a payload
-     * that would have been a valid injection under the old code should now
-     * surface as a normal command invocation (which fails in this test
-     * because there's no live Minecraft client — but the failure must come
-     * from the Minecraft side, not from injected Lua executing).
+     * runCommand encodes every byte of the user's command as a
+     * {@code new String(byte[], "UTF-8")} built from numeric literals, so
+     * user-controlled bytes never appear in the generated Groovy source. This
+     * test pins that property: a payload that would have been a valid injection
+     * under naive string concatenation should now surface as a normal command
+     * invocation (which fails here because there's no live Minecraft client —
+     * but the failure must come from the Minecraft side, not from injected
+     * Groovy executing).
      */
     @Test
     void testRunCommandRejectsBackslashQuoteInjection() throws Exception {
-        // Classic backslash+quote escape attempt + literal Lua trailer.
-        String payload = "say \\'; os.exit() --";
+        // Classic backslash+quote escape attempt + a literal script trailer.
+        String payload = "say \\'; System.exit(0) //";
         JsonObject resp = sendRunCommand(payload);
         // The script will fail (no live mc.player) but the failure must NOT
-        // be from Lua syntax error or os.exit; it must be a Java-level NPE
-        // or method-not-found. If injection succeeded, we'd see an error
-        // mentioning 'os' or no error at all (process exited).
+        // come from injected code executing — it must be a Java-level error.
         assertNotNull(resp, "Should get a response, not crash the server");
-        // A successful injection would either kill the process or produce
-        // a Lua-side success/error mentioning the injected code.
         if (resp.get("success").getAsBoolean()) {
             String result = resp.has("result") ? resp.get("result").toString() : "";
-            assertFalse(result.contains("os.exit"), "Injection-shaped payload must not have executed: " + result);
+            assertFalse(result.contains("System.exit"), "Injection-shaped payload must not have executed: " + result);
         } else {
             String error = resp.get("error").getAsString();
-            // Accept any failure from the Minecraft side. Reject any sign of
-            // Lua-syntax errors (would indicate the user input slipped into
-            // the source) or `os` execution.
+            // Reject any sign of a Groovy compile error, which would indicate the
+            // user input slipped into the source and broke the string literal.
             assertFalse(
-                    error.contains("unfinished string"),
-                    "Lua syntax error means user input reached the parser: " + error);
-            assertFalse(error.contains("'<eof>'"), "Lua parse error suggests injection: " + error);
+                    error.contains("unexpected token"),
+                    "Groovy parse error means user input reached the parser: " + error);
+            assertFalse(error.contains("Compilation error"), "Compile error suggests injection: " + error);
         }
     }
 

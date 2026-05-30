@@ -100,6 +100,6 @@ export interface PinnedObject {
   name: string;
   refId: string;
   className: string;
-  code: string; // Lua code to retrieve it
+  code: string; // Groovy code to retrieve it
   pinnedAt: Date;
 }

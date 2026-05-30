@@ -2,7 +2,7 @@
 import { ref, nextTick, watch } from 'vue'
 import { useConsoleStore } from '../../stores/console'
 import { useConnectionStore } from '../../stores/connection'
-import LuaEditor from './LuaEditor.vue'
+import CodeEditor from './CodeEditor.vue'
 
 const consoleStore = useConsoleStore()
 const connection = useConnectionStore()
@@ -64,7 +64,7 @@ watch(() => consoleStore.entries.length, scrollToBottom)
     <!-- Output area -->
     <div ref="outputRef" class="flex-1 overflow-auto p-4 font-mono text-sm">
       <div v-if="consoleStore.entries.length === 0" class="text-zinc-500 text-center py-8">
-        <p>Lua console ready.</p>
+        <p>Groovy console ready.</p>
         <p class="text-xs mt-2">Press Ctrl+Enter to execute</p>
       </div>
 
@@ -107,10 +107,10 @@ watch(() => consoleStore.entries.length, scrollToBottom)
     <div class="border-t border-zinc-800 p-4">
       <div class="flex gap-2">
         <div class="flex-1">
-          <LuaEditor
+          <CodeEditor
             v-model="editorCode"
             :disabled="!connection.isConnected"
-            placeholder="Enter Lua code... (Ctrl+Enter to execute)"
+            placeholder="Enter Groovy code... (Ctrl+Enter to execute)"
             @keydown="handleKeyDown"
             class="min-h-[80px] max-h-[200px]"
           />

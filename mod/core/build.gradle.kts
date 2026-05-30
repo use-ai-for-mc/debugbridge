@@ -3,8 +3,9 @@ plugins {
 }
 
 dependencies {
-    // LuaJ - pure Java Lua 5.2 implementation
-    implementation("org.luaj:luaj-jse:3.0.1")
+    // Groovy - JVM scripting runtime for the `execute` endpoint (mapping-aware
+    // Java/Minecraft interop). Replaces the former LuaJ runtime.
+    implementation("org.apache.groovy:groovy:4.0.24")
 
     // Java-WebSocket - lightweight WebSocket server
     implementation("org.java-websocket:Java-WebSocket:1.6.0")

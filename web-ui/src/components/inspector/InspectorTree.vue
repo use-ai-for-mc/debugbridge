@@ -40,7 +40,7 @@ async function handleClick() {
 }
 
 function handleDoubleClick() {
-  // Copy the Lua path of this node for pasting into the console
+  // Copy the Groovy path of this node for pasting into the console
   navigator.clipboard.writeText(props.node.path)
 }
 </script>
@@ -93,7 +93,7 @@ function handleDoubleClick() {
         <button
           @click.stop="copyToClipboard(node.path)"
           class="text-xs text-zinc-500 hover:text-zinc-300 px-1"
-          title="Copy Lua path"
+          title="Copy Groovy path"
         >
           📋
         </button>

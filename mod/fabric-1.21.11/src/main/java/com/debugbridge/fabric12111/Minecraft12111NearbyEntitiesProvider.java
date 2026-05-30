@@ -28,7 +28,7 @@ import net.minecraft.world.item.ItemStack;
 /**
  * Native nearby-entities query for Minecraft 1.21.11.
  * Runs entity iteration directly in Java, avoiding the overhead of
- * per-entity Lua-to-Java bridge calls.
+ * per-entity script-to-Java bridge calls.
  */
 public class Minecraft12111NearbyEntitiesProvider implements NearbyEntitiesProvider {
 

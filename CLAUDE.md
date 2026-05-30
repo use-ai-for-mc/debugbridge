@@ -4,7 +4,7 @@
 A Fabric client mod (Minecraft 1.19, 1.21.11, and 26.2-dev snapshot) that exposes a local WebSocket server for a Vue web UI and for MCP clients to introspect/control the running client. Used for dev-time debugging, not gameplay.
 
 ## Repo layout
-- `mod/core/` — shared Java: WebSocket server (`BridgeServer`), Lua runtime, mapping resolver, provider interfaces (`NearbyEntitiesProvider`, `NearbyBlocksProvider`, `LookedAtEntityProvider`, `ScreenshotProvider`, `ItemTextureProvider`, `ScreenInspectProvider`, `ChatHistoryProvider`, `GameStateProvider`, `FrameCapturer` + recording orchestrator).
+- `mod/core/` — shared Java: WebSocket server (`BridgeServer`), Groovy runtime, mapping resolver, provider interfaces (`NearbyEntitiesProvider`, `NearbyBlocksProvider`, `LookedAtEntityProvider`, `ScreenshotProvider`, `ItemTextureProvider`, `ScreenInspectProvider`, `ChatHistoryProvider`, `GameStateProvider`, `FrameCapturer` + recording orchestrator).
 - `mod/fabric-1.19/`, `mod/fabric-1.21.11/`, `mod/fabric-26.2-dev/` — version-specific Fabric mods. Each has its own provider impls + mixins.
 - `web-ui/` — Vue 3 + Pinia + Tailwind app.
 - `build-and-deploy.sh` (1.19) and `build-and-deploy-1.21.11.sh` — build the jar and copy into `~/Library/Application Support/ModrinthApp/profiles/ImagineFun/mods/`.
@@ -29,7 +29,15 @@ A Fabric client mod (Minecraft 1.19, 1.21.11, and 26.2-dev snapshot) that expose
 `MappingResolver.unresolveClass(runtimeClassName)` converts intermediary names (`class_XXXX`) to Mojang names. Do this in `BridgeServer` handlers before sending over the wire — keeps version-specific providers simple (they just emit `entity.getClass().getName()`). Already applied to `nearbyEntities.type`, `entityDetails.type`/`vehicle`/`passengers[]`, `nearbyBlocks.type`, `blockDetails.type`, and `snapshot.{vehicle.type, target.entityType}`. **Not yet applied** to `screenInspect.{type, menuClass, slots[].container}` — see review queue.
 
 ## Refs / Object Browser
-`java.ref(obj)` in Lua returns a stable ref ID backed by `ObjectRefStore` (WeakReferences). MCP clients learn to use refs through tool descriptions — no runtime registration needed.
+`java.ref(id)` in Groovy resolves a stable ref ID (minted by `ResultSerializer` via `ObjectRefStore`, WeakReferences) back to its object. MCP clients learn to use refs through tool descriptions — no runtime registration needed.
+
+## Scripting runtime (Groovy)
+The `execute` endpoint runs **Groovy** (Apache Groovy 4.x), not Lua. Code lives in `mod/core/.../script/`:
+- `ScriptRuntime` — GroovyShell host: shared `Binding` for persistent state, `@ThreadInterrupt` AST transform for timeouts, `SecureASTCustomizer` import blocklist (mirrors `SecurityPolicy`), `out` binding to capture `println`.
+- `GroovyBridge` + `GroovyJavaObject`/`GroovyJavaClass` (extend `GroovyObjectSupport`) — mapping-aware property/method dispatch so Mojang names work on obfuscated builds. `java.type(name)` loads a class by Mojang name (the runtime class is `class_NNNN`); construct via `Cls(args)` or `Cls.create(args)`.
+- `JavaHelpers` — the `java.*` surface: `ref`, `describe`, `methods`, `fields`, `supers`, `find`, `type`, `list`, `typeName`, plus `sync { }`.
+- **Field vs. method** is disambiguated by Groovy syntax: `obj.foo` reads a field (JavaBean getter fallback), `obj.foo(args)` calls a method — no colon-call recovery needed.
+- **`sync { }`** runs its closure entirely on the game thread in one hop (a `ThreadLocal` flag makes nested wrapper calls skip the per-call dispatch) — use it to batch bulk loops.
 
 ## Mixins
 Each version module has a mixin package + `debugbridge.mixins.json` listing the client-side mixins. Current ones:
@@ -37,7 +45,7 @@ Each version module has a mixin package + `debugbridge.mixins.json` listing the 
 - `EntityGlowMixin` — forces `Entity.isCurrentlyGlowing()` to return `true` for IDs in `ClientEntityGlowManager`, so the web UI can outline selected entities without server authority.
 
 ## Native entity/texture endpoints
-Do NOT iterate entities/blocks, resolve textures, scan inventories, or read chat via Lua — the per-call Java↔Lua bridge overhead causes 10s timeouts with ~100+ items. Use the native Java endpoints instead:
+Do NOT iterate entities/blocks, resolve textures, scan inventories, or read chat via Groovy — the per-call Java↔script bridge overhead causes 10s timeouts with ~100+ items. Use the native Java endpoints instead:
 - `nearbyEntities` / `entityDetails` / `lookedAtEntity` via `NearbyEntitiesProvider` + `LookedAtEntityProvider` (both versions).
 - `nearbyBlocks` / `blockDetails` via `NearbyBlocksProvider` (signs, chests, banners, beacons, furnaces, etc. — block-entity scan). **Caveat:** vanilla MC keeps chest / hopper / dispenser / furnace / brewing-stand contents server-only — `blockDetails.items` is `[]` for those even when the chest has items, because the client never receives them. Use `screenInspect` while the menu is open. `blockDetails.items` only populates for BlockEntities whose items participate in rendering (lecterns, chiseled bookshelves, jukeboxes).
 - `screenInspect` via `ScreenInspectProvider` — current open GUI: type, title, container slots with item stacks. Supports `includeIcons` for one-shot container visibility.

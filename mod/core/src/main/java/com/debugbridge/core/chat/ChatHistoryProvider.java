@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * Provides recent client-side chat messages — what the user has seen in the
  * chat overlay, including system messages and command output. Cheaper than
- * iterating gui.chat.allMessages from Lua (which costs one bridge round-trip
+ * iterating gui.chat.allMessages from Groovy (which costs one bridge round-trip
  * per field on each message).
  */
 public interface ChatHistoryProvider {

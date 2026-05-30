@@ -5,8 +5,8 @@ import com.debugbridge.core.protocol.dto.ScreenInspectDto;
 /**
  * Inspects the screen the player currently has open. For container screens
  * (chests, anvils, brewing stands, etc.) emits per-slot item info in a single
- * native pass — avoids the per-call Java↔Lua bridge cost that times out
- * when iterating slots from Lua.
+ * native pass — avoids the per-call Java↔script bridge cost that times out
+ * when iterating slots from Groovy.
  */
 public interface ScreenInspectProvider {
 

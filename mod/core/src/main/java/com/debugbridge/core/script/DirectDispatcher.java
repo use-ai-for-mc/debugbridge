@@ -1,10 +1,10 @@
-package com.debugbridge.core.lua;
+package com.debugbridge.core.script;
 
 import java.util.concurrent.Callable;
 
 /**
- * A ThreadDispatcher that executes directly on the calling thread.
- * Used for testing outside of Minecraft where there's no game thread.
+ * A {@link ThreadDispatcher} that runs tasks directly on the calling thread.
+ * Used in tests, where there is no Minecraft game thread to post to.
  */
 public class DirectDispatcher implements ThreadDispatcher {
     @Override

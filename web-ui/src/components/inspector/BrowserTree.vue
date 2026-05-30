@@ -94,7 +94,7 @@ function handleDoubleClick() {
         <button
           @click.stop="copyToClipboard(node.path)"
           class="text-xs text-zinc-500 hover:text-zinc-300 px-1"
-          title="Copy Lua path"
+          title="Copy Groovy path"
         >
           📋
         </button>
