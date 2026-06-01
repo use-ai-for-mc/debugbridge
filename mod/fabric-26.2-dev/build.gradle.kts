@@ -7,7 +7,7 @@ base {
 }
 
 java {
-    // 26.2 snapshots (targeting snapshot-8) declare a Java 25 runtime.
+    // The 26.2 dev line (targeting 26.2-pre-2) declares a Java 25 runtime.
     // JDK 25 is sufficient for compile and run.
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(25))
@@ -16,20 +16,20 @@ java {
 
 dependencies {
     implementation(project(":core"))
-    implementation("org.apache.groovy:groovy:4.0.24")
+    implementation("org.apache.groovy:groovy:4.0.32")
     implementation("org.java-websocket:Java-WebSocket:1.6.0")
     implementation("com.google.code.gson:gson:2.14.0")
-    minecraft("com.mojang:minecraft:26.2-snapshot-8")
+    minecraft("com.mojang:minecraft:26.2-pre-2")
     implementation("net.fabricmc:fabric-loader:0.19.2")
 
     include(project(":core"))
-    include("org.apache.groovy:groovy:4.0.24")
+    include("org.apache.groovy:groovy:4.0.32")
     include("org.java-websocket:Java-WebSocket:1.6.0")
     include("com.google.code.gson:gson:2.14.0")
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    // The 26.2-snapshot-8 metadata declares Java runtime 25.
+    // The 26.2-pre-2 metadata declares Java runtime 25.
     options.release.set(25)
 }
 
