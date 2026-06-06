@@ -2,7 +2,7 @@ import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 
 plugins {
-    id("fabric-loom") version "1.16.2"
+    id("fabric-loom") version "1.16.3"
 }
 
 base {
@@ -21,7 +21,7 @@ dependencies {
 
     minecraft("com.mojang:minecraft:1.21.11")
     mappings(loom.officialMojangMappings())
-    modImplementation("net.fabricmc:fabric-loader:0.19.2")
+    modImplementation("net.fabricmc:fabric-loader:0.19.3")
 
     // Include core's dependencies
     include(project(":core"))
