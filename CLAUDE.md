@@ -7,7 +7,7 @@ A Fabric client mod (Minecraft 1.19, 1.21.11, and 26.2-dev snapshot) that expose
 - `mod/core/` — shared Java: WebSocket server (`BridgeServer`), Groovy runtime, mapping resolver, provider interfaces (`NearbyEntitiesProvider`, `NearbyBlocksProvider`, `LookedAtEntityProvider`, `ScreenshotProvider`, `ItemTextureProvider`, `ScreenInspectProvider`, `ChatHistoryProvider`, `GameStateProvider`, `SessionControlProvider`, `FrameCapturer` + recording orchestrator).
 - `mod/fabric-1.19/`, `mod/fabric-1.21.11/`, `mod/fabric-26.2-dev/` — version-specific Fabric mods. Each has its own provider impls + mixins.
 - `web-ui/` — Vue 3 + Pinia + Tailwind app.
-- `build-and-deploy.sh` (1.19) and `build-and-deploy-1.21.11.sh` — build the jar and copy into `~/Library/Application Support/ModrinthApp/profiles/ImagineFun/mods/`.
+- `build-and-deploy.sh` (1.19) and `build-and-deploy-1.21.11.sh` — build the jar and copy into `~/Library/Application Support/ModrinthApp/profiles/ImagineFun/mods/`. **Caveat:** the client actually in day-to-day use launches via **Prism Launcher** (`~/Library/Application Support/PrismLauncher/instances/ImagineFun/.minecraft/mods/`), which the scripts do NOT update — copy the jar there too (launch CLI: `/Applications/Prism Launcher.app/Contents/MacOS/prismlauncher --launch ImagineFun`).
 
 ## Ports
 - Default: 9876 (1.21.11), wraparound range 9876–9886.
@@ -26,13 +26,13 @@ A Fabric client mod (Minecraft 1.19, 1.21.11, and 26.2-dev snapshot) that expose
 4. Add a typed wrapper in `web-ui/src/services/bridge.ts`.
 
 ## Mapping Fabric intermediary names to Mojang names
-`MappingResolver.unresolveClass(runtimeClassName)` converts intermediary names (`class_XXXX`) to Mojang names. Do this in `BridgeServer` handlers before sending over the wire — keeps version-specific providers simple (they just emit `entity.getClass().getName()`). Already applied to `nearbyEntities.type`, `entityDetails.type`/`vehicle`/`passengers[]`, `nearbyBlocks.type`, `blockDetails.type`, and `snapshot.{vehicle.type, target.entityType}`. **Not yet applied** to `screenInspect.{type, menuClass, slots[].container}` — see review queue.
+`MappingResolver.unresolveClass(runtimeClassName)` converts intermediary names (`class_XXXX`) to Mojang names. Do this in `BridgeServer` handlers before sending over the wire — keeps version-specific providers simple (they just emit `entity.getClass().getName()`). Applied to `nearbyEntities.type`, `entityDetails.type`/`vehicle`/`passengers[]`, `nearbyBlocks.type`, `blockDetails.type`, `snapshot.{vehicle.type, target.entityType}`, and `screenInspect.{type, menuClass, slots[].container}`.
 
 ## Refs / Object Browser
 `java.ref(id)` in Groovy resolves a stable ref ID (minted by `ResultSerializer` via `ObjectRefStore`, WeakReferences) back to its object. MCP clients learn to use refs through tool descriptions — no runtime registration needed.
 
 ## Scripting runtime (Groovy)
-The `execute` endpoint runs **Groovy** (Apache Groovy 4.x), not Lua. Code lives in `mod/core/.../script/`:
+The `execute` endpoint runs **Groovy** (Apache Groovy 5.x, currently 5.0.6), not Lua. Code lives in `mod/core/.../script/`:
 - `ScriptRuntime` — GroovyShell host: shared `Binding` for persistent state, `@ThreadInterrupt` AST transform for timeouts, `SecureASTCustomizer` import blocklist (mirrors `SecurityPolicy`), `out` binding to capture `println`.
 - `GroovyBridge` + `GroovyJavaObject`/`GroovyJavaClass` (extend `GroovyObjectSupport`) — mapping-aware property/method dispatch so Mojang names work on obfuscated builds. `java.type(name)` loads a class by Mojang name (the runtime class is `class_NNNN`); construct via `Cls(args)` or `Cls.create(args)`.
 - `JavaHelpers` — the `java.*` surface: `ref`, `describe`, `methods`, `fields`, `supers`, `find`, `type`, `list`, `typeName`, plus `sync { }`.
