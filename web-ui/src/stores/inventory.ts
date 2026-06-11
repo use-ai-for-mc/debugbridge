@@ -30,17 +30,17 @@ export const useInventoryStore = defineStore('inventory', () => {
     try {
       // getDescriptionId() is fast and returns proper MC item names
       const code = `
-        local mc = java.import("net.minecraft.client.Minecraft"):getInstance()
-        local inv = mc.player:getInventory()
-        local items = inv.items
-        local lines = {}
-        for i = 0, items:size() - 1 do
-          local stack = items:get(i)
-          if not stack:isEmpty() then
-            table.insert(lines, i .. "|" .. tostring(stack:getItem():getDescriptionId()) .. "|" .. stack:getCount())
-          end
-        end
-        return table.concat(lines, "\\n")
+        return sync {
+          def items = player.getInventory().items
+          def lines = []
+          for (int i = 0; i < items.size(); i++) {
+            def stack = items.get(i)
+            if (!stack.isEmpty()) {
+              lines << "\${i}|\${stack.getItem().getDescriptionId()}|\${stack.getCount()}"
+            }
+          }
+          lines.join("\\n")
+        }
       `;
 
       const resp = await bridge.execute(code);
@@ -105,69 +105,51 @@ export const useInventoryStore = defineStore('inventory', () => {
 
     try {
       const code = `
-        local mc = java.import("net.minecraft.client.Minecraft"):getInstance()
-        local inv = mc.player:getInventory()
-        local stack = inv:getItem(${slotIdx})
-        if stack == nil or stack:isEmpty() then return {empty = true} end
+        return sync {
+          def stack = player.getInventory().getItem(${slotIdx})
+          if (stack == null || stack.isEmpty()) return [empty: true]
 
-        local result = {}
+          def result = [:]
 
-        -- Display name
-        local nok, hoverName = pcall(function() return tostring(stack:getHoverName():getString()) end)
-        if nok and hoverName then
-          result.displayName = hoverName
-        end
+          // Display name
+          try { result.displayName = "" + stack.getHoverName().getString() } catch (e) { }
 
-        -- Components: encode each via codec -> NbtOps -> SNBT
-        local cok, comps = pcall(function() return stack:getComponents() end)
-        if cok and comps ~= nil then
-          local NbtOps = java.import("net.minecraft.nbt.NbtOps")
-          local compMap = {}
-          local iter_ok, iter = pcall(java.iter, comps)
-          if iter_ok then
-            for comp in iter do
-              local tok, key, val = pcall(function()
-                local ctype = comp:type()
-                local cval = comp:value()
-                local typeName = tostring(ctype:toString())
-                local codec = ctype:codecOrThrow()
-                local encoded = codec:encodeStart(NbtOps.INSTANCE, cval)
-                local optResult = encoded:result()
-                if not java.isNull(optResult) and optResult:isPresent() then
-                  return typeName, tostring(optResult:get():toString())
-                else
-                  return typeName, tostring(cval)
-                end
-              end)
-              if tok then
-                compMap[key] = val
-              end
-            end
-          end
-          result.components = compMap
-        end
+          // Components: encode each via codec -> NbtOps -> SNBT
+          try {
+            def NbtOps = java.type('net.minecraft.nbt.NbtOps')
+            def compMap = [:]
+            for (comp in java.list(stack.getComponents())) {
+              try {
+                def ctype = comp.type()
+                def cval = comp.value()
+                def typeName = "" + ctype.toString()
+                def encoded = ctype.codecOrThrow().encodeStart(NbtOps.INSTANCE, cval)
+                def opt = encoded.result()
+                if (!java.isNull(opt) && opt.isPresent()) {
+                  compMap[typeName] = "" + opt.get().toString()
+                } else {
+                  compMap[typeName] = "" + cval
+                }
+              } catch (e) { }
+            }
+            result.components = compMap
+          } catch (e) { }
 
-        -- Enchantments
-        local eok, enchStr = pcall(function()
-          local DataComponents = java.import("net.minecraft.core.component.DataComponents")
-          local enchComp = stack:get(DataComponents.ENCHANTMENTS)
-          if enchComp == nil then return nil end
-          local elist = {}
-          local iter_ok, iter = pcall(java.iter, enchComp:entrySet())
-          if iter_ok then
-            for entry in iter do
-              local name = tostring(entry:getKey():value():toString())
-              local level = entry:getIntValue()
-              table.insert(elist, name .. " " .. tostring(level))
-            end
-          end
-          return elist
-        end)
-        if eok and enchStr then
-          result.enchantments = enchStr
-        end
+          // Enchantments
+          try {
+            def DataComponents = java.type('net.minecraft.core.component.DataComponents')
+            def enchComp = stack.get(DataComponents.ENCHANTMENTS)
+            if (enchComp != null) {
+              def elist = []
+              for (entry in java.list(enchComp.entrySet())) {
+                elist << ("" + entry.getKey().value().toString() + " " + entry.getIntValue())
+              }
+              result.enchantments = elist
+            }
+          } catch (e) { }
 
-        return result
+          result
+        }
       `;
 
       const resp = await bridge.execute(code);
