@@ -4,7 +4,7 @@ A Fabric client mod for Minecraft (1.19, 1.21.11, and 26.2 development snapshots
 
 ## What It Does
 
-DebugBridge runs a localhost-only WebSocket server (default port 9876, scans 9876–9885) inside Minecraft. External tools — CLI scripts, the bundled Vue web UI, or MCP clients like Claude Code — can inspect and interact with the running game through two complementary APIs:
+DebugBridge runs a localhost-only WebSocket server (default port 9876, scans 9876–9886) inside Minecraft. External tools — CLI scripts, the bundled Vue web UI, or MCP clients like Claude Code — can inspect and interact with the running game through two complementary APIs:
 
 ### Native endpoints (fast, high-level)
 
@@ -81,9 +81,9 @@ The web UI connects directly to the WebSocket server — no MCP layer required.
 +---------------v-------------------+
 |  mcdev-mcp Server (TypeScript)    |
 |  Runtime + static analysis tools  |
-|  github.com/weikengchen/mcdev-mcp |
+| github.com/use-ai-for-mc/mcdev-mcp|
 +---------------+-------------------+
-                | WebSocket (localhost:9876–9885)
+                | WebSocket (localhost:9876–9886)
 +---------------v-------------------+
 |  DebugBridge Mod [THIS REPO]      |
 |  +-----------------------------+  |
@@ -191,7 +191,7 @@ The shape comparator tolerates value differences (transient game state) but flag
 
 ### With Claude Code / MCP
 
-Install [mcdev-mcp](https://github.com/weikengchen/mcdev-mcp) and configure it in your MCP client. The MCP server auto-connects to DebugBridge (scans ports 9876–9885). Tools include:
+Install [mcdev-mcp](https://github.com/use-ai-for-mc/mcdev-mcp) and configure it in your MCP client. The MCP server auto-connects to DebugBridge (scans ports 9876–9886). Tools include:
 
 - **Runtime** (requires this mod): `mc_execute`, `mc_snapshot`, `mc_nearby_entities`, `mc_entity_details`, `mc_looked_at_entity`, `mc_nearby_blocks`, `mc_block_details`, `mc_screen_inspect`, `mc_chat_history`, `mc_screenshot`, `mc_get_item_texture`, `mc_set_entity_glow`, `mc_set_block_glow`, `mc_clear_block_glow`
 - **Static** (works offline): `mc_get_class`, `mc_get_method`, `mc_search`, `mc_find_refs`, `mc_find_hierarchy`
