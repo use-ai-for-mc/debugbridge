@@ -4,6 +4,7 @@ import com.debugbridge.core.session.SessionControlProvider;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 
@@ -54,8 +55,9 @@ public class Minecraft12111SessionControlProvider implements SessionControlProvi
     /** Tear down the current world, mirroring the pause-screen disconnect flow. */
     private static void leaveWorld(Minecraft mc) {
         if (mc.level != null) {
-            mc.level.disconnect();
-            mc.disconnect();
+            // 1.21.11: one call tears down the level, shows the saving/progress
+            // screen, and lands on the title (or multiplayer) screen.
+            mc.disconnectFromWorld(ClientLevel.DEFAULT_QUIT_MESSAGE);
         }
     }
 }
