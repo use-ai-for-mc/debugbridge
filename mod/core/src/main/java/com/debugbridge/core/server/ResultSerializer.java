@@ -2,6 +2,7 @@ package com.debugbridge.core.server;
 
 import com.debugbridge.core.mapping.MappingResolver;
 import com.debugbridge.core.refs.ObjectRefStore;
+import com.debugbridge.core.script.GroovyBridge;
 import com.debugbridge.core.script.GroovyJavaClass;
 import com.debugbridge.core.script.GroovyJavaObject;
 import com.google.gson.JsonArray;
@@ -25,10 +26,12 @@ import java.util.Map;
 public class ResultSerializer {
     private final MappingResolver resolver;
     private final ObjectRefStore refs;
+    private final GroovyBridge bridge;
 
-    public ResultSerializer(MappingResolver resolver, ObjectRefStore refs) {
+    public ResultSerializer(MappingResolver resolver, ObjectRefStore refs, GroovyBridge bridge) {
         this.resolver = resolver;
         this.refs = refs;
+        this.bridge = bridge;
     }
 
     /** Serialize a script return value to a JSON element. */
@@ -140,7 +143,7 @@ public class ResultSerializer {
             try {
                 f.setAccessible(true);
                 Object val = f.get(obj);
-                String name = f.getName();
+                String name = bridge.getFieldMojangName(f.getDeclaringClass(), f);
                 if (val == null) {
                     fields.add(name, JsonNull.INSTANCE);
                 } else if (val instanceof Boolean b) {
