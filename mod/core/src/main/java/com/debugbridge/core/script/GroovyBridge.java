@@ -36,6 +36,7 @@ public class GroovyBridge {
     private final ObjectRefStore refs;
     private final Map<String, Class<?>> classCache = new ConcurrentHashMap<>();
     private final Map<Class<?>, Map<String, String>> reverseMethodCache = new ConcurrentHashMap<>();
+    private final Map<String, Set<String>> methodCandidateCache = new ConcurrentHashMap<>();
 
     // True on threads that are already executing on the game thread (inside sync{}).
     private final ThreadLocal<Boolean> onGameThread = ThreadLocal.withInitial(() -> Boolean.FALSE);
@@ -176,6 +177,42 @@ public class GroovyBridge {
         return unwrapped == null ? null : unwrapped.getClass();
     }
 
+    /**
+     * Every runtime-name candidate for a Mojang method name at a given arity,
+     * walking the hierarchy. One Mojang name maps to a <em>different</em> runtime
+     * name per overload (e.g. {@code Vec3.add(Vec3)} and
+     * {@code Vec3.add(double,double,double)} are distinct {@code method_NNNN}s),
+     * so resolution must enumerate the mapping table's signatures instead of
+     * taking the first name match — that collapse made every non-first overload
+     * uncallable and mis-dispatched calls into the wrong one.
+     *
+     * <p>The Mojang name itself is always the last candidate so unobfuscated
+     * (dev / passthrough) environments and JDK classes keep working.
+     */
+    Set<String> resolveMethodCandidates(Class<?> declaredType, String mojangName, int nargs) {
+        String cacheKey = declaredType.getName() + "#" + mojangName + "/" + nargs;
+        Set<String> cached = methodCandidateCache.get(cacheKey);
+        if (cached != null) return cached;
+
+        Set<String> out = new LinkedHashSet<>();
+        Set<Class<?>> visited = new LinkedHashSet<>();
+        ReflectUtil.collectHierarchy(declaredType, visited);
+        for (Class<?> c : visited) {
+            String mojClass = resolver.unresolveClass(c.getName());
+            for (String sig : resolver.getMethodSignatures(mojClass)) {
+                if (!simpleMethodName(sig).equals(mojangName)) continue;
+                String[] params = sigParams(sig);
+                if (params != null && params.length != nargs) continue;
+                String resolved = resolver.resolveMethod(mojClass, mojangName, params);
+                if (!resolved.equals(mojangName)) out.add(resolved);
+            }
+        }
+        out.add(mojangName);
+        Set<String> frozen = Collections.unmodifiableSet(out);
+        methodCandidateCache.put(cacheKey, frozen);
+        return frozen;
+    }
+
     // ==================== Mapping-name reflection helpers ====================
 
     /**
@@ -215,16 +252,34 @@ public class GroovyBridge {
         String mojangClassName = resolver.unresolveClass(c.getName());
         for (String sig : resolver.getMethodSignatures(mojangClassName)) {
             String simpleName = simpleMethodName(sig);
-            String runtimeName = resolver.resolveMethod(mojangClassName, simpleName, null);
+            // Resolve with the signature's own params: each overload has its own
+            // runtime name, and resolving by bare name would map them all to one.
+            String runtimeName = resolver.resolveMethod(mojangClassName, simpleName, sigParams(sig));
             if (!runtimeName.equals(simpleName)) {
                 table.putIfAbsent(runtimeName, simpleName);
             }
         }
     }
 
-    private static String simpleMethodName(String key) {
+    static String simpleMethodName(String key) {
         int paren = key.indexOf('(');
         return paren >= 0 ? key.substring(0, paren) : key;
+    }
+
+    /**
+     * Parameter type names from a ProGuard-style signature key
+     * {@code name(type1,type2)}. Returns an empty array for {@code name()} and
+     * {@code null} when the key has no parameter list at all (some resolver
+     * implementations expose bare names — null tells the caller "arity unknown,
+     * resolve by name only").
+     */
+    static String[] sigParams(String key) {
+        int open = key.indexOf('(');
+        if (open < 0) return null;
+        int close = key.lastIndexOf(')');
+        String inner = close > open ? key.substring(open + 1, close) : "";
+        if (inner.isBlank()) return new String[0];
+        return inner.split(",");
     }
 
     public String getFieldMojangName(Class<?> declaringClass, Field f) {

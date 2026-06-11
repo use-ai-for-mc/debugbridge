@@ -119,13 +119,10 @@ public class GroovyJavaObject extends GroovyObjectSupport {
             argTypes[i] = bridge.argType(javaArgs[i]);
         }
 
-        String runtimeName = resolveRuntimeMethodName(name);
-        Method method = ReflectUtil.findBestMatch(declaredType, runtimeName, argTypes, nargs);
-        if (method == null && !runtimeName.equals(name)) {
-            method = ReflectUtil.findBestMatch(declaredType, name, argTypes, nargs);
-        }
+        Set<String> candidates = bridge.resolveMethodCandidates(declaredType, name, nargs);
+        Method method = ReflectUtil.findBestMatch(declaredType, candidates, argTypes, nargs);
         if (method == null) {
-            throw new MissingMethodException(name, declaredType, rawArgs);
+            throw missingMethod(name, javaArgs);
         }
 
         method = ReflectUtil.preferAccessibleMethod(method);
@@ -147,36 +144,65 @@ public class GroovyJavaObject extends GroovyObjectSupport {
         }
     }
 
+    /** Delegates to the wrapped object so string interpolation and the REPL show real values. */
     @Override
     public String toString() {
         if (target == null) return "null";
-        return mojangTypeName + "@" + Integer.toHexString(System.identityHashCode(target));
+        try {
+            return String.valueOf(target);
+        } catch (Throwable t) {
+            return mojangTypeName + "@" + Integer.toHexString(System.identityHashCode(target));
+        }
+    }
+
+    /** Delegates to the wrapped object (unwrapping the other side) so {@code ==} compares values. */
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) return true;
+        Object otherTarget = other instanceof GroovyJavaObject w ? w.getTarget() : other;
+        return target != null ? target.equals(otherTarget) : otherTarget == null;
+    }
+
+    @Override
+    public int hashCode() {
+        return target != null ? target.hashCode() : 0;
     }
 
     // ==================== resolution helpers ====================
 
-    private String resolveRuntimeMethodName(String mojangName) {
-        Set<Class<?>> visited = new LinkedHashSet<>();
-        ReflectUtil.collectHierarchy(declaredType, visited);
-        for (Class<?> c : visited) {
-            String mojClass = bridge.getResolver().unresolveClass(c.getName());
-            String resolved = bridge.getResolver().resolveMethod(mojClass, mojangName, null);
-            if (!resolved.equals(mojangName)) return resolved;
-        }
-        return mojangName;
-    }
-
     private Method findZeroArgGetter(String name) {
         String cap = name.isEmpty() ? name : Character.toUpperCase(name.charAt(0)) + name.substring(1);
         for (String candidate : new String[] {name, "get" + cap, "is" + cap}) {
-            String runtime = resolveRuntimeMethodName(candidate);
-            Method m = ReflectUtil.findBestMatch(declaredType, runtime, new Class<?>[0], 0);
-            if (m == null && !runtime.equals(candidate)) {
-                m = ReflectUtil.findBestMatch(declaredType, candidate, new Class<?>[0], 0);
-            }
+            Set<String> candidates = bridge.resolveMethodCandidates(declaredType, candidate, 0);
+            Method m = ReflectUtil.findBestMatch(declaredType, candidates, new Class<?>[0], 0);
             if (m != null && m.getReturnType() != void.class) return m;
         }
         return null;
+    }
+
+    /**
+     * A {@link MissingMethodException} whose message speaks Mojang: the class
+     * name is unmapped and the hint lists the real methods of this class (via
+     * {@link #suggestMethods}) instead of Groovy's DGM guesses.
+     */
+    private MissingMethodException missingMethod(String name, Object[] javaArgs) {
+        StringBuilder types = new StringBuilder();
+        for (int i = 0; i < javaArgs.length; i++) {
+            if (i > 0) types.append(", ");
+            types.append(
+                    javaArgs[i] == null
+                            ? "null"
+                            : bridge.getResolver()
+                                    .unresolveClass(javaArgs[i].getClass().getName()));
+        }
+        String message =
+                "No method '" + name + "(" + types + ")' on " + mojangTypeName + suggestMethods(name.toLowerCase());
+        return new MissingMethodException(name, declaredType, javaArgs) {
+            @Override
+            public String getMessage() {
+                return message;
+            }
+        };
     }
 
     private Field findField(Class<?> clazz, String mojangName) {

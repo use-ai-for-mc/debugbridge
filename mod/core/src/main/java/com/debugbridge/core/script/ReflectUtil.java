@@ -6,6 +6,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.LinkedHashSet;
@@ -63,11 +64,42 @@ final class ReflectUtil {
      * error rather than a silent null.
      */
     static Method findBestMatch(Class<?> clazz, String name, Class<?>[] argTypes, int nargs) {
+        return findBestMatch(clazz, List.of(name), argTypes, nargs);
+    }
+
+    /**
+     * As {@link #findBestMatch(Class, String, Class[], int)} but considering a set
+     * of candidate runtime names at once. On obfuscated builds one Mojang name maps
+     * to a <em>different</em> runtime name per overload, so the caller passes every
+     * candidate and we do the strict pass across all of them before relaxing —
+     * otherwise an arity-only match on one overload would shadow an exact type
+     * match on another.
+     */
+    static Method findBestMatch(Class<?> clazz, Collection<String> names, Class<?>[] argTypes, int nargs) {
+        // Three passes of decreasing strictness, each across ALL candidate names:
+        // boxed-assignable, then numeric-coercible (floating-aware, so BigDecimal
+        // picks max(double,double) over max(int,int)), then arity-only.
+        for (String name : names) {
+            Method m = findTypeMatch(clazz, name, argTypes, nargs, false);
+            if (m != null) return m;
+        }
+        for (String name : names) {
+            Method m = findTypeMatch(clazz, name, argTypes, nargs, true);
+            if (m != null) return m;
+        }
+        for (String name : names) {
+            Method m = findArityMatch(clazz, name, nargs);
+            if (m != null) return m;
+        }
+        return null;
+    }
+
+    private static Method findTypeMatch(Class<?> clazz, String name, Class<?>[] argTypes, int nargs, boolean numeric) {
         for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
             for (Method m : c.getDeclaredMethods()) {
                 if (m.getName().equals(name)
                         && m.getParameterCount() == nargs
-                        && isCompatible(m.getParameterTypes(), argTypes)) {
+                        && isCompatible(m.getParameterTypes(), argTypes, numeric)) {
                     return m;
                 }
             }
@@ -76,12 +108,15 @@ final class ReflectUtil {
             for (Method m : iface.getDeclaredMethods()) {
                 if (m.getName().equals(name)
                         && m.getParameterCount() == nargs
-                        && isCompatible(m.getParameterTypes(), argTypes)) {
+                        && isCompatible(m.getParameterTypes(), argTypes, numeric)) {
                     return m;
                 }
             }
         }
-        // Relaxed: name + arity only.
+        return null;
+    }
+
+    private static Method findArityMatch(Class<?> clazz, String name, int nargs) {
         for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
             for (Method m : c.getDeclaredMethods()) {
                 if (m.getName().equals(name) && m.getParameterCount() == nargs) return m;
@@ -95,8 +130,22 @@ final class ReflectUtil {
         return null;
     }
 
-    /** First declared constructor with a matching arg count. */
-    static Constructor<?> findConstructor(Class<?> cls, int nargs) {
+    /**
+     * Best-matching constructor: exact/coercible types first, then arity-only.
+     * Arity alone is not enough — e.g. {@code ItemStack(ItemLike, int)} vs
+     * {@code ItemStack(Holder, int)} share an arg count.
+     */
+    static Constructor<?> findConstructor(Class<?> cls, Class<?>[] argTypes, int nargs) {
+        for (Constructor<?> c : cls.getDeclaredConstructors()) {
+            if (c.getParameterCount() == nargs && isCompatible(c.getParameterTypes(), argTypes, false)) {
+                return c;
+            }
+        }
+        for (Constructor<?> c : cls.getDeclaredConstructors()) {
+            if (c.getParameterCount() == nargs && isCompatible(c.getParameterTypes(), argTypes, true)) {
+                return c;
+            }
+        }
         for (Constructor<?> c : cls.getDeclaredConstructors()) {
             if (c.getParameterCount() == nargs) return c;
         }
@@ -131,20 +180,33 @@ final class ReflectUtil {
         return cls.getModule().isExported(cls.getPackageName(), ours) && Modifier.isPublic(cls.getModifiers());
     }
 
-    static boolean isCompatible(Class<?>[] paramTypes, Class<?>[] argTypes) {
+    static boolean isCompatible(Class<?>[] paramTypes, Class<?>[] argTypes, boolean numeric) {
         for (int i = 0; i < paramTypes.length; i++) {
             if (argTypes[i] == null) continue; // null matches any reference type
             Class<?> param = boxType(paramTypes[i]);
             Class<?> arg = boxType(argTypes[i]);
-            if (!param.isAssignableFrom(arg) && !isNumericCompatible(param, arg)) {
-                return false;
-            }
+            if (param.isAssignableFrom(arg)) continue;
+            if (numeric && isNumericCompatible(param, arg)) continue;
+            return false;
         }
         return true;
     }
 
+    /**
+     * Numeric coercion compatibility. A floating-typed argument (Double, Float,
+     * BigDecimal) only coerces to a floating parameter — silently truncating
+     * {@code 2.5} into an {@code int} overload would pick the wrong method when
+     * both exist. Integral arguments may widen to anything numeric.
+     */
     private static boolean isNumericCompatible(Class<?> param, Class<?> arg) {
-        return Number.class.isAssignableFrom(param) && Number.class.isAssignableFrom(arg);
+        if (!Number.class.isAssignableFrom(param) || !Number.class.isAssignableFrom(arg)) {
+            return false;
+        }
+        return !isFloating(arg) || isFloating(param);
+    }
+
+    private static boolean isFloating(Class<?> boxed) {
+        return boxed == Double.class || boxed == Float.class || java.math.BigDecimal.class.isAssignableFrom(boxed);
     }
 
     static Class<?> boxType(Class<?> t) {

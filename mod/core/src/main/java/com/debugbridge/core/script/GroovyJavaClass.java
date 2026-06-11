@@ -7,7 +7,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.LinkedHashSet;
 import java.util.Set;
 
 /**
@@ -76,13 +75,10 @@ public class GroovyJavaClass extends GroovyObjectSupport {
             argTypes[i] = bridge.argType(javaArgs[i]);
         }
 
-        String runtimeName = resolveRuntimeMethodName(name);
-        Method method = ReflectUtil.findBestMatch(javaClass, runtimeName, argTypes, nargs);
-        if (method == null && !runtimeName.equals(name)) {
-            method = ReflectUtil.findBestMatch(javaClass, name, argTypes, nargs);
-        }
+        Set<String> candidates = bridge.resolveMethodCandidates(javaClass, name, nargs);
+        Method method = ReflectUtil.findBestMatch(javaClass, candidates, argTypes, nargs);
         if (method == null || !Modifier.isStatic(method.getModifiers())) {
-            throw new MissingMethodException(name, javaClass, rawArgs);
+            throw missingStatic(name, javaArgs);
         }
 
         method = ReflectUtil.preferAccessibleMethod(method);
@@ -107,12 +103,14 @@ public class GroovyJavaClass extends GroovyObjectSupport {
     private Object construct(Object[] rawArgs) {
         int nargs = rawArgs.length;
         Object[] javaArgs = new Object[nargs];
+        Class<?>[] argTypes = new Class<?>[nargs];
         for (int i = 0; i < nargs; i++) {
             javaArgs[i] = bridge.unwrap(rawArgs[i]);
+            argTypes[i] = bridge.argType(javaArgs[i]);
         }
-        Constructor<?> ctor = ReflectUtil.findConstructor(javaClass, nargs);
+        Constructor<?> ctor = ReflectUtil.findConstructor(javaClass, argTypes, nargs);
         if (ctor == null) {
-            throw new MissingMethodException("<init>", javaClass, rawArgs);
+            throw missingStatic("<init>", javaArgs);
         }
         try {
             ctor.setAccessible(true);
@@ -130,15 +128,25 @@ public class GroovyJavaClass extends GroovyObjectSupport {
         return "Class<" + mojangClassName + ">";
     }
 
-    private String resolveRuntimeMethodName(String mojangName) {
-        Set<Class<?>> visited = new LinkedHashSet<>();
-        ReflectUtil.collectHierarchy(javaClass, visited);
-        for (Class<?> c : visited) {
-            String mojClass = bridge.getResolver().unresolveClass(c.getName());
-            String resolved = bridge.getResolver().resolveMethod(mojClass, mojangName, null);
-            if (!resolved.equals(mojangName)) return resolved;
+    /** Missing static method / constructor, reported with Mojang names. */
+    private MissingMethodException missingStatic(String name, Object[] javaArgs) {
+        StringBuilder types = new StringBuilder();
+        for (int i = 0; i < javaArgs.length; i++) {
+            if (i > 0) types.append(", ");
+            types.append(
+                    javaArgs[i] == null
+                            ? "null"
+                            : bridge.getResolver()
+                                    .unresolveClass(javaArgs[i].getClass().getName()));
         }
-        return mojangName;
+        String what = "<init>".equals(name) ? "constructor " : "static method '" + name + "' ";
+        String message = "No " + what + "(" + types + ") on " + mojangClassName;
+        return new MissingMethodException(name, javaClass, javaArgs) {
+            @Override
+            public String getMessage() {
+                return message;
+            }
+        };
     }
 
     private Field findStaticField(Class<?> clazz, String name) {
