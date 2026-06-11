@@ -163,7 +163,7 @@ public class BridgeServer extends WebSocketServer {
         this.resolver = resolver;
         this.refs = new ObjectRefStore();
         this.script = new ScriptRuntime(resolver, dispatcher, refs);
-        this.serializer = new ResultSerializer(resolver, refs);
+        this.serializer = new ResultSerializer(resolver, refs, script.getBridge());
         this.stateProvider = stateProvider;
         this.screenshotProvider = screenshotProvider;
         setReuseAddr(true);
