@@ -12,10 +12,12 @@ A Fabric client mod (Minecraft 1.19, 1.21.11, and 26.2-dev snapshot) that expose
 ## Ports
 - Default: 9876 (1.21.11), wraparound range 9876–9886.
 - User typically runs 1.21.11 on 9876 and 1.19 on 9877 simultaneously.
+- The bundled web UI serves on **bridge port + 100** (9976/9977/…) via `WebUiServer` (core, JDK HttpServer, loopback-only); `status` reports it as `webUiPort`; disable with `web_ui_enabled: false`.
 
 ## Build requirements
 - Gradle needs **JDK 21**. System JDK (25) fails. Build scripts already set `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`.
 - Node for `web-ui` needs **≥20.19** (Vite requirement). If your default `node` is older, run `nvm use 20` first.
+- **Building the mod now also needs node on PATH**: `core:processResources` runs the Vite build (`webUiInstall`/`webUiBuild` tasks) and embeds `web-ui/dist` into the core jar under `/webui`. CI sets up Node 22 in every Java job.
 - Start web UI: `cd web-ui && npm run dev` → http://localhost:5173.
 
 ## Request dispatch pattern

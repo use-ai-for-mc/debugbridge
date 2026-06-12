@@ -23,6 +23,12 @@ public final class StatusDto {
      */
     public boolean sessionControlEnabled;
 
+    /**
+     * Loopback port serving the bundled web UI (bridge port + 100), or absent
+     * when the UI isn't running (disabled by config, or not bundled).
+     */
+    public Integer webUiPort;
+
     // Optional log-path block. Populated together when gameDir is non-null.
     public String gameDir;
     public String logsDir;

@@ -42,6 +42,13 @@ public class BridgeConfig {
     public boolean sessionControlEnabled = false;
 
     /**
+     * Serve the bundled web UI over loopback HTTP (bridge port + 100). On by
+     * default: it's static assets only, and the page can't do anything the
+     * already-running WebSocket doesn't allow.
+     */
+    public boolean webUiEnabled = true;
+
+    /**
      * Path to the config file, set when loaded.
      */
     private transient Path configFile;
@@ -76,6 +83,9 @@ public class BridgeConfig {
                 config.sessionControlEnabled =
                         obj.get("session_control_enabled").getAsBoolean();
             }
+            if (obj.has("web_ui_enabled")) {
+                config.webUiEnabled = obj.get("web_ui_enabled").getAsBoolean();
+            }
             // Prefer the "script" block; accept the legacy "lua" key for back-compat.
             JsonObject scriptCfg = null;
             if (obj.has("script")) scriptCfg = obj.getAsJsonObject("script");
@@ -108,6 +118,7 @@ public class BridgeConfig {
             obj.addProperty("developer_mode_accepted", developerModeAccepted);
             obj.addProperty("run_command_enabled", runCommandEnabled);
             obj.addProperty("session_control_enabled", sessionControlEnabled);
+            obj.addProperty("web_ui_enabled", webUiEnabled);
             JsonObject scriptCfg = new JsonObject();
             scriptCfg.addProperty("max_execution_time_ms", scriptMaxExecutionTimeMs);
             obj.add("script", scriptCfg);

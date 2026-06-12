@@ -18,6 +18,11 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
+      - name: Set up Node (web UI is bundled into core resources)
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
@@ -65,6 +70,11 @@ jobs:
         with:
           java-version: '25'
           distribution: 'temurin'
+
+      - name: Set up Node (web UI is bundled into core resources)
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6

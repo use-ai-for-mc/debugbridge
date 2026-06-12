@@ -63,7 +63,14 @@ The `web-ui/` directory contains a Vue 3 + Pinia + Tailwind app for visual inspe
 - **Console** — Interactive Groovy REPL connected to the running client
 - **Chat history** — Recent client-side messages
 
-Start it with:
+**Bundled since v2.0.0** — the mod serves the built UI itself at
+`http://localhost:<bridge port + 100>` (default **http://localhost:9976**;
+the startup message in chat prints the exact URL). Loopback-only, static
+assets only, and the served page connects to the bridge instance that served
+it, so side-by-side game instances each get their own UI. Disable with
+`"web_ui_enabled": false` in `config/debugbridge.json`.
+
+For UI development, the dev server still works (with HMR):
 ```bash
 cd web-ui
 npm run dev          # → http://localhost:5173
@@ -115,8 +122,9 @@ This is a **development and debugging tool**, not a remote administration system
 
 - **Client-side only** — runs entirely on the client, cannot affect servers or other players
 - **No outbound connections** — only startup mapping downloads from Mojang's official APIs
-- **Gated features** — `runCommand` is disabled by default (opt-in via config)
-- **Developer warning** — first-launch screen informs the user the mod is active
+- **Gated features** — `runCommand` and session control are disabled by default (opt-in via config)
+- **Developer warning** — first-launch screen informs the user the mod is active; nothing serves until accepted
+- **Web UI server** — same loopback-only posture; serves only the static assets bundled in the jar (GET-only, no directory listing, path-traversal rejected)
 
 ## Repo Layout
 
@@ -137,7 +145,9 @@ Grab the jar for your Minecraft version from the
 instance's `mods/` folder, and launch with Fabric Loader. Client-side only —
 nothing to install on a server. On first run the mod shows a developer
 warning in-game and stays inactive until you accept it; the same gate writes
-`developer_mode_accepted` into `config/debugbridge.json`.
+`developer_mode_accepted` into `config/debugbridge.json`. Once accepted, the
+bundled web UI is at **http://localhost:9976** (the in-game startup message
+prints the exact URL).
 
 ## Building
 

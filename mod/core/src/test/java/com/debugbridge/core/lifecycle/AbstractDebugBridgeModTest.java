@@ -74,6 +74,7 @@ class AbstractDebugBridgeModTest {
         final List<String> errorsDisplayed = new ArrayList<>();
         final List<String> infosDisplayed = new ArrayList<>();
         int onPostTickCalls = 0;
+        int webUiStartedForBridgePort = -1;
         Consumer<Boolean> capturedWarningCallback;
         int warningScreensOpened = 0;
 
@@ -99,6 +100,12 @@ class AbstractDebugBridgeModTest {
 
         int boundPort() {
             return server == null ? -1 : server.getPort();
+        }
+
+        @Override
+        protected void startWebUi(int bridgePort) {
+            // Record the kernel's intent without opening a real HTTP socket.
+            webUiStartedForBridgePort = bridgePort;
         }
 
         @Override
@@ -270,6 +277,7 @@ class AbstractDebugBridgeModTest {
 
         assertEquals(List.of(9876, 9877, 9878), mod.portsTried, "kernel should probe in order until success");
         assertEquals(9878, mod.boundPort(), "server should bind on the first available port");
+        assertEquals(9878, mod.webUiStartedForBridgePort, "web UI should be started for the port actually bound");
     }
 
     @Test

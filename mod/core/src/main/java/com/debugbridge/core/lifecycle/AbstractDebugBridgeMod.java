@@ -22,6 +22,7 @@ import com.debugbridge.core.server.BridgeServer;
 import com.debugbridge.core.session.SessionControlProvider;
 import com.debugbridge.core.snapshot.GameStateProvider;
 import com.debugbridge.core.texture.ItemTextureProvider;
+import com.debugbridge.core.webui.WebUiServer;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.file.Path;
@@ -60,11 +61,14 @@ public abstract class AbstractDebugBridgeMod {
     protected static final Logger LOG = Logger.getLogger("DebugBridge");
     protected static final int PORT_RANGE_START = 9876;
     protected static final int PORT_RANGE_END = 9886;
+    /** The bundled web UI serves on {@code bridge port + this offset} (9976-9986). */
+    protected static final int WEB_UI_PORT_OFFSET = 100;
 
     protected final AtomicBoolean warningShown = new AtomicBoolean(false);
     protected final AtomicBoolean serverStarted = new AtomicBoolean(false);
     protected BridgeConfig config;
     protected BridgeServer server;
+    protected WebUiServer webUiServer;
     protected boolean needsWarning = false;
     protected String startupError = null;
     protected String startupInfo = null;
@@ -161,10 +165,45 @@ public abstract class AbstractDebugBridgeMod {
             LOG.info("[DebugBridge] Recording provider not registered (no frame capturer or game dir)");
         }
 
+        startWebUi(actualPort);
+
+        StringBuilder info = new StringBuilder();
         if (actualPort != config.port) {
-            startupInfo = "Server started on port " + actualPort + " (default " + config.port + " was in use)";
+            info.append("Server started on port ")
+                    .append(actualPort)
+                    .append(" (default ")
+                    .append(config.port)
+                    .append(" was in use)");
+        }
+        if (webUiServer != null) {
+            if (info.length() > 0) info.append(" — ");
+            info.append("Web UI: http://localhost:").append(webUiServer.getPort());
+        }
+        if (info.length() > 0) {
+            startupInfo = info.toString();
         }
         LOG.info("[DebugBridge] Server started on port " + actualPort);
+    }
+
+    /**
+     * Start the bundled web UI on {@code bridgePort + }{@link #WEB_UI_PORT_OFFSET}.
+     * The fixed offset keeps the mapping deterministic both ways: each game
+     * instance gets its own UI port, and the served page derives its owning
+     * bridge port as {@code location.port - offset} so it connects to the
+     * right instance when several run side by side. Best-effort — a missing
+     * bundle or occupied port logs and moves on. Tests override to keep unit
+     * runs off the network.
+     */
+    protected void startWebUi(int bridgePort) {
+        if (!config.webUiEnabled) {
+            LOG.info("[DebugBridge] Web UI disabled by config (web_ui_enabled=false)");
+            return;
+        }
+        webUiServer = WebUiServer.start(bridgePort + WEB_UI_PORT_OFFSET);
+        if (webUiServer != null) {
+            server.setWebUiPort(webUiServer.getPort());
+            LOG.info("[DebugBridge] Web UI at http://localhost:" + webUiServer.getPort());
+        }
     }
 
     private int startServerOnAvailablePort(
@@ -400,6 +439,15 @@ public abstract class AbstractDebugBridgeMod {
      * a stricter timeout than 1.21.x.
      */
     protected final void handleClose() {
+        WebUiServer ui = webUiServer;
+        if (ui != null) {
+            webUiServer = null;
+            try {
+                ui.stop();
+            } catch (Exception e) {
+                LOG.log(Level.WARNING, "[DebugBridge] Web UI server failed to stop cleanly", e);
+            }
+        }
         BridgeServer s = server;
         if (s == null) return;
         server = null;

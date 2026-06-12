@@ -144,6 +144,9 @@ public class BridgeServer extends WebSocketServer {
      */
     private volatile boolean sessionControlEnabled = false;
 
+    /** Loopback port of the bundled web UI; null when the UI isn't running. */
+    private volatile Integer webUiPort = null;
+
     public BridgeServer(int port, MappingResolver resolver, ThreadDispatcher dispatcher) {
         this(port, resolver, dispatcher, null, null);
     }
@@ -188,6 +191,11 @@ public class BridgeServer extends WebSocketServer {
 
     public void setSessionControlEnabled(boolean enabled) {
         this.sessionControlEnabled = enabled;
+    }
+
+    /** Loopback port of the bundled web UI, surfaced in {@code status}; null when not running. */
+    public void setWebUiPort(Integer port) {
+        this.webUiPort = port;
     }
 
     public void setSessionControlProvider(SessionControlProvider provider) {
@@ -886,6 +894,7 @@ public class BridgeServer extends WebSocketServer {
         dto.obfuscated = resolver.isObfuscated();
         dto.refs = refs.size();
         dto.sessionControlEnabled = sessionControlEnabled && sessionControlProvider != null;
+        dto.webUiPort = webUiPort;
 
         // Expose the game dir and log paths so a connecting client can read the
         // log via its own file-read tools. We always expose the path we *would*

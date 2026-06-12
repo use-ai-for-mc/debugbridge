@@ -61,9 +61,21 @@ class BridgeService {
       return this.connectToPort(port);
     }
 
-    // Otherwise scan ports 9876-9885
+    // When served by the mod itself (http://localhost:<bridge port + 100>),
+    // try the owning instance's bridge first so multi-instance setups land on
+    // the right client; fall back to the scan if that fails.
+    const servedPort = Number(window.location.port);
+    if (servedPort >= 9976 && servedPort <= 9986) {
+      try {
+        return await this.connectToPort(servedPort - 100);
+      } catch {
+        // Fall through to the scan
+      }
+    }
+
+    // Otherwise scan ports 9876-9886 (the bridge's 11-port wraparound range)
     const basePort = 9876;
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 11; i++) {
       try {
         return await this.connectToPort(basePort + i);
       } catch {
@@ -71,7 +83,7 @@ class BridgeService {
       }
     }
 
-    throw new Error(`Could not find DebugBridge on ports ${basePort}-${basePort + 9}`);
+    throw new Error(`Could not find DebugBridge on ports ${basePort}-${basePort + 10}`);
   }
 
   private async connectToPort(port: number): Promise<SessionInfo> {
