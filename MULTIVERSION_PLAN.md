@@ -177,6 +177,6 @@ At this point, adding a new version should be: add `mod/fabric-X.Y/` with the sm
 
 ## How this relates to other docs
 
-- `PLAN.md` — closed (pre-publication hygiene + Tier 1, all done 2026-04-28). Keep for history.
+- `PLAN.md` — closed (pre-publication hygiene + Tier 1, all done 2026-04-28) and removed from the tree 2026-06-12; read it via git history if needed.
 - `.dream/review.md` — audit-driven backlog. Themes 1, 2, 7, 8 collapse partially or fully into completing phases above.
 - `CLAUDE.md` — short project notes for collaborators. Keep narrow; this doc is the strategic plan.
