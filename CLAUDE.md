@@ -70,6 +70,7 @@ Do NOT iterate entities/blocks, resolve textures, scan inventories, or read chat
 
 ## 1.19 vs 1.21.11 API quirks
 - `GameProfile.name()` (record accessor) in 1.21.11 vs `GameProfile.getName()` in 1.19.
+- `ClickEvent` is action+value in 1.19 (`new ClickEvent(Action.OPEN_URL, url)`) vs sealed-interface records in 1.21.11/26.2 (`new ClickEvent.OpenUrl(URI)`). Used by `playerMessage` in each `DebugBridgeMod`, which renders URLs in player chat messages (notably the startup web UI link) clickable — URL detection is shared in core (`text/TextLinks`).
 - `Display.TextDisplay` / `ItemDisplay` / `BlockDisplay` exist in 1.21.11 only (added in 1.19.4). Our 1.19 module targets 1.19.0, so skip display-entity extraction there entirely.
 - 1.21.11 render states expose accessors like `itemRenderState().itemStack()`; 1.19 uses direct `ItemRenderer.getModel(stack, level, entity, seed)` + sprite extraction.
 

@@ -18,7 +18,9 @@ import com.debugbridge.core.screen.ScreenInspectProvider;
 import com.debugbridge.core.screenshot.ScreenshotProvider;
 import com.debugbridge.core.session.SessionControlProvider;
 import com.debugbridge.core.snapshot.GameStateProvider;
+import com.debugbridge.core.text.TextLinks;
 import com.debugbridge.core.texture.ItemTextureProvider;
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.function.Consumer;
 import net.fabricmc.api.ClientModInitializer;
@@ -27,7 +29,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
@@ -141,8 +145,7 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
     protected boolean displayPlayerError(String message) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return false;
-        mc.player.displayClientMessage(
-                Component.literal("[DebugBridge] " + message).withStyle(s -> s.withColor(0xFF5555)), false);
+        mc.player.displayClientMessage(playerMessage(message, 0xFF5555), false);
         return true;
     }
 
@@ -150,9 +153,35 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
     protected boolean displayPlayerInfo(String message) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return false;
-        mc.player.displayClientMessage(
-                Component.literal("[DebugBridge] " + message).withStyle(s -> s.withColor(0x55FF55)), false);
+        mc.player.displayClientMessage(playerMessage(message, 0x55FF55), false);
         return true;
+    }
+
+    /**
+     * "[DebugBridge] " + message in {@code color}, with any http(s) URLs
+     * (notably the startup "Web UI: http://localhost:NNNN") rendered as
+     * clickable, underlined links.
+     */
+    private static Component playerMessage(String message, int color) {
+        MutableComponent root = Component.literal("[DebugBridge] ");
+        for (TextLinks.Segment seg : TextLinks.split(message)) {
+            if (seg.isLink()) {
+                ClickEvent open;
+                try {
+                    // 1.21.x: ClickEvent is an interface with record impls.
+                    open = new ClickEvent.OpenUrl(URI.create(seg.text()));
+                } catch (IllegalArgumentException e) {
+                    root.append(Component.literal(seg.text()));
+                    continue;
+                }
+                root.append(Component.literal(seg.text())
+                        .withStyle(
+                                s -> s.withColor(0x55FFFF).withUnderlined(true).withClickEvent(open)));
+            } else {
+                root.append(Component.literal(seg.text()));
+            }
+        }
+        return root.withStyle(s -> s.withColor(color));
     }
 
     @Override
