@@ -11,6 +11,16 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Verify tag matches the Gradle version
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          GRADLE=$(sed -n 's/.*version = "\([^"]*\)".*/\1/p' mod/build.gradle.kts | head -1)
+          if [ "$TAG" != "$GRADLE" ]; then
+            echo "::error::Tag v$TAG does not match Gradle version $GRADLE in mod/build.gradle.kts"
+            exit 1
+          fi
+          echo "Tag v$TAG matches Gradle version"
+
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
@@ -28,6 +38,17 @@ jobs:
       - name: Build Fabric 1.19 and 1.21.11 mods
         working-directory: mod
         run: ./gradlew :fabric-1.19:build :fabric-1.21.11:build --no-daemon
+
+      - name: Verify the web UI is bundled in the jars
+        working-directory: mod
+        run: |
+          for jar in fabric-1.19/build/libs/debugbridge-1.19-*[0-9].jar \
+                     fabric-1.21.11/build/libs/debugbridge-1.21.11-*[0-9].jar; do
+            unzip -p "$jar" 'META-INF/jars/core-*.jar' > /tmp/core-nested.jar
+            unzip -l /tmp/core-nested.jar | grep -q 'webui/index.html' \
+              || { echo "::error::$jar is missing the bundled web UI"; exit 1; }
+            echo "$jar: web UI bundled"
+          done
 
       - name: Upload 1.19 release artifact
         uses: actions/upload-artifact@v7
@@ -65,6 +86,16 @@ jobs:
       - name: Build Fabric 26.2 dev mod
         working-directory: mod
         run: ./gradlew :fabric-26.2-dev:build --no-daemon
+
+      - name: Verify the web UI is bundled in the jar
+        working-directory: mod
+        run: |
+          for jar in fabric-26.2-dev/build/libs/debugbridge-26.2-dev-*[0-9].jar; do
+            unzip -p "$jar" 'META-INF/jars/core-*.jar' > /tmp/core-nested.jar
+            unzip -l /tmp/core-nested.jar | grep -q 'webui/index.html' \
+              || { echo "::error::$jar is missing the bundled web UI"; exit 1; }
+            echo "$jar: web UI bundled"
+          done
 
       - name: Upload 26.2 release artifact
         uses: actions/upload-artifact@v7

@@ -46,6 +46,17 @@ jobs:
         working-directory: mod
         run: ./gradlew :fabric-1.19:build :fabric-1.21.11:build --no-daemon
 
+      - name: Verify the web UI is bundled in the jars
+        working-directory: mod
+        run: |
+          for jar in fabric-1.19/build/libs/debugbridge-1.19-*[0-9].jar \
+                     fabric-1.21.11/build/libs/debugbridge-1.21.11-*[0-9].jar; do
+            unzip -p "$jar" 'META-INF/jars/core-*.jar' > /tmp/core-nested.jar
+            unzip -l /tmp/core-nested.jar | grep -q 'webui/index.html' \
+              || { echo "::error::$jar is missing the bundled web UI"; exit 1; }
+            echo "$jar: web UI bundled"
+          done
+
       - name: Upload 1.19 artifact
         uses: actions/upload-artifact@v7
         with:
@@ -82,6 +93,16 @@ jobs:
       - name: Build Fabric 26.2 dev mod
         working-directory: mod
         run: ./gradlew :fabric-26.2-dev:build --no-daemon
+
+      - name: Verify the web UI is bundled in the jar
+        working-directory: mod
+        run: |
+          for jar in fabric-26.2-dev/build/libs/debugbridge-26.2-dev-*[0-9].jar; do
+            unzip -p "$jar" 'META-INF/jars/core-*.jar' > /tmp/core-nested.jar
+            unzip -l /tmp/core-nested.jar | grep -q 'webui/index.html' \
+              || { echo "::error::$jar is missing the bundled web UI"; exit 1; }
+            echo "$jar: web UI bundled"
+          done
 
       - name: Upload 26.2 artifact
         uses: actions/upload-artifact@v7
