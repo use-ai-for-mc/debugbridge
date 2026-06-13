@@ -28,7 +28,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Set up Node (web UI is bundled into core resources)
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
 
@@ -76,7 +76,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Set up Node (web UI is bundled into core resources)
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
 
