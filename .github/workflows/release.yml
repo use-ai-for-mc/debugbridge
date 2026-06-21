@@ -64,7 +64,7 @@ jobs:
           path: mod/fabric-1.21.11/build/libs/*.jar
           if-no-files-found: error
 
-  build-26-2-dev:
+  build-26-x:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -83,19 +83,27 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Build Fabric 26.2 dev mod
+      - name: Build Fabric 26.x mods
         working-directory: mod
-        run: ./gradlew :fabric-26.2-dev:build --no-daemon
+        run: ./gradlew :fabric-26.1:build :fabric-26.2-dev:build --no-daemon
 
-      - name: Verify the web UI is bundled in the jar
+      - name: Verify the web UI is bundled in the jars
         working-directory: mod
         run: |
-          for jar in fabric-26.2-dev/build/libs/debugbridge-26.2-dev-*[0-9].jar; do
+          for jar in fabric-26.1/build/libs/debugbridge-26.1-*[0-9].jar \
+                     fabric-26.2-dev/build/libs/debugbridge-26.2-dev-*[0-9].jar; do
             unzip -p "$jar" 'META-INF/jars/core-*.jar' > /tmp/core-nested.jar
             unzip -l /tmp/core-nested.jar | grep -q 'webui/index.html' \
               || { echo "::error::$jar is missing the bundled web UI"; exit 1; }
             echo "$jar: web UI bundled"
           done
+
+      - name: Upload 26.1 release artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-fabric-26.1
+          path: mod/fabric-26.1/build/libs/*.jar
+          if-no-files-found: error
 
       - name: Upload 26.2 release artifact
         uses: actions/upload-artifact@v7
@@ -107,7 +115,7 @@ jobs:
   build-and-release:
     needs:
       - build-legacy-mods
-      - build-26-2-dev
+      - build-26-x
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -128,6 +136,12 @@ jobs:
           name: release-fabric-1.21.11
           path: release-artifacts/fabric-1.21.11
 
+      - name: Download 26.1 artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: release-fabric-26.1
+          path: release-artifacts/fabric-26.1
+
       - name: Download 26.2 artifact
         uses: actions/download-artifact@v8
         with:
@@ -143,6 +157,7 @@ jobs:
           files: |
             release-artifacts/fabric-1.19/*.jar
             release-artifacts/fabric-1.21.11/*.jar
+            release-artifacts/fabric-26.1/*.jar
             release-artifacts/fabric-26.2-dev/*.jar
           body: |
             ## DebugBridge v${{ steps.version.outputs.VERSION }}
@@ -155,6 +170,17 @@ jobs:
             3. Launch the game — you'll see a developer warning on first run
             4. After accepting, the bundled web UI is at http://localhost:9976
                (the in-game startup message prints the exact URL)
+
+            ### Release artifacts
+            This release uploads jars for every maintained bridge line. The
+            current/default stable line remains Minecraft 1.21.11; exact 26.1
+            is included as a released artifact for users pinned to that exact
+            client, but it is not promoted as the current/default line.
+
+            - `debugbridge-1.19-*.jar` — legacy Minecraft 1.19 support
+            - `debugbridge-1.21.11-*.jar` — current/default stable line
+            - `debugbridge-26.1-*.jar` — exact Minecraft 26.1 support
+            - `debugbridge-26.2-dev-*.jar` — 26.2 development snapshot line
 
             ### New: bundled web UI
             The Vue inspection app (dashboard, entity/block browsers, screen
@@ -240,5 +266,6 @@ jobs:
             ### Supported Versions
             - Minecraft 1.19 (Fabric Loader >= 0.14.0)
             - Minecraft 1.21.11 (Fabric Loader >= 0.16.0)
+            - Minecraft 26.1 exact (Fabric Loader >= 0.19.2)
             - Minecraft 26.2 development snapshots (Fabric Loader >= 0.19.2;
               the jar targets `26.2-pre-2` specifically)

@@ -18,6 +18,9 @@
 // Usage:
 //   node tools/record-video-smoke.mjs                 # ws://127.0.0.1:9876 (default 1.21.11 port)
 //   node tools/record-video-smoke.mjs --port 9877     # 1.19 alongside
+//   node tools/record-video-smoke.mjs --port 9876 --version 26.1
+//   node tools/record-video-smoke.mjs --port 9876 --version 26.1 --game-dir-contains '/instances/26.1/'
+//                                                    # also verifies the live JVM loaded the current 26.1 implementation shape
 //   node tools/record-video-smoke.mjs --port 9878     # 26.2-dev alongside
 //
 // Requires Node 22+ (built-in WebSocket).
@@ -27,6 +30,9 @@ import { existsSync, statSync } from 'node:fs';
 const args = parseArgs(process.argv.slice(2));
 const host = args.host ?? '127.0.0.1';
 const port = Number(args.port ?? 9876);
+const version = args.version ?? 'unspecified';
+const expectedVersion = args.version ? String(args.version) : null;
+const requiredGameDirPart = args['game-dir-contains'] ? String(args['game-dir-contains']) : null;
 const url = `ws://${host}:${port}`;
 
 if (typeof WebSocket === 'undefined') {
@@ -34,7 +40,7 @@ if (typeof WebSocket === 'undefined') {
   process.exit(2);
 }
 
-console.log(`# record_video smoke — url=${url}`);
+console.log(`# record_video smoke — version=${version} url=${url}`);
 
 async function openConnection() {
   const sock = new WebSocket(url);
@@ -76,6 +82,81 @@ const results = [];
 function check(name, ok, detail = '') {
   results.push({ name, ok, detail });
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`);
+}
+
+// --- 0. Status/version gate ---
+{
+  const r = await call(null, 'status', {}, 3_000);
+  const result = unwrapBridgeValue(r.result ?? {});
+  let ok = r.success === true && typeof result === 'object' && result !== null;
+  let detail = '';
+  if (!ok) {
+    detail = r.error ?? 'status failed';
+  } else if (expectedVersion && result.version !== expectedVersion) {
+    ok = false;
+    detail = `expected version ${expectedVersion}, got ${result.version ?? '(missing)'}`;
+  } else if (requiredGameDirPart && typeof result.gameDir !== 'string') {
+    ok = false;
+    detail = 'gameDir missing';
+  } else if (requiredGameDirPart && !result.gameDir.includes(requiredGameDirPart)) {
+    ok = false;
+    detail = `expected gameDir to contain ${requiredGameDirPart}, got ${result.gameDir}`;
+  } else {
+    detail = `version=${result.version ?? '(missing)'}${result.gameDir ? ` gameDir=${result.gameDir}` : ''}`;
+  }
+  check('status', ok, detail);
+  if (!ok) {
+    a.sock.close();
+    process.exit(1);
+  }
+}
+
+// --- 0b. 26.1 loaded-implementation gate ---
+if (expectedVersion === '26.1') {
+  const r = await call(null, 'execute', {
+    code: `
+      def methods = com.debugbridge.fabric261.Minecraft261ItemTextureProvider.class.declaredMethods.collect { it.name }.unique().sort()
+      def loader = com.debugbridge.fabric261.DebugBridgeMod.class.classLoader
+      def mixinJsonStream = loader.getResourceAsStream('debugbridge.mixins.json')
+      def mixinJson = mixinJsonStream == null ? '' : mixinJsonStream.getText('UTF-8')
+      return [
+        itemProviderMethods: methods,
+        blockGlowMixinResource: loader.getResource('com/debugbridge/fabric261/mixin/BlockGlowGizmoMixin.class') != null,
+        featureDispatcherAccessorResource: loader.getResource('com/debugbridge/fabric261/mixin/FeatureRenderDispatcherAccessor.class') != null,
+        mixinJsonHasBlockGlow: mixinJson.contains('BlockGlowGizmoMixin'),
+        mixinJsonHasFeatureDispatcherAccessor: mixinJson.contains('FeatureRenderDispatcherAccessor')
+      ]
+    `,
+    timeoutMs: 5000,
+  }, 8000);
+  const result = unwrapBridgeValue(r.result ?? {});
+  const methods = Array.isArray(result.itemProviderMethods) ? result.itemProviderMethods : [];
+  const missing = ['close', 'renderVanillaItem', 'renderItemToTexture', 'readItemTexture']
+    .filter((name) => !methods.includes(name));
+  let ok = r.success === true;
+  let detail = '';
+  if (!ok) {
+    detail = r.error ?? 'execute failed';
+  } else if (missing.length > 0) {
+    ok = false;
+    detail = `live JVM looks stale; missing ${missing.join(', ')} from Minecraft261ItemTextureProvider`;
+  } else if (result.blockGlowMixinResource !== true || result.mixinJsonHasBlockGlow !== true) {
+    ok = false;
+    detail = 'BlockGlowGizmoMixin resource or mixin JSON entry missing';
+  } else if (
+    result.featureDispatcherAccessorResource !== true
+    || result.mixinJsonHasFeatureDispatcherAccessor !== true
+  ) {
+    ok = false;
+    detail = 'FeatureRenderDispatcherAccessor resource or mixin JSON entry missing';
+  } else {
+    detail = 'current 26.1 implementation classes loaded';
+  }
+  check('26.1 runtime implementation shape', ok, detail);
+  if (!ok) {
+    a.sock.close();
+    process.exit(1);
+  }
 }
 
 // --- 1. Grid mode (default cadence) ---
@@ -167,6 +248,16 @@ const failed = results.filter(r => !r.ok).length;
 console.log(`\n# ${results.length - failed}/${results.length} passed`);
 a.sock.close();
 process.exit(failed === 0 ? 0 : 1);
+
+function unwrapBridgeValue(v) {
+  if (v === null || v === undefined) return v;
+  if (Array.isArray(v)) return v.map(unwrapBridgeValue);
+  if (typeof v !== 'object') return v;
+  if (Object.hasOwn(v, 'type') && Object.hasOwn(v, 'value')) {
+    return unwrapBridgeValue(v.value);
+  }
+  return Object.fromEntries(Object.entries(v).map(([k, value]) => [k, unwrapBridgeValue(value)]));
+}
 
 function parseArgs(argv) {
   const out = {};

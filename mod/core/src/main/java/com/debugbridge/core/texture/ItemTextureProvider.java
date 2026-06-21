@@ -8,7 +8,7 @@ package com.debugbridge.core.texture;
  * Each version-specific mod provides its own implementation because the model
  * resolution APIs differ between MC versions.
  */
-public interface ItemTextureProvider {
+public interface ItemTextureProvider extends AutoCloseable {
 
     /**
      * Get the resolved texture for the item in the given inventory slot.
@@ -42,6 +42,16 @@ public interface ItemTextureProvider {
      * @throws Exception if the item is unknown or extraction fails
      */
     TextureResult getItemTextureById(String itemId) throws Exception;
+
+    /**
+     * Release any resources owned by the provider. Most providers are
+     * stateless, but newer GPU-backed implementations may own textures or
+     * buffers that should be released when DebugBridge shuts down. Implementers
+     * only need to override this when they allocate resources outside ordinary
+     * request-local objects.
+     */
+    @Override
+    default void close() {}
 
     /**
      * Result of a successful texture extraction.

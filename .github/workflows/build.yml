@@ -71,7 +71,7 @@ jobs:
           path: mod/fabric-1.21.11/build/libs/*.jar
           if-no-files-found: error
 
-  build-26-2-dev:
+  build-26-x:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -90,19 +90,27 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Build Fabric 26.2 dev mod
+      - name: Build Fabric 26.x mods
         working-directory: mod
-        run: ./gradlew :fabric-26.2-dev:build --no-daemon
+        run: ./gradlew :fabric-26.1:build :fabric-26.2-dev:build --no-daemon
 
-      - name: Verify the web UI is bundled in the jar
+      - name: Verify the web UI is bundled in the jars
         working-directory: mod
         run: |
-          for jar in fabric-26.2-dev/build/libs/debugbridge-26.2-dev-*[0-9].jar; do
+          for jar in fabric-26.1/build/libs/debugbridge-26.1-*[0-9].jar \
+                     fabric-26.2-dev/build/libs/debugbridge-26.2-dev-*[0-9].jar; do
             unzip -p "$jar" 'META-INF/jars/core-*.jar' > /tmp/core-nested.jar
             unzip -l /tmp/core-nested.jar | grep -q 'webui/index.html' \
               || { echo "::error::$jar is missing the bundled web UI"; exit 1; }
             echo "$jar: web UI bundled"
           done
+
+      - name: Upload 26.1 artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: debugbridge-26.1
+          path: mod/fabric-26.1/build/libs/*.jar
+          if-no-files-found: error
 
       - name: Upload 26.2 artifact
         uses: actions/upload-artifact@v7

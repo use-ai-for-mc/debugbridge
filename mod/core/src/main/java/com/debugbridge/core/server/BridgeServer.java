@@ -230,10 +230,36 @@ public class BridgeServer extends WebSocketServer {
      * Register the item texture provider. Called by the version-specific module
      * during initialization.
      */
-    public void setTextureProvider(ItemTextureProvider provider) {
+    public synchronized void setTextureProvider(ItemTextureProvider provider) {
+        ItemTextureProvider previous = this.textureProvider;
         this.textureProvider = provider;
+        if (previous != null && previous != provider) {
+            try {
+                previous.close();
+            } catch (RuntimeException e) {
+                LOG.log(Level.WARNING, "[DebugBridge] Previous texture provider failed to close cleanly", e);
+            }
+        }
         LOG.info("[DebugBridge] Texture provider registered: "
                 + provider.getClass().getSimpleName());
+    }
+
+    /**
+     * Release provider resources during host shutdown. Kept separate from
+     * {@link #stop(int)} because WebSocketServer's stop lifecycle does not know
+     * about version-specific Minecraft/GPU resources.
+     */
+    public synchronized void closeTextureProvider() {
+        ItemTextureProvider provider = textureProvider;
+        if (provider == null) return;
+        // Clear first so new endpoint requests do not grab a provider while
+        // version-specific resources (GPU textures in 26.1) are closing.
+        textureProvider = null;
+        try {
+            provider.close();
+        } catch (RuntimeException e) {
+            LOG.log(Level.WARNING, "[DebugBridge] Texture provider failed to close cleanly", e);
+        }
     }
 
     /**

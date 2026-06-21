@@ -461,6 +461,8 @@ public abstract class AbstractDebugBridgeMod {
             LOG.warning("[DebugBridge] Interrupted while stopping BridgeServer on close");
         } catch (Exception e) {
             LOG.log(Level.WARNING, "[DebugBridge] BridgeServer failed to stop cleanly", e);
+        } finally {
+            s.closeTextureProvider();
         }
     }
 }

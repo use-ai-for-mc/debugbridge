@@ -5,8 +5,8 @@ package com.debugbridge.core.protocol.dto;
  * a local player exists; the wrapper {@link SnapshotDto#player} is null
  * (and dropped on the wire) otherwise.
  *
- * <p>{@code biome} is currently a stub field always emitting {@code ""}; tracked
- * separately for resolution (review-queue Theme 6 / dead-code).
+ * <p>{@code biome} is the current biome identifier when the version provider can
+ * resolve it, or {@code ""} when unavailable.
  */
 public final class SnapshotPlayerDto {
     public String name;

@@ -15,6 +15,7 @@ export interface InventoryItem {
   components?: Record<string, string>;
   textureUrl?: string;
   spriteName?: string;
+  textureDegraded?: boolean;
 }
 
 export const useInventoryStore = defineStore('inventory', () => {
@@ -89,8 +90,7 @@ export const useInventoryStore = defineStore('inventory', () => {
       nonEmpty.map(async (item) => {
         try {
           const tex = await bridge.getItemTexture(item.slot);
-          item.textureUrl = `data:image/png;base64,${tex.base64Png}`;
-          item.spriteName = tex.spriteName;
+          applyTexture(item, tex);
         } catch {
           // Texture not available for this item
         }
@@ -201,8 +201,7 @@ export const useInventoryStore = defineStore('inventory', () => {
 
     try {
       const tex = await bridge.getItemTexture(slotIdx);
-      item.textureUrl = `data:image/png;base64,${tex.base64Png}`;
-      item.spriteName = tex.spriteName;
+      applyTexture(item, tex);
       slots.value = [...slots.value];
     } catch {
       // Texture not available (older mod version or unsupported item)
@@ -226,6 +225,15 @@ export const useInventoryStore = defineStore('inventory', () => {
     selectSlot,
   };
 });
+
+function applyTexture(
+  item: InventoryItem,
+  tex: { base64Png: string; spriteName: string },
+): void {
+  item.textureUrl = `data:image/png;base64,${tex.base64Png}`;
+  item.spriteName = tex.spriteName;
+  item.textureDegraded = tex.spriteName.startsWith('fallback:');
+}
 
 function unwrapValue(data: unknown): unknown {
   if (data === null || data === undefined) return data;

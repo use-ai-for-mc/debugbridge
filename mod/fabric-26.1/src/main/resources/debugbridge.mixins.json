@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "package": "com.debugbridge.fabric261.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "BlockGlowGizmoMixin",
+    "EntityGlowMixin",
+    "FeatureRenderDispatcherAccessor",
+    "MinecraftClientMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

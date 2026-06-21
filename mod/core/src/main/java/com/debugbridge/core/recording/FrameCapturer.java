@@ -7,8 +7,8 @@ package com.debugbridge.core.recording;
  *
  * <p>The implementation must be safe to call from the render thread (it's
  * invoked from the {@code runTick} mixin hook). Capture completion is
- * asynchronous on versions whose readback is GPU-backed (1.21.11, 26.2-dev);
- * synchronous on older versions (1.19). Either way, exactly one of
+ * asynchronous on versions whose readback is GPU-backed (1.21.11, 26.1,
+ * 26.2-dev); synchronous on older versions (1.19). Either way, exactly one of
  * {@link FrameSink#onPixels} / {@link FrameSink#onError} must fire per call.
  */
 public interface FrameCapturer {

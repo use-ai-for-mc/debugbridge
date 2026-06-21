@@ -37,6 +37,12 @@ function entityThumbUrl(e: NearbyEntity): string | undefined {
   return entities.entityPrimaryTextures[entities.entityPrimaryKey(e.id, pe.slot, pe.itemId)]
 }
 
+function entityThumbIsDegraded(e: NearbyEntity): boolean {
+  const pe = e.primaryEquipment
+  if (!pe) return false
+  return Boolean(entities.entityPrimaryTextureDegraded[entities.entityPrimaryKey(e.id, pe.slot, pe.itemId)])
+}
+
 onUnmounted(() => {
   entities.stopAutoRefresh()
   entities.stopFollowGaze()
@@ -329,6 +335,11 @@ const rawTreeExpanded = ref(false)
                 class="entity-tile-dot"
                 :style="{ backgroundColor: entity.status === 'despawned' ? '#666' : entityColor(entity) }"
               ></span>
+              <span
+                v-if="entityThumbIsDegraded(entity)"
+                class="entity-tile-renderer-fallback"
+                title="26.1 renderer returned a generated fallback icon"
+              >FB</span>
             </div>
             <div class="entity-tile-label">{{ entity.type }}</div>
             <div class="entity-tile-distance">{{ entity.distance.toFixed(1) }}m</div>
@@ -430,6 +441,13 @@ const rawTreeExpanded = ref(false)
                       >
                         {{ entities.selectedDetails.frameItem.damage ?? 0 }} / {{ entities.selectedDetails.frameItem.maxDamage }}
                       </span>
+                      <span
+                        v-if="entities.equipmentTextureDegraded['FRAME']"
+                        class="rounded border border-amber-500/40 bg-amber-500/10 px-1 py-0.5 text-[10px] uppercase tracking-wide text-amber-300"
+                        title="26.1 renderer returned a generated fallback icon"
+                      >
+                        Renderer fallback icon
+                      </span>
                     </div>
                     <div v-if="entities.equipmentSpriteNames['FRAME']" class="text-[10px] text-zinc-600 break-all mt-0.5">
                       {{ entities.equipmentSpriteNames['FRAME'] }}
@@ -482,6 +500,13 @@ const rawTreeExpanded = ref(false)
                       </span>
                       <span v-if="item.maxDamage && item.maxDamage > 0" class="text-zinc-500" title="damage / maxDamage">
                         {{ item.damage ?? 0 }} / {{ item.maxDamage }}
+                      </span>
+                      <span
+                        v-if="entities.equipmentTextureDegraded[String(slot)]"
+                        class="rounded border border-amber-500/40 bg-amber-500/10 px-1 py-0.5 text-[10px] uppercase tracking-wide text-amber-300"
+                        title="26.1 renderer returned a generated fallback icon"
+                      >
+                        Renderer fallback icon
                       </span>
                     </div>
                     <div v-if="entities.equipmentSpriteNames[String(slot)]" class="text-[10px] text-zinc-600 break-all mt-0.5">
@@ -770,6 +795,21 @@ const rawTreeExpanded = ref(false)
   height: 6px;
   border-radius: 50%;
   border: 1px solid #18181b;
+}
+
+.entity-tile-renderer-fallback {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  padding: 0 3px;
+  border: 1px solid rgba(245, 158, 11, 0.55);
+  border-radius: 3px;
+  background: rgba(24, 24, 27, 0.95);
+  color: #fcd34d;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 13px;
+  letter-spacing: 0.04em;
 }
 
 .entity-tile-label {

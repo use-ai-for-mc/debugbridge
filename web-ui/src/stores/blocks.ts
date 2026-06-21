@@ -48,6 +48,7 @@ export const useBlocksStore = defineStore('blocks', () => {
   const selectedDetails = ref<BlockDetails | null>(null);
   // base64 data URLs keyed by slot index, for the selected block's container.
   const slotTextures = ref<Record<number, string>>({});
+  const slotTextureDegraded = ref<Record<number, boolean>>({});
 
   const isLoading = ref(false);
   const isLoadingDetails = ref(false);
@@ -110,6 +111,7 @@ export const useBlocksStore = defineStore('blocks', () => {
         selectedKey.value = null;
         selectedDetails.value = null;
         slotTextures.value = {};
+        slotTextureDegraded.value = {};
       }
     } catch (err) {
       error.value = (err as Error).message ?? String(err);
@@ -159,6 +161,7 @@ export const useBlocksStore = defineStore('blocks', () => {
 
       // Fetch item icons for container slots (best-effort, parallel).
       slotTextures.value = {};
+      slotTextureDegraded.value = {};
       if (items) {
         await Promise.all(items.map(async (it) => {
           try {
@@ -166,6 +169,10 @@ export const useBlocksStore = defineStore('blocks', () => {
             slotTextures.value = {
               ...slotTextures.value,
               [it.slot]: `data:image/png;base64,${tex.base64Png}`,
+            };
+            slotTextureDegraded.value = {
+              ...slotTextureDegraded.value,
+              [it.slot]: (tex.spriteName ?? '').startsWith('fallback:'),
             };
           } catch {
             // non-fatal
@@ -191,6 +198,7 @@ export const useBlocksStore = defineStore('blocks', () => {
     selectedKey.value = key;
     selectedDetails.value = null;
     slotTextures.value = {};
+    slotTextureDegraded.value = {};
 
     if (previousKey && previousKey !== key) {
       const prev = parseKey(previousKey);
@@ -209,6 +217,7 @@ export const useBlocksStore = defineStore('blocks', () => {
     selectedKey.value = null;
     selectedDetails.value = null;
     slotTextures.value = {};
+    slotTextureDegraded.value = {};
   }
 
   function setAutoRefresh(enabled: boolean) {
@@ -236,6 +245,7 @@ export const useBlocksStore = defineStore('blocks', () => {
     selectedKey,
     selectedDetails,
     slotTextures,
+    slotTextureDegraded,
     isLoading,
     isLoadingDetails,
     error,
