@@ -2,25 +2,28 @@
 
 ## What this is
 
-A Fabric client mod (Minecraft 1.19 and 1.21.11) that exposes a local WebSocket server for a Vue web UI and for MCP clients to introspect/control the running client. Used for dev-time debugging, not gameplay.
+A Fabric client mod (Minecraft 1.19, 1.21.11, exact 26.1, and 26.2-dev) that exposes a local WebSocket server for a Vue web UI and for MCP clients to introspect/control the running client. Used for dev-time debugging, not gameplay.
 
 ## Repo layout
 
 - `mod/core/` — shared Java: WebSocket server (`BridgeServer`), Groovy runtime, mapping resolver, provider interfaces (`NearbyEntitiesProvider`, `ScreenshotProvider`, `ItemTextureProvider`, `GameStateProvider`).
-- `mod/fabric-1.19/` and `mod/fabric-1.21.11/` — version-specific Fabric mods. Each has its own provider impls + mixins.
+- `mod/fabric-1.19/`, `mod/fabric-1.21.11/`, `mod/fabric-26.1/`, and `mod/fabric-26.2-dev/` — version-specific Fabric mods. Each has its own provider impls + mixins.
 - `web-ui/` — Vue 3 + Pinia + Tailwind app.
 - `build-and-deploy.sh` (1.19) and `build-and-deploy-1.21.11.sh` — build the jar and copy into `~/Library/Application Support/ModrinthApp/profiles/ImagineFun/mods/`.
+- `build-and-deploy-26.1.sh` — builds exact `fabric-26.1` with Java 25 and installs to Prism Launcher. Defaults: `PRISM_INSTANCE_NAME=26.1`, `PRISM_INSTANCES_DIR=~/Library/Application Support/PrismLauncher/instances`, and `JAVA_HOME_26_1=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home`. It verifies the built/staged jar metadata for exact Minecraft `26.1` before replacing the target jar and prints guarded smoke commands with `--version 26.1` and `--game-dir-contains`.
 
 ## Ports
 
-- Default: 9876 (1.21.11), wraparound range 9876–9886.
-- User typically runs 1.21.11 on 9876 and 1.19 on 9877 simultaneously.
+- Default: 9876, wraparound range 9876–9886.
+- User often runs multiple clients simultaneously; confirm which bridge port belongs to which instance before making live runtime assumptions.
 
 ## Build requirements
 
-- Gradle needs **JDK 21**. System JDK (25) fails. Build scripts already set `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`.
+- Stable 1.x Fabric modules need **JDK 21**. Build scripts already set `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`.
+- Exact `fabric-26.1` and `fabric-26.2-dev` need **JDK 25**. For 26.1 Prism install, prefer `./build-and-deploy-26.1.sh`.
 - Node for `web-ui` needs **≥20.19** (Vite requirement). The default `node` on PATH is 18; use `/Users/cusgadmin/.nvm/versions/node/v20.19.4/bin/npm` or `nvm use 20`.
 - Start web UI: `cd web-ui && /Users/cusgadmin/.nvm/versions/node/v20.19.4/bin/npm run dev` → <http://localhost:5173>.
+- Smoke scripts (`tools/smoke-test.mjs`, `tools/record-video-smoke.mjs`) need **Node 22+** for built-in `WebSocket`. `build-and-deploy-26.1.sh` detects an installed Node 22+ binary for the post-deploy commands; override with `SMOKE_NODE=/path/to/node` if needed.
 
 ## Request dispatch pattern
 
@@ -45,6 +48,7 @@ Each version module has a mixin package + `debugbridge.mixins.json` listing the 
 
 - `MinecraftClientMixin` — taps the end of `Minecraft.tick()` for our `onClientTick` callback.
 - `EntityGlowMixin` — forces `Entity.isCurrentlyGlowing()` to return `true` for IDs in `ClientEntityGlowManager`, so the web UI can outline selected entities without server authority.
+- `BlockGlowGizmoMixin` (26.1 only) — emits DebugBridge-owned block highlight gizmos during `LevelRenderer.extractLevel(...)`, after vanilla GameTest gizmos. Do not route 26.1 block glow through `gameTestBlockHighlightRenderer.clear()` / `highlightPos(...)`; that clobbers unrelated vanilla GameTest markers.
 
 ## Native entity/texture endpoints
 
@@ -52,8 +56,16 @@ Do NOT iterate entities or resolve textures via Groovy — the per-call Java↔s
 
 - `nearbyEntities` / `entityDetails` via `NearbyEntitiesProvider` (both versions).
 - `getItemTexture` / `getEntityItemTexture` via `ItemTextureProvider`:
+  - **26.1**: renders offscreen through the exact-26.1 GUI item pipeline verified through MCDEV: `GuiGraphicsExtractor.item(...)` → `TrackingItemStackRenderState` → `ItemModelResolver.updateForTopItem(...)` → `ItemStackRenderState.submit(...)`, rendered through `FeatureRenderDispatcher` into a bridge-owned copy-readable GPU texture. Filled maps use CPU map-color extraction. Vanilla's final atlas entrypoint is private (`GuiItemAtlas.drawToSlot(...)`), so the bridge intentionally copies that small render body instead of calling it directly. The remaining intentional caveat is the mixin accessor for `FeatureRenderDispatcher.bufferSource`, because 26.1 exposes `getSubmitNodeStorage()` but not the buffer source.
   - **1.21.11**: renders offscreen through `ItemModelResolver` + `GuiRenderer` → GPU texture → PNG. Honors damage/CMD resource-pack overrides.
   - **1.19**: extracts pixels from the baked model's sprite via reflection (no GPU render pipeline in that version).
+
+## Exact 26.1 API quirks
+
+- Exact 26.1 is Mojang-named at runtime in this project; `DebugBridgeMod.createNamespaceLookup()` intentionally returns `null`, which makes the core use `PassthroughResolver` and skip Mojang mapping download/remap.
+- Use JDK 25 for `fabric-26.1`; JDK 21 is still required for the older 1.19/1.21.11 modules.
+- Always verify 26.1 Minecraft APIs and mixin targets through MCDEV before using them. Do not infer 26.1 names from 1.21.11 or 26.2-dev snapshots.
+- Do not restart the live Prism/Minecraft client while the user is on a ride unless they explicitly approve the restart.
 
 ## 1.19 vs 1.21.11 API quirks
 
@@ -78,3 +90,4 @@ Do NOT iterate entities or resolve textures via Groovy — the per-call Java↔s
 
 - Glow outline color is always the team color / white — no per-selection color yet. Mixin into `Entity.getTeamColor()` if that's ever needed.
 - Entity ID stability depends on the chunk staying loaded. If the user drifts far enough, glow "sticks" to a stale ID (harmless — just ignored).
+- 26.1 block glow is rendered as DebugBridge-owned gizmos, not vanilla GameTest markers. It is exact to `ClientBlockGlowManager.snapshot()` each render extraction but uses a fixed green fill/text style for now.

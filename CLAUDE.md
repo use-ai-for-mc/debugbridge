@@ -1,13 +1,14 @@
 # DebugBridge — project notes
 
 ## What this is
-A Fabric client mod (Minecraft 1.19, 1.21.11, and 26.2-dev snapshot) that exposes a local WebSocket server for a Vue web UI and for MCP clients to introspect/control the running client. Used for dev-time debugging, not gameplay.
+A Fabric client mod (Minecraft 1.19, 1.21.11, exact 26.1, and 26.2-dev snapshot) that exposes a local WebSocket server for a Vue web UI and for MCP clients to introspect/control the running client. Used for dev-time debugging, not gameplay.
 
 ## Repo layout
 - `mod/core/` — shared Java: WebSocket server (`BridgeServer`), Groovy runtime, mapping resolver, provider interfaces (`NearbyEntitiesProvider`, `NearbyBlocksProvider`, `LookedAtEntityProvider`, `ScreenshotProvider`, `ItemTextureProvider`, `ScreenInspectProvider`, `ChatHistoryProvider`, `GameStateProvider`, `SessionControlProvider`, `FrameCapturer` + recording orchestrator).
-- `mod/fabric-1.19/`, `mod/fabric-1.21.11/`, `mod/fabric-26.2-dev/` — version-specific Fabric mods. Each has its own provider impls + mixins.
+- `mod/fabric-1.19/`, `mod/fabric-1.21.11/`, `mod/fabric-26.1/`, `mod/fabric-26.2-dev/` — version-specific Fabric mods. Each has its own provider impls + mixins.
 - `web-ui/` — Vue 3 + Pinia + Tailwind app.
-- `build-and-deploy.sh` (1.19) and `build-and-deploy-1.21.11.sh` — build the jar and copy into `~/Library/Application Support/ModrinthApp/profiles/ImagineFun/mods/`. **Caveat:** the client actually in day-to-day use launches via **Prism Launcher** (`~/Library/Application Support/PrismLauncher/instances/ImagineFun/.minecraft/mods/`), which the scripts do NOT update — copy the jar there too (launch CLI: `/Applications/Prism Launcher.app/Contents/MacOS/prismlauncher --launch ImagineFun`).
+- `build-and-deploy.sh` (1.19) and `build-and-deploy-1.21.11.sh` — build the jar and copy into `~/Library/Application Support/ModrinthApp/profiles/ImagineFun/mods/`. **Caveat:** the client actually in day-to-day use launches via **Prism Launcher** (`~/Library/Application Support/PrismLauncher/instances/ImagineFun/.minecraft/mods/`), which these older scripts do NOT update — copy the jar there too (launch CLI: `/Applications/Prism Launcher.app/Contents/MacOS/prismlauncher --launch ImagineFun`).
+- `build-and-deploy-26.1.sh` — builds exact `fabric-26.1` with Java 25 and installs to Prism Launcher. Defaults: `PRISM_INSTANCE_NAME=26.1`, `PRISM_INSTANCES_DIR=~/Library/Application Support/PrismLauncher/instances`, and `JAVA_HOME_26_1=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home`.
 
 ## Ports
 - Default: 9876 (1.21.11), wraparound range 9876–9886.
@@ -15,7 +16,8 @@ A Fabric client mod (Minecraft 1.19, 1.21.11, and 26.2-dev snapshot) that expose
 - The bundled web UI serves on **bridge port + 100** (9976/9977/…) via `WebUiServer` (core, JDK HttpServer, loopback-only); `status` reports it as `webUiPort`; disable with `web_ui_enabled: false`.
 
 ## Build requirements
-- Gradle needs **JDK 21**. System JDK (25) fails. Build scripts already set `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`.
+- Gradle needs **JDK 21** for the stable 1.x modules. System JDK (25) fails there. The 1.x build scripts already set `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`.
+- `fabric-26.1` and `fabric-26.2-dev` need **JDK 25**. For exact 26.1, use `build-and-deploy-26.1.sh` or set `JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home` when invoking Gradle.
 - Node for `web-ui` needs **≥20.19** (Vite requirement). If your default `node` is older, run `nvm use 20` first.
 - **Building the mod now also needs node on PATH**: `core:processResources` runs the Vite build (`webUiInstall`/`webUiBuild` tasks) and embeds `web-ui/dist` into the core jar under `/webui`. CI sets up Node 22 in every Java job.
 - Start web UI: `cd web-ui && npm run dev` → http://localhost:5173.
@@ -54,6 +56,7 @@ Do NOT iterate entities/blocks, resolve textures, scan inventories, or read chat
 - `chatHistory` via `ChatHistoryProvider` — recent client-side chat messages. Supports `includeJson` for styled-component access.
 - `getItemTexture` / `getItemTextureById` / `getEntityItemTexture` via `ItemTextureProvider`:
   - **1.21.11**: renders offscreen through `ItemModelResolver` + `GuiRenderer` → GPU texture → PNG. Honors damage/CMD resource-pack overrides.
+  - **26.1**: renders offscreen through the exact-26.1 GUI item pipeline (`ItemModelResolver` + `TrackingItemStackRenderState` + `FeatureRenderDispatcher`) into a bridge-owned copy-readable GPU texture, with filled maps handled by CPU map-color extraction.
   - **1.19**: extracts pixels from the baked model's sprite via reflection (no GPU render pipeline in that version).
 - `record_video` via `RecordingProvider` (kernel-side orchestrator in `core/recording/`) + per-version `FrameCapturer`:
   - Captures N frames of the main framebuffer driven from the `runTick` mixin tail. Output is one JPEG grid or N per-frame JPEGs under `<gameDir>/debugbridge-recordings/<reqId>/`.
@@ -70,7 +73,7 @@ Do NOT iterate entities/blocks, resolve textures, scan inventories, or read chat
 
 ## 1.19 vs 1.21.11 API quirks
 - `GameProfile.name()` (record accessor) in 1.21.11 vs `GameProfile.getName()` in 1.19.
-- `ClickEvent` is action+value in 1.19 (`new ClickEvent(Action.OPEN_URL, url)`) vs sealed-interface records in 1.21.11/26.2 (`new ClickEvent.OpenUrl(URI)`). Used by `playerMessage` in each `DebugBridgeMod`, which renders URLs in player chat messages (notably the startup web UI link) clickable — URL detection is shared in core (`text/TextLinks`).
+- `ClickEvent` is action+value in 1.19 (`new ClickEvent(Action.OPEN_URL, url)`) vs sealed-interface records in 1.21.11/26.1/26.2 (`new ClickEvent.OpenUrl(URI)`). Used by `playerMessage` in each `DebugBridgeMod`, which renders URLs in player chat messages (notably the startup web UI link) clickable — URL detection is shared in core (`text/TextLinks`).
 - `Display.TextDisplay` / `ItemDisplay` / `BlockDisplay` exist in 1.21.11 only (added in 1.19.4). Our 1.19 module targets 1.19.0, so skip display-entity extraction there entirely.
 - 1.21.11 render states expose accessors like `itemRenderState().itemStack()`; 1.19 uses direct `ItemRenderer.getModel(stack, level, entity, seed)` + sprite extraction.
 

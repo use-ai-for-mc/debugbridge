@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "debugbridge",
+  "version": "${version}",
+  "name": "DebugBridge 26.1 Bridge",
+  "description": "DebugBridge bridge for Minecraft 26.1 with boot path parity and provider coverage.",
+  "authors": [
+    "Weikeng Chen"
+  ],
+  "contact": {
+    "homepage": "https://github.com/use-ai-for-mc/debugbridge",
+    "sources": "https://github.com/use-ai-for-mc/debugbridge",
+    "issues": "https://github.com/use-ai-for-mc/debugbridge/issues"
+  },
+  "license": "MIT",
+  "icon": "assets/debugbridge/icon.png",
+  "environment": "client",
+  "mixins": [
+    "debugbridge.mixins.json"
+  ],
+  "entrypoints": {
+    "client": [
+      "com.debugbridge.fabric261.DebugBridgeMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.2",
+    "minecraft": "26.1"
+  }
+}

@@ -1,6 +1,6 @@
 # DebugBridge
 
-A Fabric client mod for Minecraft (1.19, 1.21.11, and 26.2 development snapshots) that exposes game state over a local WebSocket server, plus a Vue web UI for visual inspection. Built for AI-assisted Minecraft development and debugging.
+A Fabric client mod for Minecraft (1.19, 1.21.11, exact 26.1, and 26.2 development snapshots) that exposes game state over a local WebSocket server, plus a Vue web UI for visual inspection. Built for AI-assisted Minecraft development and debugging.
 
 ## What It Does
 
@@ -116,7 +116,7 @@ The web UI connects directly to the WebSocket server — no MCP layer required.
 
 The mod automatically downloads official Mojang mappings at startup and uses them to translate human-readable names (`net.minecraft.client.Minecraft`) to the obfuscated names used at runtime. In 1.21.11+, Mojang ships unobfuscated names and mapping is a no-op.
 
-The 26.2 development build targets Mojang-named snapshot classes directly and skips mapping download/remap entirely.
+The exact 26.1 and 26.2 development builds target Mojang-named classes directly and skip mapping download/remap entirely.
 
 ## Security Model
 
@@ -137,6 +137,7 @@ mod/
   core/          — Shared Java: BridgeServer, Groovy runtime, mapping resolver, provider interfaces
   fabric-1.19/   — Fabric mod for Minecraft 1.19.x (provider impls + mixins)
   fabric-1.21.11/— Fabric mod for Minecraft 1.21.11 (provider impls + mixins)
+  fabric-26.1/   — Fabric mod for exact Minecraft 26.1 (provider impls + mixins)
   fabric-26.2-dev/— Fabric mod for Minecraft 26.2 development snapshots
 web-ui/          — Vue 3 + Pinia + Tailwind inspection app
 ```
@@ -145,23 +146,54 @@ web-ui/          — Vue 3 + Pinia + Tailwind inspection app
 
 Grab the jar for your Minecraft version from the
 [GitHub releases](https://github.com/use-ai-for-mc/debugbridge/releases)
-(`debugbridge-1.19-*.jar` or `debugbridge-1.21.11-*.jar`), drop it into your
-instance's `mods/` folder, and launch with Fabric Loader. Client-side only —
-nothing to install on a server. On first run the mod shows a developer
-warning in-game and stays inactive until you accept it; the same gate writes
-`developer_mode_accepted` into `config/debugbridge.json`. Once accepted, the
-bundled web UI is at **http://localhost:9976** (the in-game startup message
-prints the exact URL).
+(`debugbridge-1.19-*.jar`, `debugbridge-1.21.11-*.jar`, or
+`debugbridge-26.1-*.jar`), drop it into your instance's `mods/` folder, and
+launch with Fabric Loader. Client-side only — nothing to install on a server.
+On first run the mod shows a developer warning in-game and stays inactive
+until you accept it; the same gate writes `developer_mode_accepted` into
+`config/debugbridge.json`. Once accepted, the bundled web UI is at
+**http://localhost:9976** (the in-game startup message prints the exact URL).
+
+For the local exact-26.1 Prism Launcher instance, use the repo script:
+
+```bash
+JAVA_HOME_26_1=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home \
+  PRISM_INSTANCE_NAME=26.1 \
+  ./build-and-deploy-26.1.sh
+```
+
+To check the selected Prism instance, Java path, parsed Gradle version, target
+mods directory, and smoke-test port without building or touching the instance:
+
+```bash
+JAVA_HOME_26_1=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home \
+  PRISM_INSTANCE_NAME=26.1 \
+  ./build-and-deploy-26.1.sh --preflight
+```
+
+The script builds `mod/fabric-26.1`, stages the jar, verifies it with
+`unzip -tq`, and atomically swaps it into the selected Prism instance's
+`mods/` directory. It verifies the built and staged jars declare exact
+Minecraft `26.1` and the `com.debugbridge.fabric261.DebugBridgeMod`
+entrypoint before replacing the installed jar. If the bridge uses a non-default
+port for the final smoke run, set `SMOKE_PORT=<port>` when invoking the script;
+the post-deploy command hints will use that port.
 
 ## Building
 
-Requires **JDK 21+** for the stable Fabric modules, **JDK 25** for `fabric-26.2-dev` (matches the runtime declared by the snapshot's own version manifest), and **Node ≥20.19** for the web UI.
+Requires **JDK 21+** for the stable 1.x Fabric modules, **JDK 25** for
+`fabric-26.1` and `fabric-26.2-dev` (matching the runtime declared by the
+26.x version manifests), and **Node >=20.19** for the web UI.
 
 ```bash
 # Fabric mods
 cd mod
 JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ./gradlew build
 # JARs -> mod/fabric-*/build/libs/
+
+# Exact 26.1 bridge
+cd mod
+JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home ./gradlew :fabric-26.1:jar
 
 # 26.2 development snapshot bridge
 cd mod
@@ -195,6 +227,10 @@ node tools/smoke-test.mjs --port 9876 --version 1.21.11
 
 # 1.19 alongside (default ports: 1.21.11=9876, 1.19=9877)
 node tools/smoke-test.mjs --port 9877 --version 1.19
+
+# Exact 26.1 after deploying to a Prism instance
+node tools/smoke-test.mjs --port 9876 --version 26.1 --game-dir-contains '/instances/26.1/' --include-textures
+node tools/record-video-smoke.mjs --port 9876 --version 26.1 --game-dir-contains '/instances/26.1/'
 ```
 
 **3. Wire-shape regression mode** — same script with `--regression DIR`. Compares each live response's structural shape (key sets at every level, value types) against a captured fixture; fails on drift.

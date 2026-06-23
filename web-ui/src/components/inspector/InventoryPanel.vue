@@ -230,6 +230,9 @@ const armorSlotIdx = [39, 38, 37, 36]
               {{ selectedItem.customName || selectedItem.name.replace(/_/g, ' ') }}
             </div>
             <div class="text-xs text-zinc-500 font-mono mt-0.5">{{ selectedItem.id }}</div>
+            <div v-if="selectedItem.textureDegraded" class="inv-texture-degraded mt-1">
+              Renderer fallback icon
+            </div>
             <div class="text-xs text-zinc-400 mt-1">
               {{ slotLabel(selectedItem.slot) }}
               <span v-if="selectedItem.count > 1"> &middot; Count: {{ selectedItem.count }}</span>
@@ -410,6 +413,18 @@ const armorSlotIdx = [39, 38, 37, 36]
   object-fit: contain;
   image-rendering: pixelated;
   padding: 4px;
+}
+
+.inv-texture-degraded {
+  display: inline-flex;
+  width: fit-content;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 7px;
 }
 
 .lore-obfuscated {

@@ -73,9 +73,11 @@ export const useEntitiesStore = defineStore('entities', () => {
   const selectedDetails = ref<EntityDetails | null>(null);
   const equipmentTextures = ref<Record<string, string>>({});
   const equipmentSpriteNames = ref<Record<string, string>>({});
+  const equipmentTextureDegraded = ref<Record<string, boolean>>({});
   // Cache keyed by `${entityId}:${slot}:${itemId}` — rendering the entity's actual
   // ItemStack honors damage-based and CMD-based model overrides.
   const entityPrimaryTextures = ref<Record<string, string>>({});
+  const entityPrimaryTextureDegraded = ref<Record<string, boolean>>({});
   const inFlightEntityPrimary = new Map<string, Promise<string | null>>();
   const isLoading = ref(false);
   const isLoadingDetails = ref(false);
@@ -134,6 +136,10 @@ export const useEntitiesStore = defineStore('entities', () => {
         const tex = await bridge.getEntityItemTexture(entityId, slot);
         const url = `data:image/png;base64,${tex.base64Png}`;
         entityPrimaryTextures.value = { ...entityPrimaryTextures.value, [key]: url };
+        entityPrimaryTextureDegraded.value = {
+          ...entityPrimaryTextureDegraded.value,
+          [key]: (tex.spriteName ?? '').startsWith('fallback:'),
+        };
         return url;
       } catch {
         return null;
@@ -314,6 +320,7 @@ export const useEntitiesStore = defineStore('entities', () => {
       // keyed by slot name so the UI can look up "FRAME" the same way.
       equipmentTextures.value = {};
       equipmentSpriteNames.value = {};
+      equipmentTextureDegraded.value = {};
       const slots = Object.keys(eq);
       if (frameItem) slots.push('FRAME');
       if (slots.length > 0) {
@@ -323,6 +330,10 @@ export const useEntitiesStore = defineStore('entities', () => {
             equipmentTextures.value = {
               ...equipmentTextures.value,
               [slot]: `data:image/png;base64,${tex.base64Png}`,
+            };
+            equipmentTextureDegraded.value = {
+              ...equipmentTextureDegraded.value,
+              [slot]: (tex.spriteName ?? '').startsWith('fallback:'),
             };
             if (tex.spriteName) {
               equipmentSpriteNames.value = {
@@ -348,6 +359,7 @@ export const useEntitiesStore = defineStore('entities', () => {
     selectedDetails.value = null;
     equipmentTextures.value = {};
     equipmentSpriteNames.value = {};
+    equipmentTextureDegraded.value = {};
 
     if (previousId !== null && previousId !== id) {
       bridge.setEntityGlow(previousId, false).catch(() => {});
@@ -408,6 +420,7 @@ export const useEntitiesStore = defineStore('entities', () => {
 
   function clearEntityPrimaryTextureCache() {
     entityPrimaryTextures.value = {};
+    entityPrimaryTextureDegraded.value = {};
   }
 
   async function refreshEntities(): Promise<void> {
@@ -423,7 +436,9 @@ export const useEntitiesStore = defineStore('entities', () => {
     selectedDetails,
     equipmentTextures,
     equipmentSpriteNames,
+    equipmentTextureDegraded,
     entityPrimaryTextures,
+    entityPrimaryTextureDegraded,
     isLoading,
     isLoadingDetails,
     error,
@@ -448,4 +463,3 @@ export const useEntitiesStore = defineStore('entities', () => {
     fetchLookedAtEntity,
   };
 });
-

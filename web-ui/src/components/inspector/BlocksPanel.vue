@@ -227,6 +227,13 @@ function blockColor(b: NearbyBlock): string {
                   >
                     {{ item.damage ?? 0 }} / {{ item.maxDamage }}
                   </span>
+                  <span
+                    v-if="blocks.slotTextureDegraded[item.slot]"
+                    class="rounded border border-amber-500/40 bg-amber-500/10 px-1 py-0.5 text-[10px] uppercase tracking-wide text-amber-300"
+                    title="26.1 renderer returned a generated fallback icon"
+                  >
+                    Renderer fallback icon
+                  </span>
                 </div>
               </div>
             </div>

@@ -8,7 +8,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * Tracks which block positions should appear highlighted on the client.
  * Populated by BridgeServer requests and read by version-specific render
  * hooks: 1.19 uses a LevelRenderer mixin to draw line boxes; 1.21.11 hands
- * positions to the vanilla GameTestBlockHighlightRenderer each tick.
+ * positions to the vanilla GameTestBlockHighlightRenderer each tick; exact
+ * 26.1 emits DebugBridge-owned gizmos during LevelRenderer extraction so it
+ * does not clear or reuse vanilla GameTest marker state.
  */
 public final class ClientBlockGlowManager {
     private static final Set<Pos> GLOWING = Collections.newSetFromMap(new ConcurrentHashMap<>());
