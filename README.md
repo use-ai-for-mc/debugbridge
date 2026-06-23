@@ -1,6 +1,6 @@
 # DebugBridge
 
-A Fabric client mod for Minecraft (1.19, 1.21.11, exact 26.1, and 26.2 development snapshots) that exposes game state over a local WebSocket server, plus a Vue web UI for visual inspection. Built for AI-assisted Minecraft development and debugging.
+A Fabric client mod for Minecraft (1.19, 1.21.11, exact 26.1, and exact 26.2) that exposes game state over a local WebSocket server, plus a Vue web UI for visual inspection. Built for AI-assisted Minecraft development and debugging.
 
 ## What It Does
 
@@ -138,7 +138,7 @@ mod/
   fabric-1.19/   — Fabric mod for Minecraft 1.19.x (provider impls + mixins)
   fabric-1.21.11/— Fabric mod for Minecraft 1.21.11 (provider impls + mixins)
   fabric-26.1/   — Fabric mod for exact Minecraft 26.1 (provider impls + mixins)
-  fabric-26.2-dev/— Fabric mod for Minecraft 26.2 development snapshots
+  fabric-26.2-dev/— Fabric mod for exact Minecraft 26.2
 web-ui/          — Vue 3 + Pinia + Tailwind inspection app
 ```
 
@@ -195,7 +195,7 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ./gradl
 cd mod
 JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home ./gradlew :fabric-26.1:jar
 
-# 26.2 development snapshot bridge
+# Minecraft 26.2 bridge
 cd mod
 JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home ./gradlew :core:test :fabric-26.2-dev:jar
 

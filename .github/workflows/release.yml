@@ -91,7 +91,7 @@ jobs:
         working-directory: mod
         run: |
           for jar in fabric-26.1/build/libs/debugbridge-26.1-*[0-9].jar \
-                     fabric-26.2-dev/build/libs/debugbridge-26.2-dev-*[0-9].jar; do
+                     fabric-26.2-dev/build/libs/debugbridge-26.2-*[0-9].jar; do
             unzip -p "$jar" 'META-INF/jars/core-*.jar' > /tmp/core-nested.jar
             unzip -l /tmp/core-nested.jar | grep -q 'webui/index.html' \
               || { echo "::error::$jar is missing the bundled web UI"; exit 1; }
@@ -108,7 +108,7 @@ jobs:
       - name: Upload 26.2 release artifact
         uses: actions/upload-artifact@v7
         with:
-          name: release-fabric-26.2-dev
+          name: release-fabric-26.2
           path: mod/fabric-26.2-dev/build/libs/*.jar
           if-no-files-found: error
 
@@ -145,7 +145,7 @@ jobs:
       - name: Download 26.2 artifact
         uses: actions/download-artifact@v8
         with:
-          name: release-fabric-26.2-dev
+          name: release-fabric-26.2
           path: release-artifacts/fabric-26.2-dev
 
       - name: Create Release
@@ -180,7 +180,7 @@ jobs:
             - `debugbridge-1.19-*.jar` — legacy Minecraft 1.19 support
             - `debugbridge-1.21.11-*.jar` — current/default stable line
             - `debugbridge-26.1-*.jar` — exact Minecraft 26.1 support
-            - `debugbridge-26.2-dev-*.jar` — 26.2 development snapshot line
+            - `debugbridge-26.2-*.jar` — exact Minecraft 26.2 support
 
             ### New: bundled web UI
             The Vue inspection app (dashboard, entity/block browsers, screen
@@ -267,5 +267,4 @@ jobs:
             - Minecraft 1.19 (Fabric Loader >= 0.14.0)
             - Minecraft 1.21.11 (Fabric Loader >= 0.16.0)
             - Minecraft 26.1 exact (Fabric Loader >= 0.19.2)
-            - Minecraft 26.2 development snapshots (Fabric Loader >= 0.19.2;
-              the jar targets `26.2-pre-2` specifically)
+            - Minecraft 26.2 exact (Fabric Loader >= 0.19.2)

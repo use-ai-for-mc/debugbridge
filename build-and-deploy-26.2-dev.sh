@@ -6,11 +6,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MOD_DIR="${SCRIPT_DIR}/mod"
 MODRINTH_PROFILE_NAME="${MODRINTH_PROFILE_NAME:-REPLACE-WITH-PROFILE-NAME}"
 
-JAR_NAME="debugbridge-26.2-dev-2.0.0.jar"
-OLD_JAR_NAMES=("debugbridge-26.2-dev-1.1.0.jar" "debugbridge-26.2-dev-1.0.0.jar" "debugbridge-26.2-snapshot-5-1.1.0.jar" "debugbridge-26.2-snapshot-5-1.0.0.jar" "debugbridge-26.2-snapshot-4-1.1.0.jar" "debugbridge-26.2-snapshot-4-1.0.0.jar" "debugbridge-26.2-snapshot-3-1.1.0.jar" "debugbridge-26.2-snapshot-3-1.0.0.jar")
+JAR_NAME="debugbridge-26.2-2.0.0.jar"
+OLD_JAR_NAMES=("debugbridge-26.2-dev-2.0.0.jar" "debugbridge-26.2-dev-1.1.0.jar" "debugbridge-26.2-dev-1.0.0.jar" "debugbridge-26.2-snapshot-5-1.1.0.jar" "debugbridge-26.2-snapshot-5-1.0.0.jar" "debugbridge-26.2-snapshot-4-1.1.0.jar" "debugbridge-26.2-snapshot-4-1.0.0.jar" "debugbridge-26.2-snapshot-3-1.1.0.jar" "debugbridge-26.2-snapshot-3-1.0.0.jar")
 SOURCE_JAR="${MOD_DIR}/fabric-26.2-dev/build/libs/${JAR_NAME}"
 
-echo "Building DebugBridge mod (fabric-26.2-dev)..."
+echo "Building DebugBridge mod (Minecraft 26.2, fabric-26.2-dev)..."
 cd "${MOD_DIR}"
 # Remove stale outputs from any older archivesName values.
 for old in "${OLD_JAR_NAMES[@]}"; do

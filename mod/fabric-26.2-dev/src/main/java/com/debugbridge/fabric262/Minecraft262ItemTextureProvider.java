@@ -232,7 +232,7 @@ public class Minecraft262ItemTextureProvider implements ItemTextureProvider {
                 projectionBuffer.close();
                 projectionBuffer = null;
 
-                long bufferSize = (long) size * size * colorTex.getFormat().pixelSize();
+                long bufferSize = (long) size * size * colorTex.getFormat().blockSize();
                 readBuffer = device.createBuffer(
                         () -> "dbg_item_read", GpuBuffer.USAGE_MAP_READ | GpuBuffer.USAGE_COPY_DST, bufferSize);
 

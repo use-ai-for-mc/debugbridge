@@ -12,7 +12,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 
 /**
- * 26.2 snapshot framebuffer capture as JPEG.
+ * Minecraft 26.2 framebuffer capture as JPEG.
  * <p>
  * Uses {@link Screenshot#takeScreenshot(RenderTarget, int, java.util.function.Consumer)}
  * which performs a backend-neutral readback through the client screenshot API.

@@ -1,7 +1,7 @@
 # DebugBridge MCP Live Smoke
 
-This is the live verification path for DebugBridge on exact 26.1 and the
-26.2 development snapshot. Use MCP tool calls for Minecraft actions; do not
+This is the live verification path for DebugBridge on exact 26.1 and exact
+26.2. Use MCP tool calls for Minecraft actions; do not
 route those actions through shell-based Minecraft control wrappers.
 
 ## Prepare

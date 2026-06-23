@@ -10,16 +10,15 @@ import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 
 /**
- * Session control for the 26.2 snapshot. {@code disconnect} and {@code quit}
+ * Session control for Minecraft 26.2. {@code disconnect} and {@code quit}
  * queue onto the game thread and complete asynchronously — their bridge
  * response only acknowledges the request; callers poll {@code snapshot} /
  * {@code screenInspect} for the outcome. {@code joinServer} additionally waits
  * (bounded) for the client to settle before connecting, so its ack means the
  * connect attempt actually started — see {@link ClientSettleGate}.
  *
- * <p>Written against the 1.21.x connect/disconnect API; the snapshot may have
- * drifted (it already renamed {@code mc.screen} to {@code mc.gui.screen()}),
- * so expect to adjust call sites on the first 26.2 compile.
+ * <p>Written against the 1.21.x connect/disconnect API; exact 26.2 renamed
+ * {@code mc.screen} to {@code mc.gui.screen()}.
  */
 public class Minecraft262SessionControlProvider implements SessionControlProvider {
 

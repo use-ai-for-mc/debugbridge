@@ -7,7 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 
 /**
- * 26.2-dev per-frame capture for the recording pipeline. Called from the
+ * Minecraft 26.2 per-frame capture for the recording pipeline. Called from the
  * render thread (mixin tail of {@code Minecraft.runTick}); uses the
  * backend-neutral {@code Screenshot.takeScreenshot(target, downscale,
  * Consumer)} which fires the consumer once the image is available.
