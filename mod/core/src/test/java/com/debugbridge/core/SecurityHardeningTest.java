@@ -23,15 +23,17 @@ import org.junit.jupiter.api.*;
 class SecurityHardeningTest {
     private static BridgeServer server;
     private static final int PORT = 19884;
+    private static final LinkedBlockingQueue<String> commands = new LinkedBlockingQueue<>();
     private TestClient client;
 
     @BeforeAll
     static void startServer() throws Exception {
         server = new BridgeServer(PORT, new PassthroughResolver("test"), new DirectDispatcher());
         // runCommand is gated off by default; flip it on so we can exercise the
-        // injection-hardening path. The validity of the gating itself is
-        // covered separately.
+        // native provider path. The validity of the gating itself is covered
+        // separately.
         server.setRunCommandEnabled(true);
+        server.setCommandProvider(command -> commands.offer(command));
         server.start();
         Thread.sleep(500);
     }
@@ -43,6 +45,7 @@ class SecurityHardeningTest {
 
     @BeforeEach
     void connect() throws Exception {
+        commands.clear();
         client = new TestClient(new URI("ws://127.0.0.1:" + PORT));
         assertTrue(client.connectBlocking(3, TimeUnit.SECONDS));
     }
@@ -55,35 +58,21 @@ class SecurityHardeningTest {
     // ==================== runCommand injection hardening ====================
 
     /**
-     * runCommand encodes every byte of the user's command as a
-     * {@code new String(byte[], "UTF-8")} built from numeric literals, so
-     * user-controlled bytes never appear in the generated Groovy source. This
-     * test pins that property: a payload that would have been a valid injection
-     * under naive string concatenation should now surface as a normal command
-     * invocation (which fails here because there's no live Minecraft client —
-     * but the failure must come from the Minecraft side, not from injected
-     * Groovy executing).
+     * runCommand dispatches through a native provider, so injection-shaped text
+     * is just command data. The old Groovy wrapper used byte literals to keep
+     * this safe; this test pins the same external property on the native path.
      */
     @Test
-    void testRunCommandRejectsBackslashQuoteInjection() throws Exception {
+    void testRunCommandTreatsBackslashQuotePayloadAsData() throws Exception {
         // Classic backslash+quote escape attempt + a literal script trailer.
         String payload = "say \\'; System.exit(0) //";
         JsonObject resp = sendRunCommand(payload);
-        // The script will fail (no live mc.player) but the failure must NOT
-        // come from injected code executing — it must be a Java-level error.
         assertNotNull(resp, "Should get a response, not crash the server");
-        if (resp.get("success").getAsBoolean()) {
-            String result = resp.has("result") ? resp.get("result").toString() : "";
-            assertFalse(result.contains("System.exit"), "Injection-shaped payload must not have executed: " + result);
-        } else {
-            String error = resp.get("error").getAsString();
-            // Reject any sign of a Groovy compile error, which would indicate the
-            // user input slipped into the source and broke the string literal.
-            assertFalse(
-                    error.contains("unexpected token"),
-                    "Groovy parse error means user input reached the parser: " + error);
-            assertFalse(error.contains("Compilation error"), "Compile error suggests injection: " + error);
-        }
+        assertTrue(resp.get("success").getAsBoolean(), "Expected native provider success: " + resp);
+        assertEquals(payload, commands.poll(1, TimeUnit.SECONDS));
+        JsonObject result = resp.getAsJsonObject("result");
+        assertEquals("string", result.get("type").getAsString());
+        assertEquals("Command sent: " + payload, result.get("value").getAsString());
     }
 
     @Test

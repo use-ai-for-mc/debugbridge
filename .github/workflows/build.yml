@@ -135,6 +135,10 @@ jobs:
         working-directory: web-ui
         run: npm ci
 
+      - name: Test
+        working-directory: web-ui
+        run: npm test
+
       - name: Build
         working-directory: web-ui
         run: npm run build

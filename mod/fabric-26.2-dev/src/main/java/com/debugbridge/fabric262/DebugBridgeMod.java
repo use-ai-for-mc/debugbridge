@@ -2,6 +2,7 @@ package com.debugbridge.fabric262;
 
 import com.debugbridge.core.block.NearbyBlocksProvider;
 import com.debugbridge.core.chat.ChatHistoryProvider;
+import com.debugbridge.core.command.CommandProvider;
 import com.debugbridge.core.entity.LookedAtEntityProvider;
 import com.debugbridge.core.entity.NearbyEntitiesProvider;
 import com.debugbridge.core.lifecycle.AbstractDebugBridgeMod;
@@ -134,6 +135,11 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
     @Override
     protected ScreenInspectProvider createScreenInspectProvider() {
         return new Minecraft262ScreenInspectProvider();
+    }
+
+    @Override
+    protected CommandProvider createCommandProvider() {
+        return new Minecraft262CommandProvider();
     }
 
     @Override

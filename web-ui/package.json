@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
+    "test": "vitest run",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -13,6 +14,9 @@
     "monaco-editor": "^0.55.1",
     "pinia": "^3.0.4",
     "vue": "^3.5.38"
+  },
+  "overrides": {
+    "dompurify": "3.4.11"
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.11",
@@ -25,6 +29,7 @@
     "tailwindcss": "^4.2.2",
     "typescript": "~6.0.3",
     "vite": "^8.0.16",
+    "vitest": "^4.1.9",
     "vue-tsc": "^3.3.5"
   }
 }

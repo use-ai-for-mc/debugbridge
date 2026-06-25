@@ -11,10 +11,16 @@ public final class RecordingRequest {
     /** Hard cap on {@code frames} per the protocol (5s at 60Hz). */
     public static final int MAX_FRAMES = 300;
 
+    public static final int DEFAULT_TEMP_TTL_HOURS = 24;
+    public static final int MIN_TEMP_TTL_HOURS = 1;
+    public static final int MAX_TEMP_TTL_HOURS = 24 * 7;
+
     /** Capture every render tick. */
     public static final long INTERVAL_EVERY_FRAME = -1L;
 
     public final String requestId;
+    public final Storage storage;
+    public final int ttlHours;
     public final int frames;
     /** Either {@link #INTERVAL_EVERY_FRAME} ("frame" mode) or a positive ms gap. */
     public final long intervalMs;
@@ -26,6 +32,8 @@ public final class RecordingRequest {
 
     public RecordingRequest(
             String requestId,
+            Storage storage,
+            int ttlHours,
             int frames,
             long intervalMs,
             OutputMode output,
@@ -33,6 +41,8 @@ public final class RecordingRequest {
             int downscale,
             float quality) {
         this.requestId = requestId;
+        this.storage = storage;
+        this.ttlHours = ttlHours;
         this.frames = frames;
         this.intervalMs = intervalMs;
         this.output = output;
@@ -52,5 +62,30 @@ public final class RecordingRequest {
     public enum OutputMode {
         GRID,
         FRAMES
+    }
+
+    public enum Storage {
+        TEMP("temp"),
+        PERSISTENT("persistent");
+
+        private final String wireName;
+
+        Storage(String wireName) {
+            this.wireName = wireName;
+        }
+
+        public String wireName() {
+            return wireName;
+        }
+
+        public static Storage fromWireName(String value) {
+            return switch (value) {
+                case "temp" -> TEMP;
+                case "persistent" -> PERSISTENT;
+                default ->
+                    throw new IllegalArgumentException(
+                            "storage must be \"temp\" or \"persistent\", got \"" + value + "\"");
+            };
+        }
     }
 }

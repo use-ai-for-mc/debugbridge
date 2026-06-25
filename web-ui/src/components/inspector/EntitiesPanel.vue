@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
 import { useEntitiesStore, type NearbyEntity } from '../../stores/entities'
 import { useConnectionStore } from '../../stores/connection'
 import JsonTree from './JsonTree.vue'
+import { entityColor } from '../../services/entity-colors'
 
 const entities = useEntitiesStore()
 const connection = useConnectionStore()
@@ -73,34 +74,6 @@ const selectedEntity = computed(() => {
   if (entities.selectedEntityId === null) return null
   return entities.entities.find(e => e.id === entities.selectedEntityId) ?? null
 })
-
-function entityColor(e: NearbyEntity): string {
-  const t = e.type.toLowerCase()
-  // Hostile
-  if (['zombie', 'skeleton', 'creeper', 'spider', 'enderman', 'witch', 'blaze',
-       'ghast', 'slime', 'magmacube', 'phantom', 'drowned', 'husk', 'stray',
-       'pillager', 'vindicator', 'ravager', 'vex', 'evoker', 'warden', 'wither',
-       'piglin', 'hoglin', 'zoglin', 'piglinbrute', 'breeze', 'bogged',
-       'guardian', 'elderguardian', 'shulker', 'silverfish', 'endermite',
-       'cavespider'].some(m => t.includes(m))) return '#ff5555'
-  // Passive
-  if (['cow', 'pig', 'sheep', 'chicken', 'horse', 'donkey', 'mule', 'rabbit',
-       'cat', 'wolf', 'parrot', 'fox', 'bee', 'turtle', 'frog', 'goat',
-       'camel', 'sniffer', 'armadillo', 'mooshroom', 'panda', 'llama',
-       'villager', 'irongolem', 'snowgolem', 'allay', 'axolotl',
-       'strider'].some(m => t.includes(m))) return '#55ff55'
-  // Water
-  if (['squid', 'dolphin', 'cod', 'salmon', 'tropicalfish', 'pufferfish',
-       'glowsquid', 'tadpole'].some(m => t.includes(m))) return '#55ffff'
-  // Players
-  if (t.includes('player') || t.includes('serverplayer')) return '#ff55ff'
-  // Items / XP
-  if (t.includes('item') || t.includes('experienceorb')) return '#ffaa00'
-  // Projectiles
-  if (['arrow', 'fireball', 'snowball', 'trident', 'shulkerbullet',
-       'thrownegg', 'thrownpotion'].some(m => t.includes(m))) return '#aaaaaa'
-  return '#888888'
-}
 
 function formatPos(n: number): string {
   return n.toFixed(1)

@@ -21,7 +21,7 @@ Purpose-built Java endpoints that return structured JSON in a single round-trip 
 | `screenInspect` | Current open screen/gui: type, title, container slots with item stacks (with optional `includeIcons`) |
 | `chatHistory` | Recent client-side chat messages (with optional `includeJson` for styled components) |
 | `screenshot` | Capture the framebuffer as JPEG |
-| `record_video` | Capture N framebuffer frames (every frame or at a fixed interval) as a JPEG contact-sheet grid or per-frame files |
+| `record_video` | Capture N framebuffer frames as a temp-by-default JPEG grid or per-frame files |
 | `getItemTexture` / `getItemTextureById` / `getEntityItemTexture` | Render item icons as PNG (honors damage, custom model data, dyed leather, player heads) |
 | `setEntityGlow` / `setBlockGlow` / `clearBlockGlow` | Highlight entities or blocks with an in-world outline |
 | `search` | Search loaded classes by name pattern |
@@ -272,6 +272,31 @@ Connect to `ws://127.0.0.1:9876` and send JSON:
 ```
 
 Each request gets a matching `{id, type, payload}` response.
+
+#### `record_video` storage
+
+Recordings are temporary by default so AI-driven smoke tests do not fill the
+game directory:
+
+```json
+{
+  "id": "rec-1",
+  "type": "record_video",
+  "payload": {
+    "frames": 120,
+    "interval": "frame",
+    "output": "grid",
+    "storage": "temp",
+    "ttlHours": 24
+  }
+}
+```
+
+`storage` defaults to `"temp"` and writes under a DebugBridge-owned subfolder of
+the system temp directory. The response includes `storage`, `directory`, and
+`expiresAt`. Use `"storage": "persistent"` to keep output under
+`<gameDir>/debugbridge-recordings/<requestId>/`; `requestId` is an optional
+sanitized subdirectory name, not an arbitrary filesystem path.
 
 ## Dependencies Bundled in JAR
 

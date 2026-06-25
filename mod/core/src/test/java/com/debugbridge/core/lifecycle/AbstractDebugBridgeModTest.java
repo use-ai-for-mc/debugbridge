@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.debugbridge.core.BridgeConfig;
 import com.debugbridge.core.block.NearbyBlocksProvider;
 import com.debugbridge.core.chat.ChatHistoryProvider;
+import com.debugbridge.core.command.CommandProvider;
 import com.debugbridge.core.entity.LookedAtEntityProvider;
 import com.debugbridge.core.entity.NearbyEntitiesProvider;
 import com.debugbridge.core.mapping.FabricNamespaceLookup;
@@ -210,6 +211,11 @@ class AbstractDebugBridgeModTest {
         @Override
         protected ScreenInspectProvider createScreenInspectProvider() {
             return () -> new com.debugbridge.core.protocol.dto.ScreenInspectDto();
+        }
+
+        @Override
+        protected CommandProvider createCommandProvider() {
+            return command -> {};
         }
 
         @Override

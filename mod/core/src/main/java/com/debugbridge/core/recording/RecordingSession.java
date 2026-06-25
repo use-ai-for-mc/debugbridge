@@ -5,6 +5,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -13,8 +14,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -45,8 +46,14 @@ final class RecordingSession {
      */
     private static final int MAX_IN_FLIGHT = 2;
 
+    private enum SessionState {
+        ACTIVE,
+        ABORTING,
+        DONE,
+        FAILED;
+    }
+
     private final RecordingRequest req;
-    private final Path baseDir;
     private final Path recordingDir;
     private final FrameCapturer capturer;
     private final ExecutorService worker;
@@ -59,7 +66,7 @@ final class RecordingSession {
 
     private final AtomicInteger inFlight = new AtomicInteger(0);
     private final AtomicInteger dropped = new AtomicInteger(0);
-    private final AtomicBoolean aborted = new AtomicBoolean(false);
+    private final AtomicReference<SessionState> state = new AtomicReference<>(SessionState.ACTIVE);
 
     /** Capture timestamps in ns; index by slot. Empty slots = 0. */
     private final long[] captureTimes;
@@ -79,7 +86,6 @@ final class RecordingSession {
 
     RecordingSession(RecordingRequest req, Path baseDir, FrameCapturer capturer) {
         this.req = req;
-        this.baseDir = baseDir;
         this.recordingDir = baseDir.resolve(req.requestId);
         this.capturer = capturer;
         this.worker = Executors.newSingleThreadExecutor(r -> {
@@ -108,7 +114,8 @@ final class RecordingSession {
             throw new RecordingException.IoError("could not create " + recordingDir + ": " + e.getMessage(), e);
         }
         LOG.info("[DebugBridge] Recording " + req.requestId + " started: frames=" + req.frames + " interval="
-                + (req.isFrameInterval() ? "frame" : req.intervalMs + "ms") + " output=" + req.output);
+                + (req.isFrameInterval() ? "frame" : req.intervalMs + "ms") + " output=" + req.output + " storage="
+                + req.storage.wireName());
     }
 
     /**
@@ -148,7 +155,7 @@ final class RecordingSession {
      * Render-thread tick. Decides whether to capture this frame.
      */
     void onFrame() {
-        if (aborted.get() || future.isDone()) return;
+        if (state.get() != SessionState.ACTIVE || future.isDone()) return;
         int slot = nextSlot.get();
         if (slot >= req.frames) return;
 
@@ -192,7 +199,7 @@ final class RecordingSession {
     /** Worker-thread per-frame handler. Encodes / buffers / finalizes. */
     private void handlePixels(int slot, int[] argb, int width, int height) {
         inFlight.decrementAndGet();
-        if (aborted.get()) return;
+        if (state.get() != SessionState.ACTIVE) return;
 
         // Lock dimensions on first arrival; reject any later frame that
         // disagrees (window-resize-mid-recording case).
@@ -237,6 +244,10 @@ final class RecordingSession {
 
     /** Worker-thread finalization once all frames are encoded. */
     private void finalizeRecording() throws RecordingException, IOException {
+        if (!state.compareAndSet(SessionState.ACTIVE, SessionState.DONE)) {
+            return;
+        }
+
         long captureMs = (endNanos - startNanos) / 1_000_000L;
         double meanIntervalMs = computeMeanIntervalMs();
 
@@ -251,6 +262,9 @@ final class RecordingSession {
             }
             long size = Files.size(gridPath);
             future.complete(new RecordingResult.Grid(
+                    req.storage,
+                    recordingDir.toAbsolutePath().toString(),
+                    expiresAt(),
                     gridPath.toAbsolutePath().toString(),
                     composed.getWidth(),
                     composed.getHeight(),
@@ -271,8 +285,27 @@ final class RecordingSession {
                 totalSize += Files.size(p);
             }
             future.complete(new RecordingResult.Frames(
-                    paths, totalSize, frameWidth, frameHeight, req.frames, captureMs, meanIntervalMs, dropped.get()));
+                    req.storage,
+                    recordingDir.toAbsolutePath().toString(),
+                    expiresAt(),
+                    paths,
+                    totalSize,
+                    frameWidth,
+                    frameHeight,
+                    req.frames,
+                    captureMs,
+                    meanIntervalMs,
+                    dropped.get()));
         }
+    }
+
+    Path recordingDir() {
+        return recordingDir;
+    }
+
+    private Instant expiresAt() {
+        if (req.storage != RecordingRequest.Storage.TEMP) return null;
+        return Instant.now().plusSeconds(req.ttlHours * 3600L);
     }
 
     private double computeMeanIntervalMs() {
@@ -291,8 +324,9 @@ final class RecordingSession {
      * first abort wins, subsequent calls are no-ops.
      */
     private void abortWith(RecordingException reason) {
-        if (!aborted.compareAndSet(false, true)) return;
+        if (!state.compareAndSet(SessionState.ACTIVE, SessionState.ABORTING)) return;
         cleanupPartialOutput();
+        state.set(SessionState.FAILED);
         future.completeExceptionally(reason);
     }
 

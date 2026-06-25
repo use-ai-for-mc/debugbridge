@@ -1,5 +1,6 @@
 package com.debugbridge.core.script;
 
+import com.debugbridge.core.ErrorFormatter;
 import com.debugbridge.core.mapping.MappingResolver;
 import com.debugbridge.core.refs.ObjectRefStore;
 import groovy.lang.GroovyShell;
@@ -11,8 +12,10 @@ import java.io.Writer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicLong;
 import org.codehaus.groovy.control.CompilerConfiguration;
 import org.codehaus.groovy.control.MultipleCompilationErrorsException;
 import org.codehaus.groovy.control.customizers.ASTTransformationCustomizer;
@@ -33,6 +36,9 @@ public class ScriptRuntime {
     private final GroovyBridge bridge;
     private final StringBuilder printBuffer = new StringBuilder();
     private long maxExecutionTimeMs = 10_000;
+    private ExecutorService executor;
+
+    private static final AtomicLong EXECUTOR_ID = new AtomicLong();
 
     private volatile Thread scriptThread;
 
@@ -48,6 +54,16 @@ public class ScriptRuntime {
         binding.setVariable("out", new PrintWriter(captureWriter(), true));
 
         this.shell = new GroovyShell(getClass().getClassLoader(), binding, compilerConfig());
+        this.executor = Executors.newSingleThreadExecutor(new GroovyThreadFactory());
+    }
+
+    private static final class GroovyThreadFactory implements ThreadFactory {
+        @Override
+        public Thread newThread(Runnable r) {
+            Thread t = new Thread(r, "groovy-exec-" + EXECUTOR_ID.incrementAndGet());
+            t.setDaemon(true);
+            return t;
+        }
     }
 
     private Writer captureWriter() {
@@ -89,20 +105,15 @@ public class ScriptRuntime {
     }
 
     /** Execute Groovy code with the runtime's default timeout. */
-    public ExecutionResult execute(String code) {
+    public synchronized ExecutionResult execute(String code) {
         return execute(code, maxExecutionTimeMs);
     }
 
     /** Execute Groovy code with an explicit per-call timeout (snapshotted per call). */
-    public ExecutionResult execute(String code, long timeoutMs) {
+    public synchronized ExecutionResult execute(String code, long timeoutMs) {
         final long effectiveTimeoutMs = timeoutMs > 0 ? timeoutMs : maxExecutionTimeMs;
         printBuffer.setLength(0);
-
-        ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r, "groovy-exec");
-            t.setDaemon(true);
-            return t;
-        });
+        ExecutorService currentExecutor = executor;
 
         Future<ExecutionResult> future = executor.submit(() -> {
             scriptThread = Thread.currentThread();
@@ -137,12 +148,21 @@ public class ScriptRuntime {
             future.cancel(true);
             Thread t = scriptThread;
             if (t != null) t.interrupt();
+            recycleExecutor();
             return new ExecutionResult(null, printBuffer.toString(), timeoutMessage(effectiveTimeoutMs));
         } catch (Exception e) {
             return new ExecutionResult(null, printBuffer.toString(), describe(e));
         } finally {
-            executor.shutdownNow();
+            // No-op: keep executor alive for reuse by future requests.
         }
+    }
+
+    private synchronized void recycleExecutor() {
+        ExecutorService oldExecutor;
+        ExecutorService nextExecutor = Executors.newSingleThreadExecutor(new GroovyThreadFactory());
+        oldExecutor = executor;
+        executor = nextExecutor;
+        oldExecutor.shutdownNow();
     }
 
     private static boolean isInterrupt(Throwable e) {
@@ -160,10 +180,7 @@ public class ScriptRuntime {
     }
 
     private static String describe(Throwable e) {
-        Throwable c = e;
-        while (c.getCause() != null && c.getCause() != c) c = c.getCause();
-        String msg = c.getMessage();
-        return c.getClass().getSimpleName() + (msg != null ? ": " + msg : "");
+        return ErrorFormatter.format(e);
     }
 
     /** Result of executing a script. {@code returnValue} is a plain Java/Groovy object (or wrapper). */

@@ -3,6 +3,7 @@ package com.debugbridge.core.lifecycle;
 import com.debugbridge.core.BridgeConfig;
 import com.debugbridge.core.block.NearbyBlocksProvider;
 import com.debugbridge.core.chat.ChatHistoryProvider;
+import com.debugbridge.core.command.CommandProvider;
 import com.debugbridge.core.entity.LookedAtEntityProvider;
 import com.debugbridge.core.entity.NearbyEntitiesProvider;
 import com.debugbridge.core.mapping.FabricMojangResolver;
@@ -149,6 +150,7 @@ public abstract class AbstractDebugBridgeMod {
         server.setLookedAtEntityProvider(createLookedAtEntityProvider());
         server.setChatHistoryProvider(createChatHistoryProvider());
         server.setScreenInspectProvider(createScreenInspectProvider());
+        server.setCommandProvider(createCommandProvider());
         server.setRunCommandEnabled(config.runCommandEnabled);
         SessionControlProvider sessionControl = createSessionControlProvider();
         if (sessionControl != null) {
@@ -160,7 +162,8 @@ public abstract class AbstractDebugBridgeMod {
         Path gd = gameDir();
         if (frameCapturer != null && gd != null) {
             Path recordingsDir = gd.resolve("debugbridge-recordings");
-            server.setRecordingProvider(new RecordingProvider(frameCapturer, recordingsDir));
+            Path tempRecordingsDir = tempRecordingsDir(gd);
+            server.setRecordingProvider(new RecordingProvider(frameCapturer, recordingsDir, tempRecordingsDir));
         } else {
             LOG.info("[DebugBridge] Recording provider not registered (no frame capturer or game dir)");
         }
@@ -204,6 +207,12 @@ public abstract class AbstractDebugBridgeMod {
             server.setWebUiPort(webUiServer.getPort());
             LOG.info("[DebugBridge] Web UI at http://localhost:" + webUiServer.getPort());
         }
+    }
+
+    private Path tempRecordingsDir(Path gameDir) {
+        String namespace = Integer.toUnsignedString(
+                gameDir.toAbsolutePath().normalize().toString().hashCode(), 16);
+        return Path.of(System.getProperty("java.io.tmpdir"), "debugbridge-recordings", namespace);
     }
 
     private int startServerOnAvailablePort(
@@ -371,6 +380,8 @@ public abstract class AbstractDebugBridgeMod {
     protected abstract ChatHistoryProvider createChatHistoryProvider();
 
     protected abstract ScreenInspectProvider createScreenInspectProvider();
+
+    protected abstract CommandProvider createCommandProvider();
 
     protected abstract SessionControlProvider createSessionControlProvider();
 

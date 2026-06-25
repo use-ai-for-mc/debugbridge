@@ -16,12 +16,23 @@ fi
 JAR_NAME="debugbridge-26.2-${PROJECT_VERSION}.jar"
 SOURCE_JAR="${MOD_DIR}/fabric-26.2-dev/build/libs/${JAR_NAME}"
 
+remove_26_2_jars() {
+    local dir="$1"
+    for old in \
+        "${dir}"/debugbridge-26.2-[0-9]*.jar \
+        "${dir}"/debugbridge-26.2-dev-*.jar \
+        "${dir}"/debugbridge-26.2-snapshot-*.jar; do
+        if [ -f "${old}" ]; then
+            echo "Removing stale $(basename "${old}") from ${dir}..."
+            rm -f "${old}"
+        fi
+    done
+}
+
 echo "Building DebugBridge mod (fabric-26.2-dev)..."
 cd "${MOD_DIR}"
 # Remove stale outputs from any older archivesName values.
-for old in "${MOD_DIR}/fabric-26.2-dev/build/libs"/debugbridge-26.2-*.jar; do
-    rm -f "${old}"
-done
+remove_26_2_jars "${MOD_DIR}/fabric-26.2-dev/build/libs"
 JAVA_HOME=/opt/homebrew/opt/openjdk@25 ./gradlew :fabric-26.2-dev:build --no-daemon
 
 if [ ! -f "${SOURCE_JAR}" ]; then
@@ -33,12 +44,6 @@ if [ "${MODRINTH_PROFILE_NAME}" = "REPLACE-WITH-PROFILE-NAME" ] || [ -z "${MODRI
     echo "Error: set MODRINTH_PROFILE_NAME before running this script"
     exit 1
 fi
-
-TARGET_DIR="/Users/cusgadmin/Library/Application Support/ModrinthApp/profiles/${MODRINTH_PROFILE_NAME}/mods/"
-TARGET_JAR="${TARGET_DIR}/${JAR_NAME}"
-
-echo "Creating target directory if it doesn't exist..."
-mkdir -p "${TARGET_DIR}"
 
 verify_jar() {
     local jar_file="$1"
@@ -64,13 +69,14 @@ if ! verify_jar "${SOURCE_JAR}" || ! verify_26_2_metadata "${SOURCE_JAR}"; then
     exit 1
 fi
 
+TARGET_DIR="/Users/cusgadmin/Library/Application Support/ModrinthApp/profiles/${MODRINTH_PROFILE_NAME}/mods/"
+TARGET_JAR="${TARGET_DIR}/${JAR_NAME}"
+
+echo "Creating target directory if it doesn't exist..."
+mkdir -p "${TARGET_DIR}"
+
 # Remove any stale jar names from the target mods directory so only the current jar remains.
-for old in "${TARGET_DIR}"/debugbridge-26.2-*.jar; do
-    if [ -f "${old}" ]; then
-        echo "Removing stale $(basename "${old}") from mods folder..."
-        rm -f "${old}"
-    fi
-done
+remove_26_2_jars "${TARGET_DIR}"
 
 MAX_RETRIES=3
 RETRY_COUNT=0

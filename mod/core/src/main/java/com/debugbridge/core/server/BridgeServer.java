@@ -1,8 +1,10 @@
 package com.debugbridge.core.server;
 
+import com.debugbridge.core.ErrorFormatter;
 import com.debugbridge.core.block.ClientBlockGlowManager;
 import com.debugbridge.core.block.NearbyBlocksProvider;
 import com.debugbridge.core.chat.ChatHistoryProvider;
+import com.debugbridge.core.command.CommandProvider;
 import com.debugbridge.core.entity.ClientEntityGlowManager;
 import com.debugbridge.core.entity.LookedAtEntityProvider;
 import com.debugbridge.core.entity.NearbyEntitiesProvider;
@@ -26,6 +28,7 @@ import com.debugbridge.core.protocol.dto.StatusDto;
 import com.debugbridge.core.recording.RecordingException;
 import com.debugbridge.core.recording.RecordingProvider;
 import com.debugbridge.core.recording.RecordingRequest;
+import com.debugbridge.core.recording.RecordingRequestParams;
 import com.debugbridge.core.recording.RecordingResult;
 import com.debugbridge.core.refs.ObjectRefStore;
 import com.debugbridge.core.screen.ScreenInspectProvider;
@@ -38,7 +41,6 @@ import com.debugbridge.core.texture.ItemTextureProvider;
 import com.google.gson.*;
 import java.net.BindException;
 import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -132,6 +134,9 @@ public class BridgeServer extends WebSocketServer {
      */
     private volatile boolean runCommandEnabled = false;
 
+    /** Native slash-command sender. Set by the version-specific module. */
+    private volatile CommandProvider commandProvider;
+
     /**
      * Session control (disconnect / joinServer / quit). Set by the
      * version-specific module; only honored when {@link #sessionControlEnabled}.
@@ -146,6 +151,9 @@ public class BridgeServer extends WebSocketServer {
 
     /** Loopback port of the bundled web UI; null when the UI isn't running. */
     private volatile Integer webUiPort = null;
+
+    /** Lazily-built flattened mapping search entries for this resolver. */
+    private volatile List<SearchEntry> searchEntries;
 
     public BridgeServer(int port, MappingResolver resolver, ThreadDispatcher dispatcher) {
         this(port, resolver, dispatcher, null, null);
@@ -187,6 +195,12 @@ public class BridgeServer extends WebSocketServer {
 
     public void setRunCommandEnabled(boolean enabled) {
         this.runCommandEnabled = enabled;
+    }
+
+    public void setCommandProvider(CommandProvider provider) {
+        this.commandProvider = provider;
+        LOG.info("[DebugBridge] Command provider registered: "
+                + provider.getClass().getSimpleName());
     }
 
     public void setSessionControlEnabled(boolean enabled) {
@@ -318,19 +332,45 @@ public class BridgeServer extends WebSocketServer {
 
     @Override
     public void onMessage(WebSocket conn, String message) {
+        String requestId = "unknown";
         try {
             BridgeRequest req = GSON.fromJson(message, BridgeRequest.class);
+            if (req == null) {
+                sendErrorResponse(conn, "unknown", "INVALID_MESSAGE: request payload was empty");
+                return;
+            }
+            if (req.id != null) {
+                requestId = req.id;
+            }
             BridgeResponse resp = handleRequest(req);
+            sendResponse(conn, resp);
+        } catch (com.google.gson.JsonSyntaxException e) {
+            LOG.log(Level.WARNING, "[DebugBridge] Invalid JSON payload", e);
+            sendErrorResponse(conn, "unknown", "INVALID_JSON: malformed payload - " + sanitizeMessage(e.getMessage()));
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "[DebugBridge] Error handling message (id=" + requestId + ")", e);
+            sendErrorResponse(conn, requestId, "INTERNAL_ERROR: " + ErrorFormatter.format(e));
+        }
+    }
+
+    private void sendResponse(WebSocket conn, BridgeResponse resp) {
+        try {
+            if (conn == null || !conn.isOpen()) {
+                LOG.log(Level.FINE, "[DebugBridge] Response skipped: connection is closed");
+                return;
+            }
             conn.send(GSON.toJson(resp.toJson()));
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "[DebugBridge] Error handling message", e);
-            try {
-                BridgeResponse resp = BridgeResponse.error("unknown", "Internal error: " + e.getMessage());
-                conn.send(GSON.toJson(resp.toJson()));
-            } catch (Exception e2) {
-                // Connection may be dead
-            }
+            LOG.log(Level.FINE, "[DebugBridge] Failed to send response; connection may be dead", e);
         }
+    }
+
+    private void sendErrorResponse(WebSocket conn, String requestId, String message) {
+        sendResponse(conn, BridgeResponse.error(requestId, message));
+    }
+
+    private static String sanitizeMessage(String message) {
+        return message == null ? "null" : message.replace('\n', ' ');
     }
 
     @Override
@@ -383,8 +423,20 @@ public class BridgeServer extends WebSocketServer {
                 default -> BridgeResponse.error(req.id, "Unknown request type: " + req.type);
             };
         } catch (Exception e) {
-            return BridgeResponse.error(req.id, e.getClass().getSimpleName() + ": " + e.getMessage());
+            return BridgeResponse.error(req.id, ErrorFormatter.withContext("request handling", e));
         }
+    }
+
+    private static BridgeResponse successJson(String reqId, JsonElement result) {
+        return BridgeResponse.success(reqId, result, null);
+    }
+
+    private static BridgeResponse successDtoOmitNullFields(String reqId, Object dto) {
+        return successJson(reqId, GSON_OMIT_NULLS.toJsonTree(dto));
+    }
+
+    private static BridgeResponse successDtoPreserveNullFields(String reqId, Object dto) {
+        return successJson(reqId, GSON.toJsonTree(dto));
     }
 
     // Hard ceiling on per-request script timeouts. Even if a caller asks for
@@ -437,53 +489,76 @@ public class BridgeServer extends WebSocketServer {
         List<SearchResultDto> results = new java.util.ArrayList<>();
         int limit = 100;
 
-        if (scope.equals("class") || scope.equals("all")) {
-            for (String mojangClass : resolver.getAllClassNames()) {
-                if (timedFind(regex, mojangClass)) {
-                    SearchResultDto r = new SearchResultDto();
-                    r.type = "class";
-                    r.name = mojangClass;
-                    results.add(r);
-                    if (results.size() >= limit) break;
-                }
+        for (SearchEntry entry : getSearchEntries()) {
+            if (!scope.equals("all") && !scope.equals(entry.type)) {
+                continue;
             }
-        }
-
-        if (results.size() < limit && (scope.equals("method") || scope.equals("all"))) {
-            for (String className : resolver.getAllClassNames()) {
-                for (String methodSig : resolver.getMethodSignatures(className)) {
-                    if (timedFind(regex, methodSig)) {
-                        SearchResultDto r = new SearchResultDto();
-                        r.type = "method";
-                        r.owner = className;
-                        r.name = methodSig;
-                        results.add(r);
-                        if (results.size() >= limit) break;
-                    }
-                }
-                if (results.size() >= limit) break;
-            }
-        }
-
-        if (results.size() < limit && (scope.equals("field") || scope.equals("all"))) {
-            for (String className : resolver.getAllClassNames()) {
-                for (String fieldName : resolver.getFieldNames(className)) {
-                    if (timedFind(regex, fieldName)) {
-                        SearchResultDto r = new SearchResultDto();
-                        r.type = "field";
-                        r.owner = className;
-                        r.name = fieldName;
-                        results.add(r);
-                        if (results.size() >= limit) break;
-                    }
-                }
+            if (timedFind(regex, entry.name)) {
+                results.add(entry.toDto());
                 if (results.size() >= limit) break;
             }
         }
 
         // Wire shape is a bare array (no wrapper). Gson serializes
         // `List<SearchResultDto>` directly to a JsonArray.
-        return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(results), null);
+        return successDtoOmitNullFields(req.id, results);
+    }
+
+    private List<SearchEntry> getSearchEntries() {
+        List<SearchEntry> entries = searchEntries;
+        if (entries != null) {
+            return entries;
+        }
+        synchronized (this) {
+            entries = searchEntries;
+            if (entries == null) {
+                entries = buildSearchEntries();
+                searchEntries = entries;
+            }
+            return entries;
+        }
+    }
+
+    private List<SearchEntry> buildSearchEntries() {
+        if (!resolver.contributesToSearch()) {
+            return List.of();
+        }
+        List<String> classNames = List.copyOf(resolver.getAllClassNames());
+        java.util.ArrayList<SearchEntry> entries = new java.util.ArrayList<>();
+        for (String className : classNames) {
+            entries.add(new SearchEntry("class", null, className));
+        }
+        for (String className : classNames) {
+            for (String methodSig : resolver.getMethodSignatures(className)) {
+                entries.add(new SearchEntry("method", className, methodSig));
+            }
+        }
+        for (String className : classNames) {
+            for (String fieldName : resolver.getFieldNames(className)) {
+                entries.add(new SearchEntry("field", className, fieldName));
+            }
+        }
+        return List.copyOf(entries);
+    }
+
+    private static final class SearchEntry {
+        final String type;
+        final String owner;
+        final String name;
+
+        SearchEntry(String type, String owner, String name) {
+            this.type = type;
+            this.owner = owner;
+            this.name = name;
+        }
+
+        SearchResultDto toDto() {
+            SearchResultDto dto = new SearchResultDto();
+            dto.type = type;
+            dto.owner = owner;
+            dto.name = name;
+            return dto;
+        }
     }
 
     /** Hard cap on `search` pattern length. Class/method names are tiny; very
@@ -583,10 +658,9 @@ public class BridgeServer extends WebSocketServer {
             result.addProperty("height", cap.height);
             result.addProperty("sizeBytes", cap.sizeBytes);
             result.addProperty("mimeType", "image/jpeg");
-            return BridgeResponse.success(req.id, result, null);
+            return successJson(req.id, result);
         } catch (Exception e) {
-            return BridgeResponse.error(
-                    req.id, "Screenshot failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            return BridgeResponse.error(req.id, "Screenshot failed: " + ErrorFormatter.format(e));
         }
     }
 
@@ -596,134 +670,30 @@ public class BridgeServer extends WebSocketServer {
         }
         RecordingRequest validated;
         try {
-            validated = validateRecordVideoPayload(req);
+            validated = RecordingRequestParams.fromPayload(req.id, req.payload);
         } catch (IllegalArgumentException e) {
             return BridgeResponse.error(req.id, "INVALID_INPUT: " + e.getMessage());
         }
         try {
             RecordingResult result = recordingProvider.record(validated);
-            return BridgeResponse.success(req.id, recordingResultToJson(result), null);
+            return successJson(req.id, recordingResultToJson(result));
         } catch (RecordingException e) {
             return BridgeResponse.error(req.id, e.getMessage());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return BridgeResponse.error(req.id, "INTERNAL: interrupted while waiting for recording");
         } catch (Exception e) {
-            return BridgeResponse.error(req.id, "INTERNAL: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            return BridgeResponse.error(req.id, ErrorFormatter.withContext("INTERNAL", e));
         }
-    }
-
-    private static RecordingRequest validateRecordVideoPayload(BridgeRequest req) {
-        JsonObject p = req.payload;
-        if (p == null || !p.has("frames")) {
-            throw new IllegalArgumentException("'frames' is required");
-        }
-        int frames;
-        try {
-            frames = p.get("frames").getAsInt();
-        } catch (Exception e) {
-            throw new IllegalArgumentException("'frames' must be an integer");
-        }
-        if (frames < 1) {
-            throw new IllegalArgumentException("frames=" + frames + " must be >= 1");
-        }
-        if (frames > RecordingRequest.MAX_FRAMES) {
-            throw new IllegalArgumentException(
-                    "frames=" + frames + " exceeds MAX_FRAMES=" + RecordingRequest.MAX_FRAMES);
-        }
-
-        long intervalMs = RecordingRequest.INTERVAL_EVERY_FRAME;
-        if (p.has("interval") && !p.get("interval").isJsonNull()) {
-            JsonElement iv = p.get("interval");
-            if (iv.isJsonPrimitive() && iv.getAsJsonPrimitive().isString()) {
-                String s = iv.getAsString();
-                if (!"frame".equals(s)) {
-                    throw new IllegalArgumentException("interval string must be \"frame\", got \"" + s + "\"");
-                }
-                // intervalMs stays at INTERVAL_EVERY_FRAME.
-            } else if (iv.isJsonPrimitive() && iv.getAsJsonPrimitive().isNumber()) {
-                double ms = iv.getAsDouble();
-                if (ms < 1.0) {
-                    throw new IllegalArgumentException("interval=" + ms + " must be >= 1 ms");
-                }
-                intervalMs = Math.round(ms);
-            } else {
-                throw new IllegalArgumentException("interval must be \"frame\" or a number of ms");
-            }
-        }
-
-        RecordingRequest.OutputMode output = RecordingRequest.OutputMode.GRID;
-        if (p.has("output") && !p.get("output").isJsonNull()) {
-            String s = p.get("output").getAsString();
-            switch (s) {
-                case "grid" -> output = RecordingRequest.OutputMode.GRID;
-                case "frames" -> output = RecordingRequest.OutputMode.FRAMES;
-                default ->
-                    throw new IllegalArgumentException("output must be \"grid\" or \"frames\", got \"" + s + "\"");
-            }
-        }
-
-        int gridCols = (int) Math.max(1, Math.ceil(Math.sqrt(frames)));
-        if (p.has("gridCols") && !p.get("gridCols").isJsonNull()) {
-            try {
-                gridCols = p.get("gridCols").getAsInt();
-            } catch (Exception e) {
-                throw new IllegalArgumentException("'gridCols' must be an integer");
-            }
-            if (gridCols < 1 || gridCols > frames) {
-                throw new IllegalArgumentException("gridCols=" + gridCols + " must be in [1, " + frames + "]");
-            }
-        }
-
-        int downscale = 2;
-        if (p.has("downscale") && !p.get("downscale").isJsonNull()) {
-            try {
-                downscale = p.get("downscale").getAsInt();
-            } catch (Exception e) {
-                throw new IllegalArgumentException("'downscale' must be an integer");
-            }
-            if (downscale < 1) {
-                throw new IllegalArgumentException("downscale=" + downscale + " must be >= 1");
-            }
-        }
-
-        float quality = 0.75f;
-        if (p.has("quality") && !p.get("quality").isJsonNull()) {
-            try {
-                quality = p.get("quality").getAsFloat();
-            } catch (Exception e) {
-                throw new IllegalArgumentException("'quality' must be a number");
-            }
-            if (quality < 0.05f || quality > 1.0f) {
-                throw new IllegalArgumentException("quality=" + quality + " must be in [0.05, 1.0]");
-            }
-        }
-
-        String requestId =
-                (req.id != null && !req.id.isBlank()) ? sanitizeRequestId(req.id) : "rec-" + System.currentTimeMillis();
-        return new RecordingRequest(requestId, frames, intervalMs, output, gridCols, downscale, quality);
-    }
-
-    /**
-     * Strip filesystem-hostile characters from the request id so it's safe to
-     * use as a subdir name. Conservative: only keep alphanumerics, dash, dot,
-     * underscore.
-     */
-    private static String sanitizeRequestId(String id) {
-        StringBuilder sb = new StringBuilder(id.length());
-        for (int i = 0; i < id.length(); i++) {
-            char c = id.charAt(i);
-            if (Character.isLetterOrDigit(c) || c == '-' || c == '_' || c == '.') {
-                sb.append(c);
-            } else {
-                sb.append('_');
-            }
-        }
-        return sb.length() == 0 ? "rec-" + System.currentTimeMillis() : sb.toString();
     }
 
     private static JsonObject recordingResultToJson(RecordingResult result) {
         JsonObject obj = new JsonObject();
+        obj.addProperty("storage", result.storage.wireName());
+        obj.addProperty("directory", result.directory);
+        if (result.expiresAt != null) {
+            obj.addProperty("expiresAt", result.expiresAt.toString());
+        }
         obj.addProperty("frameWidth", result.frameWidth);
         obj.addProperty("frameHeight", result.frameHeight);
         obj.addProperty("frameCount", result.frameCount);
@@ -763,7 +733,7 @@ public class BridgeServer extends WebSocketServer {
             if (snapshot.target != null) {
                 snapshot.target.entityType = unresolveOrNull(snapshot.target.entityType);
             }
-            return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(snapshot), null);
+            return successDtoOmitNullFields(req.id, snapshot);
         } catch (Exception e) {
             return BridgeResponse.error(req.id, "Snapshot failed: " + e.getMessage());
         }
@@ -814,23 +784,16 @@ public class BridgeServer extends WebSocketServer {
         if (command.length() > MAX_COMMAND_LEN) {
             return BridgeResponse.error(req.id, "runCommand: command too long (max " + MAX_COMMAND_LEN + " chars)");
         }
-        // SECURITY: encode the command as a `new String(byte[], "UTF-8")` built
-        // from numeric literals, so the generated Groovy source contains no
-        // user-controlled bytes. This formulation is unconditionally
-        // injection-proof: every byte of the user's command lands as a numeric
-        // literal, and Groovy reassembles the string at runtime.
-        // This is a temporary measure — the long-term fix is a native
-        // CommandProvider that bypasses the script runtime entirely (see review queue).
-        byte[] cmdBytes = command.getBytes(StandardCharsets.UTF_8);
-        StringBuilder bytes = new StringBuilder(cmdBytes.length * 4);
-        for (int i = 0; i < cmdBytes.length; i++) {
-            if (i > 0) bytes.append(',');
-            bytes.append(cmdBytes[i] & 0xFF);
+        CommandProvider provider = commandProvider;
+        if (provider == null) {
+            return BridgeResponse.error(req.id, "runCommand: no command provider configured");
         }
-        String groovyCode = "def cmd = new String([" + bytes + "] as byte[], 'UTF-8')\n"
-                + "mc.player.connection().sendCommand(cmd)\n"
-                + "return 'Command sent: ' + cmd";
-        return handleExecute(new BridgeRequest(req.id, "execute", createPayload("code", groovyCode)));
+        try {
+            provider.execute(command);
+            return successJson(req.id, serializer.serialize("Command sent: " + command));
+        } catch (Exception e) {
+            return BridgeResponse.error(req.id, "runCommand failed: " + ErrorFormatter.format(e));
+        }
     }
 
     // ==================== Session Control Handlers ====================
@@ -863,7 +826,7 @@ public class BridgeServer extends WebSocketServer {
             sessionControlProvider.disconnect();
             JsonObject result = new JsonObject();
             result.addProperty("status", "disconnecting");
-            return BridgeResponse.success(req.id, result, null);
+            return successJson(req.id, result);
         } catch (Exception e) {
             return BridgeResponse.error(req.id, "disconnect failed: " + e.getMessage());
         }
@@ -891,7 +854,7 @@ public class BridgeServer extends WebSocketServer {
             JsonObject result = new JsonObject();
             result.addProperty("status", "connecting");
             result.addProperty("address", address);
-            return BridgeResponse.success(req.id, result, null);
+            return successJson(req.id, result);
         } catch (Exception e) {
             return BridgeResponse.error(req.id, "joinServer failed: " + e.getMessage());
         }
@@ -904,7 +867,7 @@ public class BridgeServer extends WebSocketServer {
             sessionControlProvider.quit();
             JsonObject result = new JsonObject();
             result.addProperty("status", "quitting");
-            return BridgeResponse.success(req.id, result, null);
+            return successJson(req.id, result);
         } catch (Exception e) {
             return BridgeResponse.error(req.id, "quit failed: " + e.getMessage());
         }
@@ -940,13 +903,7 @@ public class BridgeServer extends WebSocketServer {
             dto.debugLogExists = Files.exists(debug);
         }
 
-        return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(dto), null);
-    }
-
-    private JsonObject createPayload(String key, String value) {
-        JsonObject payload = new JsonObject();
-        payload.addProperty(key, value);
-        return payload;
+        return successDtoOmitNullFields(req.id, dto);
     }
 
     // ==================== Item Texture Handler ====================
@@ -964,10 +921,9 @@ public class BridgeServer extends WebSocketServer {
             result.addProperty("width", tex.width());
             result.addProperty("height", tex.height());
             result.addProperty("spriteName", tex.spriteName());
-            return BridgeResponse.success(req.id, result, null);
+            return successJson(req.id, result);
         } catch (Exception e) {
-            return BridgeResponse.error(
-                    req.id, "Texture extraction failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            return BridgeResponse.error(req.id, "Texture extraction failed: " + ErrorFormatter.format(e));
         }
     }
 
@@ -985,11 +941,9 @@ public class BridgeServer extends WebSocketServer {
             result.addProperty("width", tex.width());
             result.addProperty("height", tex.height());
             result.addProperty("spriteName", tex.spriteName());
-            return BridgeResponse.success(req.id, result, null);
+            return successJson(req.id, result);
         } catch (Exception e) {
-            return BridgeResponse.error(
-                    req.id,
-                    "Entity texture extraction failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            return BridgeResponse.error(req.id, "Entity texture extraction failed: " + ErrorFormatter.format(e));
         }
     }
 
@@ -1006,10 +960,9 @@ public class BridgeServer extends WebSocketServer {
             result.addProperty("width", tex.width());
             result.addProperty("height", tex.height());
             result.addProperty("spriteName", tex.spriteName());
-            return BridgeResponse.success(req.id, result, null);
+            return successJson(req.id, result);
         } catch (Exception e) {
-            return BridgeResponse.error(
-                    req.id, "Item texture extraction failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            return BridgeResponse.error(req.id, "Item texture extraction failed: " + ErrorFormatter.format(e));
         }
     }
 
@@ -1040,10 +993,9 @@ public class BridgeServer extends WebSocketServer {
                 }
                 dto.icons = renderIconsMap(uniqueIds);
             }
-            return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(dto), null);
+            return successDtoOmitNullFields(req.id, dto);
         } catch (Exception e) {
-            return BridgeResponse.error(
-                    req.id, "Nearby entities query failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            return BridgeResponse.error(req.id, "Nearby entities query failed: " + ErrorFormatter.format(e));
         }
     }
 
@@ -1056,7 +1008,7 @@ public class BridgeServer extends WebSocketServer {
         try {
             EntityDetailsDto details = entitiesProvider.getEntityDetails(entityId);
             if (details == null) {
-                return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(EntityDetailsDto.gone()), null);
+                return successDtoOmitNullFields(req.id, EntityDetailsDto.gone());
             }
             // Apply class-name mapping uniformly: type, vehicle, and each passenger.
             details.type = unresolveOrNull(details.type);
@@ -1066,10 +1018,9 @@ public class BridgeServer extends WebSocketServer {
                 for (String p : details.passengers) mapped.add(unresolveOrNull(p));
                 details.passengers = mapped;
             }
-            return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(details), null);
+            return successDtoOmitNullFields(req.id, details);
         } catch (Exception e) {
-            return BridgeResponse.error(
-                    req.id, "Entity details query failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            return BridgeResponse.error(req.id, "Entity details query failed: " + ErrorFormatter.format(e));
         }
     }
 
@@ -1088,10 +1039,9 @@ public class BridgeServer extends WebSocketServer {
             for (BlockSummaryDto b : blocks) {
                 b.type = unresolveOrNull(b.type);
             }
-            return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(new NearbyBlocksDto(blocks)), null);
+            return successDtoOmitNullFields(req.id, new NearbyBlocksDto(blocks));
         } catch (Exception e) {
-            return BridgeResponse.error(
-                    req.id, "Nearby blocks query failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            return BridgeResponse.error(req.id, "Nearby blocks query failed: " + ErrorFormatter.format(e));
         }
     }
 
@@ -1108,13 +1058,12 @@ public class BridgeServer extends WebSocketServer {
             if (details == null) {
                 // Provider signals "no block entity" via null; the wire shape
                 // for that case is `{gone: true}`.
-                return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(BlockDetailsDto.gone()), null);
+                return successDtoOmitNullFields(req.id, BlockDetailsDto.gone());
             }
             details.type = unresolveOrNull(details.type);
-            return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(details), null);
+            return successDtoOmitNullFields(req.id, details);
         } catch (Exception e) {
-            return BridgeResponse.error(
-                    req.id, "Block details query failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            return BridgeResponse.error(req.id, "Block details query failed: " + ErrorFormatter.format(e));
         }
     }
 
@@ -1130,10 +1079,9 @@ public class BridgeServer extends WebSocketServer {
             // GSON (serializeNulls=true) so absent-target emits `entityId: null`
             // explicitly — clients distinguish "no target" from a malformed
             // response by the key being present.
-            return BridgeResponse.success(req.id, GSON.toJsonTree(dto), null);
+            return successDtoPreserveNullFields(req.id, dto);
         } catch (Exception e) {
-            return BridgeResponse.error(
-                    req.id, "Looked-at entity query failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            return BridgeResponse.error(req.id, "Looked-at entity query failed: " + ErrorFormatter.format(e));
         }
     }
 
@@ -1152,10 +1100,9 @@ public class BridgeServer extends WebSocketServer {
             ChatHistoryDto dto = new ChatHistoryDto(messages);
             // Omit-nulls so per-message optional fields (addedTime, json) drop
             // out when not populated, preserving the historical wire shape.
-            return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(dto), null);
+            return successDtoOmitNullFields(req.id, dto);
         } catch (Exception e) {
-            return BridgeResponse.error(
-                    req.id, "Chat history query failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            return BridgeResponse.error(req.id, "Chat history query failed: " + ErrorFormatter.format(e));
         }
     }
 
@@ -1190,10 +1137,9 @@ public class BridgeServer extends WebSocketServer {
                 }
                 dto.icons = renderIconsMap(uniqueIds);
             }
-            return BridgeResponse.success(req.id, GSON_OMIT_NULLS.toJsonTree(dto), null);
+            return successDtoOmitNullFields(req.id, dto);
         } catch (Exception e) {
-            return BridgeResponse.error(
-                    req.id, "Screen inspect failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            return BridgeResponse.error(req.id, "Screen inspect failed: " + ErrorFormatter.format(e));
         }
     }
 
@@ -1204,7 +1150,7 @@ public class BridgeServer extends WebSocketServer {
         JsonObject result = new JsonObject();
         result.addProperty("entityId", entityId);
         result.addProperty("glow", glow);
-        return BridgeResponse.success(req.id, result, null);
+        return successJson(req.id, result);
     }
 
     private BridgeResponse handleSetBlockGlow(BridgeRequest req) {
@@ -1218,13 +1164,13 @@ public class BridgeServer extends WebSocketServer {
         result.addProperty("y", y);
         result.addProperty("z", z);
         result.addProperty("glow", glow);
-        return BridgeResponse.success(req.id, result, null);
+        return successJson(req.id, result);
     }
 
     private BridgeResponse handleClearBlockGlow(BridgeRequest req) {
         ClientBlockGlowManager.clear();
         JsonObject result = new JsonObject();
         result.addProperty("cleared", true);
-        return BridgeResponse.success(req.id, result, null);
+        return successJson(req.id, result);
     }
 }

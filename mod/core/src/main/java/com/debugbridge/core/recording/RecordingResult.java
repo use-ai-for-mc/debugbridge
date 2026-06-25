@@ -1,5 +1,6 @@
 package com.debugbridge.core.recording;
 
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -8,6 +9,9 @@ import java.util.List;
  * into one JPEG, {@link Frames} writes one JPEG per frame.
  */
 public abstract class RecordingResult {
+    public final RecordingRequest.Storage storage;
+    public final String directory;
+    public final Instant expiresAt;
     public final int frameWidth;
     public final int frameHeight;
     public final int frameCount;
@@ -16,7 +20,18 @@ public abstract class RecordingResult {
     public final int dropped;
 
     protected RecordingResult(
-            int frameWidth, int frameHeight, int frameCount, long captureMs, double meanIntervalMs, int dropped) {
+            RecordingRequest.Storage storage,
+            String directory,
+            Instant expiresAt,
+            int frameWidth,
+            int frameHeight,
+            int frameCount,
+            long captureMs,
+            double meanIntervalMs,
+            int dropped) {
+        this.storage = storage;
+        this.directory = directory;
+        this.expiresAt = expiresAt;
         this.frameWidth = frameWidth;
         this.frameHeight = frameHeight;
         this.frameCount = frameCount;
@@ -34,6 +49,9 @@ public abstract class RecordingResult {
         public final int gridRows;
 
         public Grid(
+                RecordingRequest.Storage storage,
+                String directory,
+                Instant expiresAt,
                 String path,
                 int width,
                 int height,
@@ -46,7 +64,16 @@ public abstract class RecordingResult {
                 long captureMs,
                 double meanIntervalMs,
                 int dropped) {
-            super(frameWidth, frameHeight, frameCount, captureMs, meanIntervalMs, dropped);
+            super(
+                    storage,
+                    directory,
+                    expiresAt,
+                    frameWidth,
+                    frameHeight,
+                    frameCount,
+                    captureMs,
+                    meanIntervalMs,
+                    dropped);
             this.path = path;
             this.width = width;
             this.height = height;
@@ -61,6 +88,9 @@ public abstract class RecordingResult {
         public final long sizeBytes;
 
         public Frames(
+                RecordingRequest.Storage storage,
+                String directory,
+                Instant expiresAt,
                 List<String> paths,
                 long sizeBytes,
                 int frameWidth,
@@ -69,7 +99,16 @@ public abstract class RecordingResult {
                 long captureMs,
                 double meanIntervalMs,
                 int dropped) {
-            super(frameWidth, frameHeight, frameCount, captureMs, meanIntervalMs, dropped);
+            super(
+                    storage,
+                    directory,
+                    expiresAt,
+                    frameWidth,
+                    frameHeight,
+                    frameCount,
+                    captureMs,
+                    meanIntervalMs,
+                    dropped);
             this.paths = paths;
             this.sizeBytes = sizeBytes;
         }

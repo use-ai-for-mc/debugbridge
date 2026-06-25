@@ -236,8 +236,23 @@ class ErrorHandlingTest {
         assertFalse(resp.get("success").getAsBoolean());
         String error = resp.get("error").getAsString();
         assertTrue(
-                error.contains("IndexOutOfBounds") || error.contains("threw") || error.contains("range"),
+                error.contains("index out of bounds") || error.contains("threw") || error.contains("range"),
                 "Should contain meaningful Java exception info: " + error);
+    }
+
+    @Test
+    void testMalformedJsonReturnsJsonError() throws Exception {
+        JsonObject badResp = sendRaw("{\"type\":\"execute\",");
+        assertFalse(badResp.get("success").getAsBoolean());
+        assertEquals("unknown", badResp.get("id").getAsString());
+        String error = badResp.get("error").getAsString();
+        assertTrue(
+                error.contains("INVALID_JSON") || error.contains("malformed"),
+                "Expected malformed-json response, got: " + error);
+
+        // Verify the bridge stays usable after malformed input.
+        JsonObject healthy = execute("return 1");
+        assertTrue(healthy.get("success").getAsBoolean());
     }
 
     // ==================== Helpers ====================
@@ -253,6 +268,13 @@ class ErrorHandlingTest {
         client.send(new Gson().toJson(req));
         String response = client.responses.poll(5, TimeUnit.SECONDS);
         assertNotNull(response, "No response within 5s");
+        return JsonParser.parseString(response).getAsJsonObject();
+    }
+
+    private JsonObject sendRaw(String message) throws Exception {
+        client.send(message);
+        String response = client.responses.poll(5, TimeUnit.SECONDS);
+        assertNotNull(response, "No response for raw request within 5s");
         return JsonParser.parseString(response).getAsJsonObject();
     }
 

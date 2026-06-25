@@ -56,4 +56,13 @@ public interface MappingResolver {
      * Whether this resolver actually translates names (false for passthrough).
      */
     boolean isObfuscated();
+
+    /**
+     * Whether this resolver has a finite mapping database worth searching.
+     * Passthrough resolvers for unobfuscated runtimes usually return empty
+     * collections, so callers can skip building search indexes for them.
+     */
+    default boolean contributesToSearch() {
+        return !getAllClassNames().isEmpty();
+    }
 }

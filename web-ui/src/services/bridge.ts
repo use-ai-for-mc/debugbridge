@@ -3,6 +3,24 @@ import type { BridgeRequest, BridgeResponse, SessionInfo, ConnectionStatus } fro
 type ConnectionListener = (status: ConnectionStatus, info?: SessionInfo) => void;
 type MessageListener = (response: BridgeResponse) => void;
 
+export function parseLookedAtEntityResult(result: unknown): number | null {
+  if (result == null) return null;
+
+  const value = typeof result === 'object'
+    ? (result as Record<string, unknown>).entityId
+    : result;
+  if (value == null) return null;
+
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+
+  throw new Error('Malformed lookedAtEntity response: entityId must be a number or null');
+}
+
 class BridgeService {
   private ws: WebSocket | null = null;
   private requestCounter = 0;
@@ -275,8 +293,7 @@ class BridgeService {
   async getLookedAtEntity(range: number): Promise<number | null> {
     const resp = await this.send('lookedAtEntity', { range });
     if (!resp.success) throw new Error(resp.error || 'Looked-at entity query failed');
-    const result = resp.result as { entityId: number | null };
-    return result.entityId;
+    return parseLookedAtEntityResult(resp.result);
   }
 
   async getNearbyBlocks(range: number, limit: number): Promise<{ blocks: unknown[]; count: number }> {

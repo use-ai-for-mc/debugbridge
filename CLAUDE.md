@@ -59,10 +59,11 @@ Do NOT iterate entities/blocks, resolve textures, scan inventories, or read chat
   - **26.1**: renders offscreen through the exact-26.1 GUI item pipeline (`ItemModelResolver` + `TrackingItemStackRenderState` + `FeatureRenderDispatcher`) into a bridge-owned copy-readable GPU texture, with filled maps handled by CPU map-color extraction.
   - **1.19**: extracts pixels from the baked model's sprite via reflection (no GPU render pipeline in that version).
 - `record_video` via `RecordingProvider` (kernel-side orchestrator in `core/recording/`) + per-version `FrameCapturer`:
-  - Captures N frames of the main framebuffer driven from the `runTick` mixin tail. Output is one JPEG grid or N per-frame JPEGs under `<gameDir>/debugbridge-recordings/<reqId>/`.
+  - Captures N frames of the main framebuffer driven from the `runTick` mixin tail. Output is one JPEG grid or N per-frame JPEGs.
+  - Storage defaults to temporary: `storage: "temp"` writes under a DebugBridge-owned system-temp subdir with `ttlHours` defaulting to 24. Use `storage: "persistent"` to keep output under `<gameDir>/debugbridge-recordings/<requestId>/`.
   - Protocol contract lives at `../mcdev-mcp/docs/RECORD_VIDEO_PROTOCOL.md` — that's the canonical spec; mirror changes there if you touch the wire.
   - `BUSY` is enforced both for concurrent `record_video` requests and for single-shot `screenshot` calls while a recording is in progress (shared render thread).
-  - Cleanup policy: leak. Files accumulate in `debugbridge-recordings/` until manually wiped. Subdir-per-recording layout exists so a future retention sweep is one `find … -mtime` away.
+  - Temp cleanup scans only DebugBridge-looking recording dirs and never follows symlinks; persistent recordings are retained until manually removed.
 
 ## Session control (automation)
 - `disconnect` / `joinServer` / `quit` via `SessionControlProvider` — lets an external orchestrator (MCP server) drive disconnect → relaunch → rejoin loops without human interaction.

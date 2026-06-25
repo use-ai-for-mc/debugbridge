@@ -1,6 +1,7 @@
 package com.debugbridge.core.recording;
 
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Logger;
 
@@ -28,7 +29,8 @@ public final class RecordingProvider {
     private static final Logger LOG = Logger.getLogger("DebugBridge");
 
     private final FrameCapturer capturer;
-    private final Path recordingsBaseDir;
+    private final Path persistentBaseDir;
+    private final Path tempBaseDir;
     private final AtomicReference<RecordingSession> active = new AtomicReference<>();
 
     /**
@@ -38,8 +40,19 @@ public final class RecordingProvider {
      *                          <gameDir>/debugbridge-recordings/})
      */
     public RecordingProvider(FrameCapturer capturer, Path recordingsBaseDir) {
+        this(capturer, recordingsBaseDir, recordingsBaseDir.resolve("tmp"));
+    }
+
+    /**
+     * @param capturer          version-specific frame capture primitive
+     * @param persistentBaseDir persistent output root under the game directory
+     * @param tempBaseDir       temporary output root with TTL cleanup
+     */
+    public RecordingProvider(FrameCapturer capturer, Path persistentBaseDir, Path tempBaseDir) {
         this.capturer = capturer;
-        this.recordingsBaseDir = recordingsBaseDir;
+        this.persistentBaseDir = persistentBaseDir;
+        this.tempBaseDir = tempBaseDir;
+        cleanupTempRecordings(RecordingRequest.DEFAULT_TEMP_TTL_HOURS, null);
     }
 
     /**
@@ -70,17 +83,30 @@ public final class RecordingProvider {
      * are flushed to disk. Throws on validation / IO / framebuffer failures.
      */
     public RecordingResult record(RecordingRequest req) throws RecordingException, InterruptedException {
-        RecordingSession session = new RecordingSession(req, recordingsBaseDir, capturer);
+        RecordingSession current = active.get();
+        cleanupTempRecordings(req.ttlHours, current == null ? null : current.recordingDir());
+
+        RecordingSession session = new RecordingSession(req, baseDirFor(req), capturer);
         if (!active.compareAndSet(null, session)) {
             throw new RecordingException.Busy();
         }
         try {
             session.start();
-            return session.awaitResult();
+            RecordingResult result = session.awaitResult();
+            cleanupTempRecordings(req.ttlHours, session.recordingDir());
+            return result;
         } finally {
             active.set(null);
             session.shutdown();
             LOG.info("[DebugBridge] Recording " + req.requestId + " finished");
         }
+    }
+
+    private Path baseDirFor(RecordingRequest req) {
+        return req.storage == RecordingRequest.Storage.PERSISTENT ? persistentBaseDir : tempBaseDir;
+    }
+
+    private void cleanupTempRecordings(int ttlHours, Path activeDir) {
+        RecordingCleanup.deleteExpiredTempRecordings(tempBaseDir, Duration.ofHours(ttlHours), activeDir);
     }
 }

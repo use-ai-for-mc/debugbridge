@@ -12,8 +12,9 @@
 //                     java-websocket serializes messages from a single
 //                     connection through one worker thread.
 //
-// For each pass, verifies the response wire shape AND stats the output file(s)
-// on disk to confirm the mod actually wrote what it claimed.
+// For each pass, verifies the response wire shape, temp-storage metadata, AND
+// stats the output file(s) on disk to confirm the mod actually wrote what it
+// claimed.
 //
 // Usage:
 //   node tools/record-video-smoke.mjs                 # ws://127.0.0.1:9876 (default 1.21.11 port)
@@ -169,6 +170,9 @@ if (expectedVersion === '26.1') {
     const res = r.result ?? {};
     const errs = [];
     if (res.mode !== 'grid') errs.push(`mode=${res.mode}`);
+    if (res.storage !== 'temp') errs.push(`storage=${res.storage}`);
+    if (typeof res.directory !== 'string') errs.push('directory missing');
+    if (typeof res.expiresAt !== 'string') errs.push('expiresAt missing');
     if (typeof res.path !== 'string') errs.push('path missing');
     if (typeof res.width !== 'number' || res.width <= 0) errs.push('width bad');
     if (typeof res.height !== 'number' || res.height <= 0) errs.push('height bad');
@@ -201,6 +205,9 @@ if (expectedVersion === '26.1') {
     const res = r.result ?? {};
     const errs = [];
     if (res.mode !== 'frames') errs.push(`mode=${res.mode}`);
+    if (res.storage !== 'temp') errs.push(`storage=${res.storage}`);
+    if (typeof res.directory !== 'string') errs.push('directory missing');
+    if (typeof res.expiresAt !== 'string') errs.push('expiresAt missing');
     if (!Array.isArray(res.paths) || res.paths.length !== 6) errs.push(`paths.length=${res.paths?.length}`);
     if (res.frameCount !== 6) errs.push(`frameCount=${res.frameCount}`);
     if (res.dropped !== 0) errs.push(`dropped should be 0 for numeric interval, got ${res.dropped}`);

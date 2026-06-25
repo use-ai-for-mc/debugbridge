@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, onScopeDispose } from 'vue';
 import { bridge } from '../services/bridge';
 
 export interface PrimaryEquipment {
@@ -92,7 +92,9 @@ export const useEntitiesStore = defineStore('entities', () => {
 
   let refreshTimer: ReturnType<typeof setInterval> | null = null;
   let gazeTimer: ReturnType<typeof setInterval> | null = null;
+  let detailsRequestSeq = 0;
   let gazeInFlight = false;
+  const newStatusTimers = new Map<number, ReturnType<typeof setTimeout>>();
 
   const sortedEntities = computed(() => {
     const list = [...entities.value];
@@ -118,6 +120,27 @@ export const useEntitiesStore = defineStore('entities', () => {
 
   function entityPrimaryKey(entityId: number, slot: string, itemId: string): string {
     return `${entityId}:${slot}:${itemId}`;
+  }
+
+  function scheduleNewStatusClear(entityId: number) {
+    const existing = newStatusTimers.get(entityId);
+    if (existing) clearTimeout(existing);
+    const timer = setTimeout(() => {
+      newStatusTimers.delete(entityId);
+      const entity = entities.value.find(e => e.id === entityId);
+      if (entity?.status === 'new') entity.status = 'stable';
+    }, NEW_STATUS_MS);
+    newStatusTimers.set(entityId, timer);
+  }
+
+  function clearNewStatusTimers() {
+    for (const timer of newStatusTimers.values()) {
+      clearTimeout(timer);
+    }
+    newStatusTimers.clear();
+    for (const entity of entities.value) {
+      if (entity.status === 'new') entity.status = 'stable';
+    }
   }
 
   async function fetchEntityPrimaryTextureCached(
@@ -207,6 +230,7 @@ export const useEntitiesStore = defineStore('entities', () => {
       for (const entity of newList) {
         if (!oldIds.has(entity.id)) {
           entity.status = 'new';
+          scheduleNewStatusClear(entity.id);
         }
       }
 
@@ -222,13 +246,6 @@ export const useEntitiesStore = defineStore('entities', () => {
 
       entities.value = [...newList, ...despawned, ...stillLingering];
 
-      // Clear 'new' status after a delay
-      setTimeout(() => {
-        for (const e of entities.value) {
-          if (e.status === 'new') e.status = 'stable';
-        }
-      }, NEW_STATUS_MS);
-
       // If selected entity despawned, clear details
       if (selectedEntityId.value !== null && !newIds.has(selectedEntityId.value)) {
         selectedDetails.value = null;
@@ -241,10 +258,14 @@ export const useEntitiesStore = defineStore('entities', () => {
   }
 
   async function fetchEntityDetails(entityId: number): Promise<void> {
+    const requestSeq = ++detailsRequestSeq;
+    const isSuperseded = () => requestSeq !== detailsRequestSeq;
+    const isStale = () => isSuperseded() || selectedEntityId.value !== entityId;
     isLoadingDetails.value = true;
 
     try {
       const data = await bridge.getEntityDetails(entityId);
+      if (isStale()) return;
       if (!data || data.gone) {
         selectedDetails.value = null;
         return;
@@ -318,6 +339,7 @@ export const useEntitiesStore = defineStore('entities', () => {
       // Fetch textures for each equipment slot — plus the FRAME slot if this
       // entity has a framed item. Reuses equipmentTextures / equipmentSpriteNames
       // keyed by slot name so the UI can look up "FRAME" the same way.
+      if (isStale()) return;
       equipmentTextures.value = {};
       equipmentSpriteNames.value = {};
       equipmentTextureDegraded.value = {};
@@ -327,6 +349,7 @@ export const useEntitiesStore = defineStore('entities', () => {
         await Promise.all(slots.map(async (slot) => {
           try {
             const tex = await bridge.getEntityItemTexture(entityId, slot);
+            if (isStale()) return;
             equipmentTextures.value = {
               ...equipmentTextures.value,
               [slot]: `data:image/png;base64,${tex.base64Png}`,
@@ -349,17 +372,21 @@ export const useEntitiesStore = defineStore('entities', () => {
     } catch {
       // Silently fail for details
     } finally {
-      isLoadingDetails.value = false;
+      if (!isSuperseded()) {
+        isLoadingDetails.value = false;
+      }
     }
   }
 
   function selectEntity(id: number | null) {
     const previousId = selectedEntityId.value;
+    detailsRequestSeq++;
     selectedEntityId.value = id;
     selectedDetails.value = null;
     equipmentTextures.value = {};
     equipmentSpriteNames.value = {};
     equipmentTextureDegraded.value = {};
+    isLoadingDetails.value = false;
 
     if (previousId !== null && previousId !== id) {
       bridge.setEntityGlow(previousId, false).catch(() => {});
@@ -386,6 +413,7 @@ export const useEntitiesStore = defineStore('entities', () => {
       clearInterval(refreshTimer);
       refreshTimer = null;
     }
+    clearNewStatusTimers();
   }
 
   async function fetchLookedAtEntity(): Promise<void> {
@@ -427,6 +455,13 @@ export const useEntitiesStore = defineStore('entities', () => {
     clearEntityPrimaryTextureCache();
     await fetchEntities();
   }
+
+  onScopeDispose(() => {
+    stopAutoRefresh();
+    stopFollowGaze();
+    clearNewStatusTimers();
+    detailsRequestSeq++;
+  });
 
   return {
     entities,

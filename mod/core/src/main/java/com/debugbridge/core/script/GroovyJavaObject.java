@@ -1,5 +1,6 @@
 package com.debugbridge.core.script;
 
+import com.debugbridge.core.ErrorFormatter;
 import groovy.lang.GroovyObjectSupport;
 import groovy.lang.MissingMethodException;
 import groovy.lang.MissingPropertyException;
@@ -134,9 +135,7 @@ public class GroovyJavaObject extends GroovyObjectSupport {
         } catch (InvocationTargetException e) {
             Throwable cause = e.getCause() != null ? e.getCause() : e;
             throw new RuntimeException(
-                    "Method '" + name + "' on " + mojangTypeName + " threw "
-                            + cause.getClass().getSimpleName() + ": " + cause.getMessage(),
-                    cause);
+                    "Method '" + name + "' on " + mojangTypeName + " threw " + ErrorFormatter.format(cause), cause);
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
@@ -226,9 +225,7 @@ public class GroovyJavaObject extends GroovyObjectSupport {
     }
 
     private static String rootMessage(Throwable t) {
-        Throwable c = t;
-        while (c.getCause() != null && c.getCause() != c) c = c.getCause();
-        return c.getClass().getSimpleName() + ": " + c.getMessage();
+        return ErrorFormatter.format(t);
     }
 
     /**
