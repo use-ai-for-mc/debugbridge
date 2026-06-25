@@ -1,6 +1,5 @@
 package com.debugbridge.fabric262;
 
-import com.debugbridge.core.block.ClientBlockGlowManager;
 import com.debugbridge.core.block.NearbyBlocksProvider;
 import com.debugbridge.core.chat.ChatHistoryProvider;
 import com.debugbridge.core.entity.LookedAtEntityProvider;
@@ -38,7 +37,7 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModInitializer {
-    private static final String MC_VERSION = "26.2-snapshot-8";
+    private static final String MC_VERSION = "26.2";
     private static DebugBridgeMod INSTANCE;
 
     public static void onClientTick(Minecraft mc) {
@@ -82,7 +81,7 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
 
     @Override
     protected FabricNamespaceLookup createNamespaceLookup() {
-        // 26.2-dev snapshots ship unobfuscated, so the kernel falls back to
+        // 26.2 ships unobfuscated, so the kernel falls back to
         // PassthroughResolver — no Mojang mappings needed.
         return null;
     }
@@ -198,18 +197,6 @@ public class DebugBridgeMod extends AbstractDebugBridgeMod implements ClientModI
             mc.gui.setScreen(null);
             onResult.accept(accepted);
         }));
-    }
-
-    @Override
-    protected void onPostTick() {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.levelExtractor == null) return;
-        var glowing = ClientBlockGlowManager.snapshot();
-        if (glowing.isEmpty()) return;
-        for (var p : glowing) {
-            BlockPos pos = new BlockPos(p.x(), p.y(), p.z());
-            mc.levelExtractor.gameTestBlockHighlightRenderer.highlightPos(pos, pos);
-        }
     }
 
     private static class Minecraft262StateProvider implements GameStateProvider {

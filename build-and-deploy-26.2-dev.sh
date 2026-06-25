@@ -6,15 +6,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MOD_DIR="${SCRIPT_DIR}/mod"
 MODRINTH_PROFILE_NAME="${MODRINTH_PROFILE_NAME:-REPLACE-WITH-PROFILE-NAME}"
 
-JAR_NAME="debugbridge-26.2-dev-2.0.0.jar"
-OLD_JAR_NAMES=("debugbridge-26.2-dev-1.1.0.jar" "debugbridge-26.2-dev-1.0.0.jar" "debugbridge-26.2-snapshot-5-1.1.0.jar" "debugbridge-26.2-snapshot-5-1.0.0.jar" "debugbridge-26.2-snapshot-4-1.1.0.jar" "debugbridge-26.2-snapshot-4-1.0.0.jar" "debugbridge-26.2-snapshot-3-1.1.0.jar" "debugbridge-26.2-snapshot-3-1.0.0.jar")
+PROJECT_VERSION="${PROJECT_VERSION:-$(sed -n 's/.*version = "\([^"]*\)".*/\1/p' "${MOD_DIR}/build.gradle.kts" | head -1)}"
+if [ -z "${PROJECT_VERSION}" ]; then
+  echo "Error: Could not determine project version from ${MOD_DIR}/build.gradle.kts"
+  echo "Set PROJECT_VERSION explicitly before running this script."
+  exit 1
+fi
+
+JAR_NAME="debugbridge-26.2-${PROJECT_VERSION}.jar"
 SOURCE_JAR="${MOD_DIR}/fabric-26.2-dev/build/libs/${JAR_NAME}"
 
 echo "Building DebugBridge mod (fabric-26.2-dev)..."
 cd "${MOD_DIR}"
 # Remove stale outputs from any older archivesName values.
-for old in "${OLD_JAR_NAMES[@]}"; do
-    rm -f "${MOD_DIR}/fabric-26.2-dev/build/libs/${old}"
+for old in "${MOD_DIR}/fabric-26.2-dev/build/libs"/debugbridge-26.2-*.jar; do
+    rm -f "${old}"
 done
 JAVA_HOME=/opt/homebrew/opt/openjdk@25 ./gradlew :fabric-26.2-dev:build --no-daemon
 
@@ -34,18 +40,37 @@ TARGET_JAR="${TARGET_DIR}/${JAR_NAME}"
 echo "Creating target directory if it doesn't exist..."
 mkdir -p "${TARGET_DIR}"
 
-# Remove any stale jar names from the target mods directory so only the current jar remains.
-for old in "${OLD_JAR_NAMES[@]}"; do
-    if [ -f "${TARGET_DIR}/${old}" ]; then
-        echo "Removing stale ${old} from mods folder..."
-        rm -f "${TARGET_DIR}/${old}"
-    fi
-done
-
 verify_jar() {
     local jar_file="$1"
     unzip -tq "${jar_file}" 2>/dev/null
 }
+
+verify_26_2_metadata() {
+    local jar_file="$1"
+    local metadata
+    metadata="$(unzip -p "${jar_file}" fabric.mod.json 2>/dev/null || true)"
+    if [ -z "${metadata}" ]; then
+        echo "Error: ${jar_file} is missing fabric.mod.json"
+        return 1
+    fi
+    printf '%s\n' "${metadata}" | grep -q '"minecraft"[[:space:]]*:[[:space:]]*"26.2"' \
+      || { echo "Error: ${jar_file} does not declare exact Minecraft 26.2"; return 1; }
+    printf '%s\n' "${metadata}" | grep -q '"com\.debugbridge\.fabric262\.DebugBridgeMod"' \
+      || { echo "Error: ${jar_file} does not use com.debugbridge.fabric262.DebugBridgeMod entrypoint"; return 1; }
+}
+
+if ! verify_jar "${SOURCE_JAR}" || ! verify_26_2_metadata "${SOURCE_JAR}"; then
+    echo "Error: Built jar failed integrity / metadata checks: ${SOURCE_JAR}"
+    exit 1
+fi
+
+# Remove any stale jar names from the target mods directory so only the current jar remains.
+for old in "${TARGET_DIR}"/debugbridge-26.2-*.jar; do
+    if [ -f "${old}" ]; then
+        echo "Removing stale $(basename "${old}") from mods folder..."
+        rm -f "${old}"
+    fi
+done
 
 MAX_RETRIES=3
 RETRY_COUNT=0

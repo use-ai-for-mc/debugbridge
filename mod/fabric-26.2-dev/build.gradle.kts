@@ -3,11 +3,11 @@ plugins {
 }
 
 base {
-    archivesName.set("debugbridge-26.2-dev")
+    archivesName.set("debugbridge-26.2")
 }
 
 java {
-    // The 26.2 dev line (targeting 26.2-pre-2) declares a Java 25 runtime.
+    // The 26.2 line declares a Java 25 runtime.
     // JDK 25 is sufficient for compile and run.
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(25))
@@ -19,7 +19,7 @@ dependencies {
     implementation("org.apache.groovy:groovy:5.0.6")
     implementation("org.java-websocket:Java-WebSocket:1.6.0")
     implementation("com.google.code.gson:gson:2.14.0")
-    minecraft("com.mojang:minecraft:26.2-pre-2")
+    minecraft("com.mojang:minecraft:26.2")
     implementation("net.fabricmc:fabric-loader:0.19.3")
 
     include(project(":core"))
@@ -29,7 +29,7 @@ dependencies {
 }
 
 tasks.withType<JavaCompile>().configureEach {
-    // The 26.2-pre-2 metadata declares Java runtime 25.
+    // The 26.2 metadata declares Java runtime 25.
     options.release.set(25)
 }
 
