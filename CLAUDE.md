@@ -1,7 +1,7 @@
 # DebugBridge — project notes
 
 ## What this is
-A Fabric client mod (Minecraft 1.19, 1.21.11, exact 26.1, and 26.2-dev snapshot) that exposes a local WebSocket server for a Vue web UI and for MCP clients to introspect/control the running client. Used for dev-time debugging, not gameplay.
+A Fabric client mod (Minecraft 1.19, 1.21.11, exact 26.1, and stable 26.2) that exposes a local WebSocket server for a Vue web UI and for MCP clients to introspect/control the running client. Used for dev-time debugging, not gameplay.
 
 ## Repo layout
 - `mod/core/` — shared Java: WebSocket server (`BridgeServer`), Groovy runtime, mapping resolver, provider interfaces (`NearbyEntitiesProvider`, `NearbyBlocksProvider`, `LookedAtEntityProvider`, `ScreenshotProvider`, `ItemTextureProvider`, `ScreenInspectProvider`, `ChatHistoryProvider`, `GameStateProvider`, `SessionControlProvider`, `FrameCapturer` + recording orchestrator).
@@ -17,7 +17,7 @@ A Fabric client mod (Minecraft 1.19, 1.21.11, exact 26.1, and 26.2-dev snapshot)
 
 ## Build requirements
 - Gradle needs **JDK 21** for the stable 1.x modules. System JDK (25) fails there. The 1.x build scripts already set `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`.
-- `fabric-26.1` and `fabric-26.2-dev` need **JDK 25**. For exact 26.1, use `build-and-deploy-26.1.sh` or set `JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home` when invoking Gradle.
+- `fabric-26.1` and the stable `26.2` line (module path `fabric-26.2-dev`) need **JDK 25**. For exact 26.1, use `build-and-deploy-26.1.sh` or set `JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home` when invoking Gradle.
 - Node for `web-ui` needs **≥20.19** (Vite requirement). If your default `node` is older, run `nvm use 20` first.
 - **Building the mod now also needs node on PATH**: `core:processResources` runs the Vite build (`webUiInstall`/`webUiBuild` tasks) and embeds `web-ui/dist` into the core jar under `/webui`. CI sets up Node 22 in every Java job.
 - Start web UI: `cd web-ui && npm run dev` → http://localhost:5173.

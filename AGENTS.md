@@ -2,7 +2,7 @@
 
 ## What this is
 
-A Fabric client mod (Minecraft 1.19, 1.21.11, exact 26.1, and 26.2-dev) that exposes a local WebSocket server for a Vue web UI and for MCP clients to introspect/control the running client. Used for dev-time debugging, not gameplay.
+A Fabric client mod (Minecraft 1.19, 1.21.11, exact 26.1, and stable 26.2) that exposes a local WebSocket server for a Vue web UI and for MCP clients to introspect/control the running client. Used for dev-time debugging, not gameplay.
 
 ## Repo layout
 
@@ -20,7 +20,7 @@ A Fabric client mod (Minecraft 1.19, 1.21.11, exact 26.1, and 26.2-dev) that exp
 ## Build requirements
 
 - Stable 1.x Fabric modules need **JDK 21**. Build scripts already set `JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`.
-- Exact `fabric-26.1` and `fabric-26.2-dev` need **JDK 25**. For 26.1 Prism install, prefer `./build-and-deploy-26.1.sh`.
+- Exact `fabric-26.1` and the stable `26.2` line (in `fabric-26.2-dev`) need **JDK 25**. For 26.1 Prism install, prefer `./build-and-deploy-26.1.sh`.
 - Node for `web-ui` needs **≥20.19** (Vite requirement). The default `node` on PATH is 18; use `/Users/cusgadmin/.nvm/versions/node/v20.19.4/bin/npm` or `nvm use 20`.
 - Start web UI: `cd web-ui && /Users/cusgadmin/.nvm/versions/node/v20.19.4/bin/npm run dev` → <http://localhost:5173>.
 - Smoke scripts (`tools/smoke-test.mjs`, `tools/record-video-smoke.mjs`) need **Node 22+** for built-in `WebSocket`. `build-and-deploy-26.1.sh` detects an installed Node 22+ binary for the post-deploy commands; override with `SMOKE_NODE=/path/to/node` if needed.
@@ -48,7 +48,7 @@ Each version module has a mixin package + `debugbridge.mixins.json` listing the 
 
 - `MinecraftClientMixin` — taps the end of `Minecraft.tick()` for our `onClientTick` callback.
 - `EntityGlowMixin` — forces `Entity.isCurrentlyGlowing()` to return `true` for IDs in `ClientEntityGlowManager`, so the web UI can outline selected entities without server authority.
-- `BlockGlowGizmoMixin` (26.1 only) — emits DebugBridge-owned block highlight gizmos during `LevelRenderer.extractLevel(...)`, after vanilla GameTest gizmos. Do not route 26.1 block glow through `gameTestBlockHighlightRenderer.clear()` / `highlightPos(...)`; that clobbers unrelated vanilla GameTest markers.
+- `BlockGlowGizmoMixin` (26.1 and stable 26.2) — emits DebugBridge-owned block highlight gizmos during level extraction, after vanilla GameTest gizmos. Do not route 26.x block glow through `gameTestBlockHighlightRenderer.clear()` / `highlightPos(...)`; that clobbers unrelated vanilla GameTest markers.
 
 ## Native entity/texture endpoints
 
@@ -64,7 +64,7 @@ Do NOT iterate entities or resolve textures via Groovy — the per-call Java↔s
 
 - Exact 26.1 is Mojang-named at runtime in this project; `DebugBridgeMod.createNamespaceLookup()` intentionally returns `null`, which makes the core use `PassthroughResolver` and skip Mojang mapping download/remap.
 - Use JDK 25 for `fabric-26.1`; JDK 21 is still required for the older 1.19/1.21.11 modules.
-- Always verify 26.1 Minecraft APIs and mixin targets through MCDEV before using them. Do not infer 26.1 names from 1.21.11 or 26.2-dev snapshots.
+- Always verify 26.1 Minecraft APIs and mixin targets through MCDEV before using them. Do not infer 26.1 names from 1.21.11 or stable 26.2 metadata paths.
 - Do not restart the live Prism/Minecraft client while the user is on a ride unless they explicitly approve the restart.
 
 ## 1.19 vs 1.21.11 API quirks

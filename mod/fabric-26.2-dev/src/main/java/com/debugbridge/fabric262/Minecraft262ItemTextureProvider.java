@@ -13,6 +13,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.util.Base64;
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import javax.imageio.ImageIO;
@@ -118,7 +119,7 @@ public class Minecraft262ItemTextureProvider implements ItemTextureProvider {
                 case LivingEntity living -> {
                     EquipmentSlot slot;
                     try {
-                        slot = EquipmentSlot.valueOf(slotName);
+                        slot = EquipmentSlot.valueOf(slotName.toUpperCase(Locale.ROOT));
                     } catch (IllegalArgumentException e) {
                         throw new Exception("Unknown slot " + slotName);
                     }
@@ -232,7 +233,7 @@ public class Minecraft262ItemTextureProvider implements ItemTextureProvider {
                 projectionBuffer.close();
                 projectionBuffer = null;
 
-                long bufferSize = (long) size * size * colorTex.getFormat().pixelSize();
+                long bufferSize = (long) size * size * Integer.BYTES;
                 readBuffer = device.createBuffer(
                         () -> "dbg_item_read", GpuBuffer.USAGE_MAP_READ | GpuBuffer.USAGE_COPY_DST, bufferSize);
 

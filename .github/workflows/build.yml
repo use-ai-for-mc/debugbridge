@@ -98,7 +98,7 @@ jobs:
         working-directory: mod
         run: |
           for jar in fabric-26.1/build/libs/debugbridge-26.1-*[0-9].jar \
-                     fabric-26.2-dev/build/libs/debugbridge-26.2-dev-*[0-9].jar; do
+                     fabric-26.2-dev/build/libs/debugbridge-26.2-*[0-9].jar; do
             unzip -p "$jar" 'META-INF/jars/core-*.jar' > /tmp/core-nested.jar
             unzip -l /tmp/core-nested.jar | grep -q 'webui/index.html' \
               || { echo "::error::$jar is missing the bundled web UI"; exit 1; }
@@ -115,7 +115,7 @@ jobs:
       - name: Upload 26.2 artifact
         uses: actions/upload-artifact@v7
         with:
-          name: debugbridge-26.2-dev
+          name: debugbridge-26.2
           path: mod/fabric-26.2-dev/build/libs/*.jar
           if-no-files-found: error
 

@@ -21,7 +21,7 @@
 //   node tools/record-video-smoke.mjs --port 9876 --version 26.1
 //   node tools/record-video-smoke.mjs --port 9876 --version 26.1 --game-dir-contains '/instances/26.1/'
 //                                                    # also verifies the live JVM loaded the current 26.1 implementation shape
-//   node tools/record-video-smoke.mjs --port 9878     # 26.2-dev alongside
+//   node tools/record-video-smoke.mjs --port 9878     # 26.2 alongside
 //
 // Requires Node 22+ (built-in WebSocket).
 

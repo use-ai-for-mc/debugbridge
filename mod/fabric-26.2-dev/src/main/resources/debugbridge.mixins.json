@@ -3,6 +3,7 @@
   "package": "com.debugbridge.fabric262.mixin",
   "compatibilityLevel": "JAVA_25",
   "client": [
+    "BlockGlowGizmoMixin",
     "EntityGlowMixin",
     "MinecraftClientMixin"
   ],

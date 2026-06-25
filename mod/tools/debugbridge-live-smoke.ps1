@@ -13,7 +13,7 @@ function Write-Step([string] $Message) {
 
 $gradle = Join-Path $DebugBridgeRoot "gradlew.bat"
 $renderGradle = Join-Path $RenderModRoot "gradlew.bat"
-$fabricJarGlob = Join-Path $DebugBridgeRoot "fabric-26.2-dev\build\libs\debugbridge-26.2-dev-*.jar"
+$fabricJarGlob = Join-Path $DebugBridgeRoot "fabric-26.2-dev\build\libs\debugbridge-26.2-*.jar"
 $renderMods = Join-Path $RenderModRoot "run\mods"
 
 if (-not $SkipBuild) {
@@ -30,7 +30,7 @@ $fabricJar = Get-ChildItem -Path $fabricJarGlob |
     Select-Object -First 1
 
 if ($null -eq $fabricJar) {
-    throw "Could not find built debugbridge-26.2-dev jar at $fabricJarGlob"
+    throw "Could not find built debugbridge-26.2 jar at $fabricJarGlob"
 }
 
 New-Item -ItemType Directory -Force -Path $renderMods | Out-Null
