@@ -5,7 +5,7 @@ plugins {
 dependencies {
     // Groovy - JVM scripting runtime for the `execute` endpoint (mapping-aware
     // Java/Minecraft interop). Replaces the former LuaJ runtime.
-    implementation("org.apache.groovy:groovy:5.0.6")
+    implementation("org.apache.groovy:groovy:5.0.7")
 
     // Java-WebSocket - lightweight WebSocket server
     implementation("org.java-websocket:Java-WebSocket:1.6.0")
@@ -14,7 +14,7 @@ dependencies {
     implementation("com.google.code.gson:gson:2.14.0")
 
     // Testing
-    testImplementation("org.junit.jupiter:junit-jupiter:6.1.0")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.1.1")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
