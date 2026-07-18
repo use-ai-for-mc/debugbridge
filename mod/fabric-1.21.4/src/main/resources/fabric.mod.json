@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "debugbridge",
+  "version": "${version}",
+  "name": "DebugBridge",
+  "description": "Groovy-Java bridge for Minecraft: a WebSocket REPL into the running client, with auto-downloaded Mojang mappings so you can script the game using official class names.",
+  "authors": [
+    "Weikeng Chen"
+  ],
+  "contact": {
+    "homepage": "https://github.com/use-ai-for-mc/debugbridge",
+    "sources": "https://github.com/use-ai-for-mc/debugbridge",
+    "issues": "https://github.com/use-ai-for-mc/debugbridge/issues"
+  },
+  "license": "MIT",
+  "icon": "assets/debugbridge/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.debugbridge.fabric1214.DebugBridgeMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "1.21.4"
+  },
+  "mixins": [
+    "debugbridge.mixins.json"
+  ]
+}

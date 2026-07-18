@@ -42,14 +42,15 @@ jobs:
           path: mod/core/build/reports/tests/test/
           if-no-files-found: ignore
 
-      - name: Build Fabric 1.19 and 1.21.11 mods
+      - name: Build Fabric 1.19, 1.21.4 and 1.21.11 mods
         working-directory: mod
-        run: ./gradlew :fabric-1.19:build :fabric-1.21.11:build --no-daemon
+        run: ./gradlew :fabric-1.19:build :fabric-1.21.4:build :fabric-1.21.11:build --no-daemon
 
       - name: Verify the web UI is bundled in the jars
         working-directory: mod
         run: |
           for jar in fabric-1.19/build/libs/debugbridge-1.19-*[0-9].jar \
+                     fabric-1.21.4/build/libs/debugbridge-1.21.4-*[0-9].jar \
                      fabric-1.21.11/build/libs/debugbridge-1.21.11-*[0-9].jar; do
             unzip -p "$jar" 'META-INF/jars/core-*.jar' > /tmp/core-nested.jar
             unzip -l /tmp/core-nested.jar | grep -q 'webui/index.html' \
@@ -62,6 +63,13 @@ jobs:
         with:
           name: debugbridge-1.19
           path: mod/fabric-1.19/build/libs/*.jar
+          if-no-files-found: error
+
+      - name: Upload 1.21.4 artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: debugbridge-1.21.4
+          path: mod/fabric-1.21.4/build/libs/*.jar
           if-no-files-found: error
 
       - name: Upload 1.21.11 artifact

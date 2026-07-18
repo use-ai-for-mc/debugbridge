@@ -7,7 +7,7 @@ A Fabric client mod (Minecraft 1.19, 1.21.11, exact 26.1, and stable 26.2) that 
 ## Repo layout
 
 - `mod/core/` — shared Java: WebSocket server (`BridgeServer`), Groovy runtime, mapping resolver, provider interfaces (`NearbyEntitiesProvider`, `ScreenshotProvider`, `ItemTextureProvider`, `GameStateProvider`).
-- `mod/fabric-1.19/`, `mod/fabric-1.21.11/`, `mod/fabric-26.1/`, and `mod/fabric-26.2-dev/` — version-specific Fabric mods. Each has its own provider impls + mixins.
+- `mod/fabric-1.19/`, `mod/fabric-1.21.4/`, `mod/fabric-1.21.11/`, `mod/fabric-26.1/`, and `mod/fabric-26.2-dev/` — version-specific Fabric mods. Each has its own provider impls + mixins.
 - `web-ui/` — Vue 3 + Pinia + Tailwind app.
 - `build-and-deploy.sh` (1.19) and `build-and-deploy-1.21.11.sh` — build the jar and copy into `~/Library/Application Support/ModrinthApp/profiles/ImagineFun/mods/`.
 - `build-and-deploy-26.1.sh` — builds exact `fabric-26.1` with Java 25 and installs to Prism Launcher. Defaults: `PRISM_INSTANCE_NAME=26.1`, `PRISM_INSTANCES_DIR=~/Library/Application Support/PrismLauncher/instances`, and `JAVA_HOME_26_1=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home`. It verifies the built/staged jar metadata for exact Minecraft `26.1` before replacing the target jar and prints guarded smoke commands with `--version 26.1` and `--game-dir-contains`.

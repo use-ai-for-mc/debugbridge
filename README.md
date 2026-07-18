@@ -1,6 +1,6 @@
 # DebugBridge
 
-A Fabric client mod for Minecraft (1.19, 1.21.11, exact 26.1, and stable 26.2) that exposes game state over a local WebSocket server, plus a Vue web UI for visual inspection. Built for AI-assisted Minecraft development and debugging.
+A Fabric client mod for Minecraft (1.19, 1.21.4, 1.21.11, exact 26.1, and stable 26.2) that exposes game state over a local WebSocket server, plus a Vue web UI for visual inspection. Built for AI-assisted Minecraft development and debugging.
 
 ## What It Does
 
@@ -191,6 +191,10 @@ cd mod
 JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ./gradlew build
 # JARs -> mod/fabric-*/build/libs/
 
+# Minecraft 1.21.4 bridge only
+cd mod
+JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home ./gradlew :fabric-1.21.4:build
+
 # Exact 26.1 bridge
 cd mod
 JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home ./gradlew :fabric-26.1:jar
@@ -224,6 +228,9 @@ Covers the Groovy bridge runtime, mapping resolver kernel (with stubbed Fabric S
 ```bash
 # Smoke test against running 1.21.11 mod
 node tools/smoke-test.mjs --port 9876 --version 1.21.11
+
+# Smoke test against running 1.21.4 mod
+node tools/smoke-test.mjs --port 9876 --version 1.21.4
 
 # 1.19 alongside (default ports: 1.21.11=9876, 1.19=9877)
 node tools/smoke-test.mjs --port 9877 --version 1.19
@@ -272,6 +279,15 @@ Connect to `ws://127.0.0.1:9876` and send JSON:
 ```
 
 Each request gets a matching `{id, type, payload}` response.
+
+### Minecraft 1.21.4 port notes
+
+The 1.21.4 module preserves the shared wire contract and the runtime control
+providers, including snapshots, entities, blocks, chat, screen inspection,
+Groovy execution, screenshots, and session control. Item texture endpoints and
+block glow are intentionally unsupported in this first port because their
+rendering APIs differ from the maintained newer lines; those requests return a
+clear unsupported error rather than silently producing incorrect data.
 
 #### `record_video` storage
 

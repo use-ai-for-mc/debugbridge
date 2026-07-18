@@ -35,14 +35,15 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Build Fabric 1.19 and 1.21.11 mods
+      - name: Build Fabric 1.19, 1.21.4 and 1.21.11 mods
         working-directory: mod
-        run: ./gradlew :fabric-1.19:build :fabric-1.21.11:build --no-daemon
+        run: ./gradlew :fabric-1.19:build :fabric-1.21.4:build :fabric-1.21.11:build --no-daemon
 
       - name: Verify the web UI is bundled in the jars
         working-directory: mod
         run: |
           for jar in fabric-1.19/build/libs/debugbridge-1.19-*[0-9].jar \
+                     fabric-1.21.4/build/libs/debugbridge-1.21.4-*[0-9].jar \
                      fabric-1.21.11/build/libs/debugbridge-1.21.11-*[0-9].jar; do
             unzip -p "$jar" 'META-INF/jars/core-*.jar' > /tmp/core-nested.jar
             unzip -l /tmp/core-nested.jar | grep -q 'webui/index.html' \
@@ -55,6 +56,13 @@ jobs:
         with:
           name: release-fabric-1.19
           path: mod/fabric-1.19/build/libs/*.jar
+          if-no-files-found: error
+
+      - name: Upload 1.21.4 release artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-fabric-1.21.4
+          path: mod/fabric-1.21.4/build/libs/*.jar
           if-no-files-found: error
 
       - name: Upload 1.21.11 release artifact
@@ -136,6 +144,12 @@ jobs:
           name: release-fabric-1.21.11
           path: release-artifacts/fabric-1.21.11
 
+      - name: Download 1.21.4 artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: release-fabric-1.21.4
+          path: release-artifacts/fabric-1.21.4
+
       - name: Download 26.1 artifact
         uses: actions/download-artifact@v8
         with:
@@ -156,6 +170,7 @@ jobs:
           prerelease: false
           files: |
             release-artifacts/fabric-1.19/*.jar
+            release-artifacts/fabric-1.21.4/*.jar
             release-artifacts/fabric-1.21.11/*.jar
             release-artifacts/fabric-26.1/*.jar
             release-artifacts/fabric-26.2/*.jar
@@ -178,6 +193,7 @@ jobs:
             client, but it is not promoted as the current/default line.
 
             - `debugbridge-1.19-*.jar` — legacy Minecraft 1.19 support
+            - `debugbridge-1.21.4-*.jar` — Minecraft 1.21.4 support
             - `debugbridge-1.21.11-*.jar` — current/default stable line
             - `debugbridge-26.1-*.jar` — exact Minecraft 26.1 support
             - `debugbridge-26.2-*.jar` — stable 26.2 line
@@ -265,6 +281,7 @@ jobs:
 
             ### Supported Versions
             - Minecraft 1.19 (Fabric Loader >= 0.14.0)
+            - Minecraft 1.21.4 (Fabric Loader >= 0.16.0)
             - Minecraft 1.21.11 (Fabric Loader >= 0.16.0)
             - Minecraft 26.1 exact (Fabric Loader >= 0.19.2)
             - Minecraft 26.2 stable (Fabric Loader >= 0.19.2)

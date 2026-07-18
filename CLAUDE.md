@@ -5,7 +5,7 @@ A Fabric client mod (Minecraft 1.19, 1.21.11, exact 26.1, and stable 26.2) that 
 
 ## Repo layout
 - `mod/core/` — shared Java: WebSocket server (`BridgeServer`), Groovy runtime, mapping resolver, provider interfaces (`NearbyEntitiesProvider`, `NearbyBlocksProvider`, `LookedAtEntityProvider`, `ScreenshotProvider`, `ItemTextureProvider`, `ScreenInspectProvider`, `ChatHistoryProvider`, `GameStateProvider`, `SessionControlProvider`, `FrameCapturer` + recording orchestrator).
-- `mod/fabric-1.19/`, `mod/fabric-1.21.11/`, `mod/fabric-26.1/`, `mod/fabric-26.2-dev/` — version-specific Fabric mods. Each has its own provider impls + mixins.
+- `mod/fabric-1.19/`, `mod/fabric-1.21.4/`, `mod/fabric-1.21.11/`, `mod/fabric-26.1/`, `mod/fabric-26.2-dev/` — version-specific Fabric mods. Each has its own provider impls + mixins.
 - `web-ui/` — Vue 3 + Pinia + Tailwind app.
 - `build-and-deploy.sh` (1.19) and `build-and-deploy-1.21.11.sh` — build the jar and copy into `~/Library/Application Support/ModrinthApp/profiles/ImagineFun/mods/`. **Caveat:** the client actually in day-to-day use launches via **Prism Launcher** (`~/Library/Application Support/PrismLauncher/instances/ImagineFun/.minecraft/mods/`), which these older scripts do NOT update — copy the jar there too (launch CLI: `/Applications/Prism Launcher.app/Contents/MacOS/prismlauncher --launch ImagineFun`).
 - `build-and-deploy-26.1.sh` — builds exact `fabric-26.1` with Java 25 and installs to Prism Launcher. Defaults: `PRISM_INSTANCE_NAME=26.1`, `PRISM_INSTANCES_DIR=~/Library/Application Support/PrismLauncher/instances`, and `JAVA_HOME_26_1=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home`.
