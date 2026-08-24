@@ -2,6 +2,20 @@
 
 A Fabric client mod for Minecraft (1.19, 1.21.11, exact 26.1, and stable 26.2) that exposes game state over a local WebSocket server, plus a Vue web UI for visual inspection. Built for AI-assisted Minecraft development and debugging.
 
+## What's New in 2.1.0
+
+v2.1.0 ships the same stable feature line for every maintained target: Minecraft `1.19.x`, `1.21.11`, exact `26.1`, and stable `26.2`. The former 26.2 development module is now the stable 26.2 line; the source directory is still `mod/fabric-26.2-dev/`.
+
+Relative to 2.0.0 this release also hardens the existing bridge:
+
+- `record_video` defaults to temporary storage with a 24-hour TTL and automatic cleanup (`storage: "persistent"` keeps files under the game directory)
+- `runCommand` keeps the same opt-in wire contract, but now uses a native per-version provider instead of a Groovy round-trip
+- Config values are range-validated, object refs are bounded, script execution reuses its worker, and recording / disconnect / texture / entity-refresh races are handled more defensively
+- Exact 26.1 can render item textures on the title screen (`getItemTextureById` no longer fails with `Components not bound yet`)
+- Web UI inventory slots, entity colors, and store refresh behavior are more reliable
+
+The Groovy 5 scripting model and endpoint set remain compatible with v2.0.0. Grab the matching jar from the [v2.1.0 release](https://github.com/use-ai-for-mc/debugbridge/releases/tag/v2.1.0).
+
 ## What It Does
 
 DebugBridge runs a localhost-only WebSocket server (default port 9876, scans 9876–9886) inside Minecraft. External tools — CLI scripts, the bundled Vue web UI, or MCP clients like Claude Code — can inspect and interact with the running game through two complementary APIs:
@@ -27,7 +41,7 @@ Purpose-built Java endpoints that return structured JSON in a single round-trip 
 | `search` | Search loaded classes by name pattern |
 | `status` | Server health and connection info |
 
-Two endpoint families are **gated off by default** in `config/debugbridge.json`: `runCommand` (`run_command_enabled`) sends commands as the player, and the session-control trio `disconnect` / `joinServer` / `quit` (`session_control_enabled`) lets an automation loop leave a world, join a server, or shut the client down. `joinServer` pre-accepts the server resource pack and defers the connect until the client has settled (no loading overlay — joining during the startup resource reload would silently drop the server pack), acking only once the connect attempt has actually started; it's safe to fire the moment the bridge port answers after a launch.
+Two endpoint families are **gated off by default** in `config/debugbridge.json`: `runCommand` (`run_command_enabled`) sends commands as the player through a native per-version provider, and the session-control trio `disconnect` / `joinServer` / `quit` (`session_control_enabled`) lets an automation loop leave a world, join a server, or shut the client down. `joinServer` pre-accepts the server resource pack and defers the connect until the client has settled (no loading overlay — joining during the startup resource reload would silently drop the server pack), acking only once the connect attempt has actually started; it's safe to fire the moment the bridge port answers after a launch.
 
 ### Groovy execution (`execute` endpoint)
 
