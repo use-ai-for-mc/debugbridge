@@ -54,14 +54,22 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: release-fabric-1.19
-          path: mod/fabric-1.19/build/libs/*.jar
+          path: |
+            mod/fabric-1.19/build/libs/debugbridge-1.19-*[0-9].jar
+            !mod/fabric-1.19/build/libs/*-sources.jar
+            !mod/fabric-1.19/build/libs/*-dev*.jar
+            !mod/fabric-1.19/build/libs/*-javadoc.jar
           if-no-files-found: error
 
       - name: Upload 1.21.11 release artifact
         uses: actions/upload-artifact@v7
         with:
           name: release-fabric-1.21.11
-          path: mod/fabric-1.21.11/build/libs/*.jar
+          path: |
+            mod/fabric-1.21.11/build/libs/debugbridge-1.21.11-*[0-9].jar
+            !mod/fabric-1.21.11/build/libs/*-sources.jar
+            !mod/fabric-1.21.11/build/libs/*-dev*.jar
+            !mod/fabric-1.21.11/build/libs/*-javadoc.jar
           if-no-files-found: error
 
   build-26-x:
@@ -102,14 +110,22 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: release-fabric-26.1
-          path: mod/fabric-26.1/build/libs/*.jar
+          path: |
+            mod/fabric-26.1/build/libs/debugbridge-26.1-*[0-9].jar
+            !mod/fabric-26.1/build/libs/*-sources.jar
+            !mod/fabric-26.1/build/libs/*-dev*.jar
+            !mod/fabric-26.1/build/libs/*-javadoc.jar
           if-no-files-found: error
 
       - name: Upload 26.2 release artifact
         uses: actions/upload-artifact@v7
         with:
           name: release-fabric-26.2
-          path: mod/fabric-26.2-dev/build/libs/*.jar
+          path: |
+            mod/fabric-26.2-dev/build/libs/debugbridge-26.2-*[0-9].jar
+            !mod/fabric-26.2-dev/build/libs/*-sources.jar
+            !mod/fabric-26.2-dev/build/libs/*-dev*.jar
+            !mod/fabric-26.2-dev/build/libs/*-javadoc.jar
           if-no-files-found: error
 
   build-and-release:
@@ -148,17 +164,84 @@ jobs:
           name: release-fabric-26.2
           path: release-artifacts/fabric-26.2
 
+      - name: Stage only the four official jars
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-upload
+          expect() {
+            local dest="$1"
+            local src="$2"
+            local minecraft="$3"
+            if [ ! -f "$src" ]; then
+              echo "::error::Missing expected release jar: $src"
+              exit 1
+            fi
+            unzip -t "$src" >/dev/null
+            python3 - "$src" "$dest" "$VERSION" "$minecraft" <<'PY'
+          import json, sys, zipfile
+          src, dest, version, minecraft = sys.argv[1:5]
+          with zipfile.ZipFile(src) as zf:
+              meta = json.loads(zf.read("fabric.mod.json"))
+              if meta.get("id") != "debugbridge":
+                  raise SystemExit(f"{src}: unexpected mod id {meta.get('id')!r}")
+              if meta.get("version") != version:
+                  raise SystemExit(f"{src}: version {meta.get('version')!r} != {version!r}")
+              depends = meta.get("depends") or {}
+              if depends.get("minecraft") != minecraft:
+                  raise SystemExit(f"{src}: minecraft {depends.get('minecraft')!r} != {minecraft!r}")
+              names = zf.namelist()
+              for nested in (
+                  f"META-INF/jars/core-{version}.jar",
+                  "META-INF/jars/groovy-5.0.6.jar",
+                  "META-INF/jars/Java-WebSocket-1.6.0.jar",
+                  "META-INF/jars/gson-2.14.0.jar",
+              ):
+                  if nested not in names:
+                      raise SystemExit(f"{src}: missing nested jar {nested}")
+              with zf.open(f"META-INF/jars/core-{version}.jar") as nested:
+                  with zipfile.ZipFile(nested) as core:
+                      if "webui/index.html" not in core.namelist():
+                          raise SystemExit(f"{src}: nested core is missing webui/index.html")
+          print(f"{dest}: version={version} minecraft={minecraft}")
+          PY
+            cp "$src" "release-upload/$dest"
+          }
+          expect "debugbridge-1.19-${VERSION}.jar" "release-artifacts/fabric-1.19/debugbridge-1.19-${VERSION}.jar" "1.19.x"
+          expect "debugbridge-1.21.11-${VERSION}.jar" "release-artifacts/fabric-1.21.11/debugbridge-1.21.11-${VERSION}.jar" "1.21.11"
+          expect "debugbridge-26.1-${VERSION}.jar" "release-artifacts/fabric-26.1/debugbridge-26.1-${VERSION}.jar" "26.1"
+          expect "debugbridge-26.2-${VERSION}.jar" "release-artifacts/fabric-26.2/debugbridge-26.2-${VERSION}.jar" "26.2"
+          extra=$(find release-artifacts -type f -name '*.jar' \
+            ! -name "debugbridge-1.19-${VERSION}.jar" \
+            ! -name "debugbridge-1.21.11-${VERSION}.jar" \
+            ! -name "debugbridge-26.1-${VERSION}.jar" \
+            ! -name "debugbridge-26.2-${VERSION}.jar" -print)
+          if [ -n "$extra" ]; then
+            echo "::error::Unexpected extra jars would have been published:"
+            echo "$extra"
+            exit 1
+          fi
+          count=$(find release-upload -type f -name 'debugbridge-*-*.jar' | wc -l | tr -d ' ')
+          if [ "$count" != "4" ]; then
+            echo "::error::Expected exactly 4 staged jars, found $count"
+            find release-upload -type f -print
+            exit 1
+          fi
+          ls -l release-upload
+
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
           name: DebugBridge v${{ steps.version.outputs.VERSION }}
           draft: false
           prerelease: false
+          fail_on_unmatched_files: true
           files: |
-            release-artifacts/fabric-1.19/*.jar
-            release-artifacts/fabric-1.21.11/*.jar
-            release-artifacts/fabric-26.1/*.jar
-            release-artifacts/fabric-26.2/*.jar
+            release-upload/debugbridge-1.19-${{ steps.version.outputs.VERSION }}.jar
+            release-upload/debugbridge-1.21.11-${{ steps.version.outputs.VERSION }}.jar
+            release-upload/debugbridge-26.1-${{ steps.version.outputs.VERSION }}.jar
+            release-upload/debugbridge-26.2-${{ steps.version.outputs.VERSION }}.jar
           body: |
             ## DebugBridge v${{ steps.version.outputs.VERSION }}
 
@@ -172,96 +255,54 @@ jobs:
                (the in-game startup message prints the exact URL)
 
             ### Release artifacts
-            This release uploads jars for every maintained bridge line. The
-            current/default stable line remains Minecraft 1.21.11; exact 26.1
-            is included as a released artifact for users pinned to that exact
-            client, but it is not promoted as the current/default line.
+            This release publishes the same DebugBridge
+            ${{ steps.version.outputs.VERSION }} feature line for every
+            maintained Minecraft target. Choose the jar whose Minecraft version
+            matches the instance exactly.
 
             - `debugbridge-1.19-*.jar` — legacy Minecraft 1.19 support
-            - `debugbridge-1.21.11-*.jar` — current/default stable line
+            - `debugbridge-1.21.11-*.jar` — Minecraft 1.21.11 support
             - `debugbridge-26.1-*.jar` — exact Minecraft 26.1 support
             - `debugbridge-26.2-*.jar` — stable 26.2 line
 
-            ### New: bundled web UI
-            The Vue inspection app (dashboard, entity/block browsers, screen
-            inspector, object browser, Groovy console) now ships inside the
-            jar and is served at `http://localhost:<bridge port + 100>` —
-            no repo checkout or Node toolchain needed. Loopback-only and
-            static-assets-only, same posture as the bridge itself; each game
-            instance serves its own UI and the page connects back to the
-            instance that served it. Disable with `"web_ui_enabled": false`
-            in `config/debugbridge.json`. The `status` endpoint reports the
-            port as `webUiPort`, and the join-time chat message prints the
-            URL as a clickable link.
+            ### New Minecraft lines
+            - Adds a complete exact-26.1 bridge, including native entity,
+              block, screenshot, recording, session-control, and GPU-backed
+              item-texture providers.
+            - Promotes the former 26.2 development module to stable Minecraft
+              26.2, with exact metadata and stable rendering/API targets.
 
-            ### New: record_video endpoint
-            Captures N frames of the main framebuffer (every frame or at a
-            fixed interval) and writes a single JPEG contact-sheet grid or
-            per-frame JPEGs under `<gameDir>/debugbridge-recordings/` —
-            enough to check an animation or camera path without a screen
-            recorder. Concurrent recordings (and screenshots taken
-            mid-recording) return `BUSY`.
+            ### Safer recordings
+            - `record_video` now uses temporary storage by default with a
+              24-hour TTL and automatic cleanup.
+            - Set `storage: "persistent"` to keep captures under
+              `<gameDir>/debugbridge-recordings/`.
+            - Recording payloads now receive strict, centralized validation;
+              response metadata reports storage, directory, and expiry.
 
-            ### Breaking: the scripting runtime is now Apache Groovy 5
+            ### Reliability and hardening
+            - `runCommand` keeps the same opt-in wire contract but now uses a
+              native per-version provider instead of a Groovy round-trip.
+            - Configuration values are deserialized and range-validated before
+              use, while the legacy `lua` config block remains supported.
+            - Object references are bounded, script execution reuses its worker,
+              mapping search avoids redundant passes, and errors are formatted
+              consistently without leaking unnecessary Java internals.
+            - Recording lifecycle, disconnect errors, texture-provider cleanup,
+              and entity/equipment refresh races are handled more defensively.
 
-            The `execute` endpoint runs **Groovy 5.0.6** (the LuaJ runtime is
-            removed). The wire contract is unchanged — `{code, timeoutMs?}` in,
-            `returnValue`/`output`/`error` out — but scripts themselves must
-            migrate:
+            ### Web UI
+            - Improves inventory slot/component rendering and extracted the
+              repeated slot presentation into a shared component.
+            - Adds renderer-fallback indicators and fixes entity texture/status
+              races and stale timers.
+            - Adds unit coverage for bridge services and entity/block stores.
 
-            | Lua (old) | Groovy (new) |
-            |---|---|
-            | `obj:method(args)` | `obj.method(args)` |
-            | `java.import(name)` | `java.type(name)` |
-            | `java.new(Cls, ...)` | `Cls(args)` or `Cls.create(args)` |
-            | `java.iter(x)` / `java.array(x)` | `java.list(x)` |
-            | `java.typeof(x)` | `java.typeName(x)` |
-            | `java.cast(x, name)` | removed — dispatch walks the runtime hierarchy |
-            | `io.open(...)` | `new File(...)` |
-            | `os.time()` | `System.currentTimeMillis()` |
-            | `print(x)` / `pcall` / `local x` | `println x` / `try/catch` / `def x` |
-
-            `mc` / `player` / `level` stay pre-bound, the binding persists
-            across calls, and field-vs-method is by syntax: `obj.foo` reads a
-            field (JavaBean getter fallback), `obj.foo(args)` calls a method.
-            New `sync { ... }` runs a closure on the game thread in one hop —
-            bulk loops over hundreds of entities finish in milliseconds where
-            the per-call bridge used to time out at ~100 items. Sandbox:
-            `Runtime`/`ProcessBuilder`/`java.net.*` blocked, file I/O allowed.
-            The legacy `"lua"` block in `debugbridge.json` still parses as an
-            alias for `"script"`.
-
-            ### New: session-control endpoints (off by default)
-            - `disconnect` / `joinServer` / `quit`, gated by
-              `session_control_enabled` in `debugbridge.json`; `status` reports
-              the capability as `sessionControlEnabled`.
-            - `disconnect`/`quit` are fire-and-acknowledge: poll `snapshot` /
-              `screenInspect` for the outcome. `joinServer` pre-accepts the
-              server resource pack and defers the connect until the client
-              has settled (no loading overlay) — joining during the startup
-              resource reload would silently drop the server pack — so its
-              ack means the connect attempt actually started (bounded at
-              60 s; a never-settling client gets an error response). Safe to
-              fire the moment the bridge port answers after a launch.
-            - Lets an MCP orchestrator drive the full rebuild → relaunch →
-              rejoin dev loop (see mcdev-mcp ≥ 2.1.0 for the client tools).
-
-            ### Fixed (caught by live in-game testing)
-            - **Overloaded methods now dispatch correctly on obfuscated
-              builds.** Each Mojang overload maps to its own runtime name;
-              resolution used to collapse them to one, making calls like
-              `vec.add(otherVec)` fail with `argument type mismatch` and
-              decimal-literal args (Groovy `BigDecimal`) unable to reach
-              `double` overloads. Constructors also select by argument types,
-              not just arity.
-            - Wrapped objects delegate `toString`/`equals`/`hashCode`, so
-              string interpolation shows real values and `==` compares values.
-            - Missing-method errors speak Mojang names with did-you-mean
-              suggestions instead of leaking `class_NNNN`.
-            - `execute` object results show Mojang field names in their
-              `fields` summary (`{x, y, z}`, not `{field_1352, ...}`).
-            - Web UI inventory panel migrated to Groovy (was still sending
-              Lua) and batches its slot/component scans in `sync { }`.
+            ### Compatibility
+            - The endpoint set and Groovy 5 scripting model remain compatible
+              with v2.0.0.
+            - Existing opt-in gates for `runCommand` and session control remain
+              disabled by default.
 
             ### Supported Versions
             - Minecraft 1.19 (Fabric Loader >= 0.14.0)

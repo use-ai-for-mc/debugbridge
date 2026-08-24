@@ -61,14 +61,22 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: debugbridge-1.19
-          path: mod/fabric-1.19/build/libs/*.jar
+          path: |
+            mod/fabric-1.19/build/libs/debugbridge-1.19-*[0-9].jar
+            !mod/fabric-1.19/build/libs/*-sources.jar
+            !mod/fabric-1.19/build/libs/*-dev*.jar
+            !mod/fabric-1.19/build/libs/*-javadoc.jar
           if-no-files-found: error
 
       - name: Upload 1.21.11 artifact
         uses: actions/upload-artifact@v7
         with:
           name: debugbridge-1.21.11
-          path: mod/fabric-1.21.11/build/libs/*.jar
+          path: |
+            mod/fabric-1.21.11/build/libs/debugbridge-1.21.11-*[0-9].jar
+            !mod/fabric-1.21.11/build/libs/*-sources.jar
+            !mod/fabric-1.21.11/build/libs/*-dev*.jar
+            !mod/fabric-1.21.11/build/libs/*-javadoc.jar
           if-no-files-found: error
 
   build-26-x:
@@ -109,14 +117,22 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: debugbridge-26.1
-          path: mod/fabric-26.1/build/libs/*.jar
+          path: |
+            mod/fabric-26.1/build/libs/debugbridge-26.1-*[0-9].jar
+            !mod/fabric-26.1/build/libs/*-sources.jar
+            !mod/fabric-26.1/build/libs/*-dev*.jar
+            !mod/fabric-26.1/build/libs/*-javadoc.jar
           if-no-files-found: error
 
       - name: Upload 26.2 artifact
         uses: actions/upload-artifact@v7
         with:
           name: debugbridge-26.2
-          path: mod/fabric-26.2-dev/build/libs/*.jar
+          path: |
+            mod/fabric-26.2-dev/build/libs/debugbridge-26.2-*[0-9].jar
+            !mod/fabric-26.2-dev/build/libs/*-sources.jar
+            !mod/fabric-26.2-dev/build/libs/*-dev*.jar
+            !mod/fabric-26.2-dev/build/libs/*-javadoc.jar
           if-no-files-found: error
 
   build-web-ui:
@@ -134,6 +150,10 @@ jobs:
       - name: Install dependencies
         working-directory: web-ui
         run: npm ci
+
+      - name: Audit lockfile
+        working-directory: web-ui
+        run: npm audit --package-lock-only --audit-level=high
 
       - name: Test
         working-directory: web-ui
