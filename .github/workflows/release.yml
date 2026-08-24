@@ -54,14 +54,22 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: release-fabric-1.19
-          path: mod/fabric-1.19/build/libs/*.jar
+          path: |
+            mod/fabric-1.19/build/libs/debugbridge-1.19-*[0-9].jar
+            !mod/fabric-1.19/build/libs/*-sources.jar
+            !mod/fabric-1.19/build/libs/*-dev*.jar
+            !mod/fabric-1.19/build/libs/*-javadoc.jar
           if-no-files-found: error
 
       - name: Upload 1.21.11 release artifact
         uses: actions/upload-artifact@v7
         with:
           name: release-fabric-1.21.11
-          path: mod/fabric-1.21.11/build/libs/*.jar
+          path: |
+            mod/fabric-1.21.11/build/libs/debugbridge-1.21.11-*[0-9].jar
+            !mod/fabric-1.21.11/build/libs/*-sources.jar
+            !mod/fabric-1.21.11/build/libs/*-dev*.jar
+            !mod/fabric-1.21.11/build/libs/*-javadoc.jar
           if-no-files-found: error
 
   build-26-x:
@@ -102,14 +110,22 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: release-fabric-26.1
-          path: mod/fabric-26.1/build/libs/*.jar
+          path: |
+            mod/fabric-26.1/build/libs/debugbridge-26.1-*[0-9].jar
+            !mod/fabric-26.1/build/libs/*-sources.jar
+            !mod/fabric-26.1/build/libs/*-dev*.jar
+            !mod/fabric-26.1/build/libs/*-javadoc.jar
           if-no-files-found: error
 
       - name: Upload 26.2 release artifact
         uses: actions/upload-artifact@v7
         with:
           name: release-fabric-26.2
-          path: mod/fabric-26.2-dev/build/libs/*.jar
+          path: |
+            mod/fabric-26.2-dev/build/libs/debugbridge-26.2-*[0-9].jar
+            !mod/fabric-26.2-dev/build/libs/*-sources.jar
+            !mod/fabric-26.2-dev/build/libs/*-dev*.jar
+            !mod/fabric-26.2-dev/build/libs/*-javadoc.jar
           if-no-files-found: error
 
   build-and-release:
@@ -148,17 +164,84 @@ jobs:
           name: release-fabric-26.2
           path: release-artifacts/fabric-26.2
 
+      - name: Stage only the four official jars
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-upload
+          expect() {
+            local dest="$1"
+            local src="$2"
+            local minecraft="$3"
+            if [ ! -f "$src" ]; then
+              echo "::error::Missing expected release jar: $src"
+              exit 1
+            fi
+            unzip -t "$src" >/dev/null
+            python3 - "$src" "$dest" "$VERSION" "$minecraft" <<'PY'
+          import json, sys, zipfile
+          src, dest, version, minecraft = sys.argv[1:5]
+          with zipfile.ZipFile(src) as zf:
+              meta = json.loads(zf.read("fabric.mod.json"))
+              if meta.get("id") != "debugbridge":
+                  raise SystemExit(f"{src}: unexpected mod id {meta.get('id')!r}")
+              if meta.get("version") != version:
+                  raise SystemExit(f"{src}: version {meta.get('version')!r} != {version!r}")
+              depends = meta.get("depends") or {}
+              if depends.get("minecraft") != minecraft:
+                  raise SystemExit(f"{src}: minecraft {depends.get('minecraft')!r} != {minecraft!r}")
+              names = zf.namelist()
+              for nested in (
+                  f"META-INF/jars/core-{version}.jar",
+                  "META-INF/jars/groovy-5.0.6.jar",
+                  "META-INF/jars/Java-WebSocket-1.6.0.jar",
+                  "META-INF/jars/gson-2.14.0.jar",
+              ):
+                  if nested not in names:
+                      raise SystemExit(f"{src}: missing nested jar {nested}")
+              with zf.open(f"META-INF/jars/core-{version}.jar") as nested:
+                  with zipfile.ZipFile(nested) as core:
+                      if "webui/index.html" not in core.namelist():
+                          raise SystemExit(f"{src}: nested core is missing webui/index.html")
+          print(f"{dest}: version={version} minecraft={minecraft}")
+          PY
+            cp "$src" "release-upload/$dest"
+          }
+          expect "debugbridge-1.19-${VERSION}.jar" "release-artifacts/fabric-1.19/debugbridge-1.19-${VERSION}.jar" "1.19.x"
+          expect "debugbridge-1.21.11-${VERSION}.jar" "release-artifacts/fabric-1.21.11/debugbridge-1.21.11-${VERSION}.jar" "1.21.11"
+          expect "debugbridge-26.1-${VERSION}.jar" "release-artifacts/fabric-26.1/debugbridge-26.1-${VERSION}.jar" "26.1"
+          expect "debugbridge-26.2-${VERSION}.jar" "release-artifacts/fabric-26.2/debugbridge-26.2-${VERSION}.jar" "26.2"
+          extra=$(find release-artifacts -type f -name '*.jar' \
+            ! -name "debugbridge-1.19-${VERSION}.jar" \
+            ! -name "debugbridge-1.21.11-${VERSION}.jar" \
+            ! -name "debugbridge-26.1-${VERSION}.jar" \
+            ! -name "debugbridge-26.2-${VERSION}.jar" -print)
+          if [ -n "$extra" ]; then
+            echo "::error::Unexpected extra jars would have been published:"
+            echo "$extra"
+            exit 1
+          fi
+          count=$(find release-upload -type f -name 'debugbridge-*-*.jar' | wc -l | tr -d ' ')
+          if [ "$count" != "4" ]; then
+            echo "::error::Expected exactly 4 staged jars, found $count"
+            find release-upload -type f -print
+            exit 1
+          fi
+          ls -l release-upload
+
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
           name: DebugBridge v${{ steps.version.outputs.VERSION }}
           draft: false
           prerelease: false
+          fail_on_unmatched_files: true
           files: |
-            release-artifacts/fabric-1.19/*.jar
-            release-artifacts/fabric-1.21.11/*.jar
-            release-artifacts/fabric-26.1/*.jar
-            release-artifacts/fabric-26.2/*.jar
+            release-upload/debugbridge-1.19-${{ steps.version.outputs.VERSION }}.jar
+            release-upload/debugbridge-1.21.11-${{ steps.version.outputs.VERSION }}.jar
+            release-upload/debugbridge-26.1-${{ steps.version.outputs.VERSION }}.jar
+            release-upload/debugbridge-26.2-${{ steps.version.outputs.VERSION }}.jar
           body: |
             ## DebugBridge v${{ steps.version.outputs.VERSION }}
 
