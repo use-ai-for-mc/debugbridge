@@ -31,8 +31,11 @@ import net.minecraft.client.renderer.SubmitNodeStorage;
 import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
 import net.minecraft.client.renderer.item.TrackingItemStackRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.entity.Display;
@@ -102,7 +105,12 @@ public class Minecraft261ItemTextureProvider implements ItemTextureProvider {
                 throw new Exception("Unknown item: " + itemId);
             }
             Item item = BuiltInRegistries.ITEM.getValue(key);
-            return new ItemStack(item);
+            DataComponentMap components = DataComponentMap.builder()
+                    .addAll(DataComponents.COMMON_ITEM_COMPONENTS)
+                    .set(DataComponents.ITEM_NAME, Component.translatable(item.getDescriptionId()))
+                    .set(DataComponents.ITEM_MODEL, key)
+                    .build();
+            return new ItemStack(Holder.direct(item, components));
         });
     }
 
