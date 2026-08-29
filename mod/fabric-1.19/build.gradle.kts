@@ -1,5 +1,5 @@
 plugins {
-    id("fabric-loom") version "1.17.12"
+    id("fabric-loom") version "1.17.13"
 }
 
 base {
@@ -16,7 +16,7 @@ dependencies {
 
     // Include core's dependencies
     include(project(":core"))
-    include("org.apache.groovy:groovy:5.0.6")
+    include("org.apache.groovy:groovy:5.0.7")
     include("org.java-websocket:Java-WebSocket:1.6.0")
     include("com.google.code.gson:gson:2.14.0")
 }
