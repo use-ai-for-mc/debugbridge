@@ -21,11 +21,11 @@ dependencies {
 
     minecraft("com.mojang:minecraft:1.21.11")
     mappings(loom.officialMojangMappings())
-    modImplementation("net.fabricmc:fabric-loader:0.19.3")
+    modImplementation("net.fabricmc:fabric-loader:0.19.5")
 
     // Include core's dependencies
     include(project(":core"))
-    include("org.apache.groovy:groovy:5.1.1")
+    include("org.apache.groovy:groovy:5.1.2")
     include("org.java-websocket:Java-WebSocket:1.6.0")
     include("com.google.code.gson:gson:2.14.0")
 }
