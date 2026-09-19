@@ -1,5 +1,5 @@
 plugins {
-    id("net.fabricmc.fabric-loom") version "1.17.20"
+    id("net.fabricmc.fabric-loom") version "1.18.2"
 }
 
 base {
@@ -14,14 +14,14 @@ java {
 
 dependencies {
     implementation(project(":core"))
-    implementation("org.apache.groovy:groovy:5.1.1")
+    implementation("org.apache.groovy:groovy:5.1.2")
     implementation("org.java-websocket:Java-WebSocket:1.6.0")
     implementation("com.google.code.gson:gson:2.14.0")
     minecraft("com.mojang:minecraft:26.1")
-    implementation("net.fabricmc:fabric-loader:0.19.3")
+    implementation("net.fabricmc:fabric-loader:0.19.5")
 
     include(project(":core"))
-    include("org.apache.groovy:groovy:5.1.1")
+    include("org.apache.groovy:groovy:5.1.2")
     include("org.java-websocket:Java-WebSocket:1.6.0")
     include("com.google.code.gson:gson:2.14.0")
 }
