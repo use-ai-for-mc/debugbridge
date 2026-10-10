@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@monaco-editor/loader": "^1.7.0",
-    "monaco-editor": "^0.56.0",
+    "monaco-editor": "^0.57.0",
     "pinia": "^4.0.3",
-    "vue": "^3.5.41"
+    "vue": "^3.5.43"
   },
   "overrides": {
     "dompurify": "3.4.14",
@@ -23,15 +23,15 @@
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/postcss": "^4.3.3",
-    "@types/node": "^26.4.0",
-    "@vitejs/plugin-vue": "^6.0.8",
+    "@types/node": "^26.6.4",
+    "@vitejs/plugin-vue": "^6.0.9",
     "@vue/tsconfig": "^0.9.1",
-    "autoprefixer": "^10.5.4",
-    "postcss": "^8.5.26",
+    "autoprefixer": "^10.6.1",
+    "postcss": "^8.5.29",
     "tailwindcss": "^4.2.2",
     "typescript": "~6.0.3",
-    "vite": "^8.2.2",
+    "vite": "^8.3.3",
     "vitest": "^4.1.11",
-    "vue-tsc": "^3.3.11"
+    "vue-tsc": "^3.3.12"
   }
 }
