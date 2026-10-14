@@ -153,6 +153,7 @@ mod/
   fabric-1.21.11/— Fabric mod for Minecraft 1.21.11 (provider impls + mixins)
   fabric-26.1/   — Fabric mod for exact Minecraft 26.1 (provider impls + mixins)
   fabric-26.2-dev/— Fabric mod for Minecraft 26.2 stable
+  fabric-26.4-dev/— Fabric mod for the Minecraft 26.4 snapshots (development, not released)
 web-ui/          — Vue 3 + Pinia + Tailwind inspection app
 ```
 
@@ -212,6 +213,10 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home ./gradl
 # 26.2 stable bridge
 cd mod
 JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home ./gradlew :core:test :fabric-26.2-dev:jar
+
+# 26.4 snapshot bridge (development; built against 26.4-snapshot-3)
+cd mod
+JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home ./gradlew :fabric-26.4-dev:jar
 
 # Web UI
 cd web-ui
