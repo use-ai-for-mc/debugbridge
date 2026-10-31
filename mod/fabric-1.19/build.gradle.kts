@@ -18,7 +18,7 @@ dependencies {
     include(project(":core"))
     include("org.apache.groovy:groovy:5.1.1")
     include("org.java-websocket:Java-WebSocket:1.6.0")
-    include("com.google.code.gson:gson:2.14.0")
+    include("com.google.code.gson:gson:2.15.0")
 }
 
 tasks.processResources {
