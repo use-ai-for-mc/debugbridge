@@ -11,7 +11,7 @@ dependencies {
     implementation("org.java-websocket:Java-WebSocket:1.6.0")
 
     // Gson - JSON serialization
-    implementation("com.google.code.gson:gson:2.14.0")
+    implementation("com.google.code.gson:gson:2.15.0")
 
     // Testing
     testImplementation("org.junit.jupiter:junit-jupiter:6.1.3")
