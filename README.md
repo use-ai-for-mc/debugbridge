@@ -214,7 +214,7 @@ JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home ./gradl
 cd mod
 JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home ./gradlew :core:test :fabric-26.2-dev:jar
 
-# 26.4 snapshot bridge (development; built against 26.4-snapshot-6)
+# 26.4 snapshot bridge (development; built against 26.4-snapshot-7)
 cd mod
 JAVA_HOME=/opt/homebrew/opt/openjdk@25/libexec/openjdk.jdk/Contents/Home ./gradlew :fabric-26.4-dev:jar
 
