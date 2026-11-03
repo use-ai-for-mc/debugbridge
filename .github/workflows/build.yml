@@ -100,13 +100,14 @@ jobs:
 
       - name: Build Fabric 26.x mods
         working-directory: mod
-        run: ./gradlew :fabric-26.1:build :fabric-26.2-dev:build --no-daemon
+        run: ./gradlew :fabric-26.1:build :fabric-26.2-dev:build :fabric-26.4-dev:build --no-daemon
 
       - name: Verify the web UI is bundled in the jars
         working-directory: mod
         run: |
           for jar in fabric-26.1/build/libs/debugbridge-26.1-*[0-9].jar \
-                     fabric-26.2-dev/build/libs/debugbridge-26.2-*[0-9].jar; do
+                     fabric-26.2-dev/build/libs/debugbridge-26.2-*[0-9].jar \
+                     fabric-26.4-dev/build/libs/debugbridge-26.4-*[0-9].jar; do
             unzip -p "$jar" 'META-INF/jars/core-*.jar' > /tmp/core-nested.jar
             unzip -l /tmp/core-nested.jar | grep -q 'webui/index.html' \
               || { echo "::error::$jar is missing the bundled web UI"; exit 1; }
@@ -133,6 +134,17 @@ jobs:
             !mod/fabric-26.2-dev/build/libs/*-sources.jar
             !mod/fabric-26.2-dev/build/libs/*-dev*.jar
             !mod/fabric-26.2-dev/build/libs/*-javadoc.jar
+          if-no-files-found: error
+
+      - name: Upload 26.4 snapshot artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: debugbridge-26.4-snapshot
+          path: |
+            mod/fabric-26.4-dev/build/libs/debugbridge-26.4-*[0-9].jar
+            !mod/fabric-26.4-dev/build/libs/*-sources.jar
+            !mod/fabric-26.4-dev/build/libs/*-dev*.jar
+            !mod/fabric-26.4-dev/build/libs/*-javadoc.jar
           if-no-files-found: error
 
   build-web-ui:
